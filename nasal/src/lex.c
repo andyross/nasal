@@ -225,9 +225,10 @@ static int lexNumLiteral(struct Parser* p, int index)
 static int trySymbol(struct Parser* p, int start)
 {
     int i = start;
-    while((p->buf[i] >= 'A' && p->buf[i] <= 'Z') ||
-          (p->buf[i] >= 'a' && p->buf[i] <= 'z') ||
-          (p->buf[i] >= '0' && p->buf[i] <= '9'))
+    while((i < p->len) &&
+          ((p->buf[i] >= 'A' && p->buf[i] <= 'Z') ||
+           (p->buf[i] >= 'a' && p->buf[i] <= 'z') ||
+           (p->buf[i] >= '0' && p->buf[i] <= '9')))
     { i++; }
     return i-start;
 }
