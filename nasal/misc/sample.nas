@@ -35,7 +35,7 @@ hash2 = { "one" : "uno", "two": "dos", "blue" : "azul" };
 # Both vectors and hashes use square brackets for the lookup operation:
 #
 list1[0] == "a";
-hash1["name"] == "Andy"
+hash1["name"] == "Andy";
 
 #
 # Typical little function.  Arguments are passed in the arg array, not
