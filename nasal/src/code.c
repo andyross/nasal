@@ -149,12 +149,17 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     f->bp = ctx->opTop;
     f->line = 0;
 
+    if(!IS_REF(func))
+        ERR(ctx, "function/method call invoked on uncallable object");
+
     f->args = args;
     if(IS_CCODE(func.ref.ptr.func->code)) {
         f->locals = naNil();
-    } else {
+    } else if(IS_CODE(func.ref.ptr.func->code)) {
         f->locals = naNewHash(ctx);
         naHash_set(f->locals, ctx->argRef, args);
+    } else {
+        ERR(ctx, "function/method call invoked on uncallable object");
     }
 }
 
