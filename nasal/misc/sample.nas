@@ -10,6 +10,21 @@ dist = func {
 };
 
 #
+# Literal numbers can be decimal or exponential
+#
+n1 = 3;
+n2 = 3.14;
+n3 = 6.023e23;
+
+#
+# Two identical strings with different quotes.  Double quotes use
+# typical escape sequences.  Single quotes treat everything as literal
+# except for embedded single quotes.
+#
+s1 = 'Andy\'s "computer" has a C:\righteous\newstuff directory.';
+s2 = "Andy's \"computer\" has a C:\\righteous\\newstuff directory.";
+
+#
 # Define a class object with one method, one field and one "new"
 # contstructor.  The "new" function is not special in any way.
 #
@@ -73,9 +88,23 @@ vecfind = func{ return invert(arg[0]){arg[0]}; };
 #
 join = func { 
     s = "";
-    foreach(elem, arg) { s = s ~ elem; }
+    foreach(elem; arg) { s = s ~ elem; }
     return s;
 };
+
+#
+# Labeled break/continue syntax puts the label in as an extra first
+# argument to the for/while/foreach
+#
+for(OUTER; i=0; i<100; i = i+1) {
+    for(j=0; j<100; j = j+1) {
+        if(doneWithInnerLoopEarly()) {
+            break;
+        } elsif(completelyDone()) {
+            break OUTER;
+        }
+    }
+}
 
 #
 # Functional programming A: All function expressions are inherently
@@ -89,7 +118,8 @@ a = func{ arg[0] + 1 }(232);  # "a" now equals 233
 # There are no "statements" in NaSL, although some expressions
 # (assignment, duh) have side effects.
 #
-factorial = func { if(arg[0] == 0) { 1 } else { frac(arg[0]); } };
+factorial = func { if(arg[0] == 0) { 1 }
+                   else            { arg[0] * factorial(arg[0]-1); } };
 
 #
 # Functional programming C:  Lexical closures.
