@@ -262,6 +262,20 @@ rarely required in typical code.
 <dd>Returns a string indicating the type of the single argument, any
     of: nil, scalar, vector, hash, func, or ghost.
 
+<dt>call()
+<dd>Calls a function.  The first argument must be a function object.
+    The second is a vector of arguments.  The optional third argument
+    specified an OOP object on which to call the function.  This
+    method allows you to compute argument lists and object
+    indirections at runtime.
+
+<dt>eval()
+<dd>Parses and executes Nasal code stored in a single string argument.
+    Returns the result of the Nasal script found in the string.  The
+    code is executed in the lexical environment of the calling
+    function, just as if it had been defined in a <code>func { ...
+    }</code> block.
+
 <dt>math.sin()
 <dd>Returns the sine of the single argument
 
