@@ -121,9 +121,10 @@ myfunction(1); # returns 2
 </pre>
 <p>
 Nasal has a straightforward, readable syntax which is closest to
-javascript among other scripting languages.  Although unlike
-javascript, it includes has a hash lookup syntax along the lines of
-python (that is, you can do both a.b and a["b"]).
+javascript among other scripting languages.  Like later versions of
+javascript, it includes has a hash lookup syntax as well as an object
+field accessor syntax (that is, you can do both <code>a.b</code> and
+<code>a["b"]</code>).
 <p>
 Unlike python, nasal has a grammar which is not whitespace-sensitive.
 This doesn't make python hard to write, and it arguably makes it
@@ -176,7 +177,7 @@ realtime constraints, and Nasal can be instructed to run for only a
 certain number of "cycles" before returning.  Later calls will
 automatically pick up the interpreter state where it left off.
 <p>
-Nasal's provides "minimal threadsafety".  Multithreaded operations on
+Nasal provides "minimal threadsafety".  Multithreaded operations on
 Nasal objects are safe in the sense that they cannot crash or corrupt
 the interpreter.  They are not guaranteed to be atomic.  In
 particular, poorly synchronized insertions into containers can "drop"
@@ -187,27 +188,28 @@ another symptom.  Garbage collection will block all threads before
 running. [NOTE: this part is still unimplemented.]
 
 <h2>Core library:</h2>
-
+<i>Functions in italics are unimplemented as of Nasal 0.3.</i>
 <ul>
 <li>typeof(thing) - returns a string: nil/scalar/vector/hash/func</li>
 </ul><ul>
-<li>int(str) - convert to integer</li>
+<li>int(num) - truncate to integer</li>
+<li>num(scalar) - convert to number if possible, or nil</li>
 <li>streq(str,str) - string equality (so "0" and "0.0" aren't equal)</li>
 <li>substr(str,start,len) - substring</li>
-<li>find(substr,str) - finds and returns the index of substr in str</li>
-<li>split(delim,str) - splits str, return a vector of the substrings</li>
-<li>join(str,vec) - join elements of vec with "str" between them</li>
+<li><i>find(substr,str) - finds and returns the index of substr in str</i></li>
+<li><i>split(delim,str) - splits str, return a vector of the substrings</i></li>
+<li><i>join(str,vec) - join elements of vec with "str" between them</i></li>
 </ul><ul>
 <li>keys(hash) - vector of keys</li>
 <li>contains(hash,elem) - is elem a key in hash?</li>
 </ul><ul>
 <li>size(vec) - size in elements (container) or bytes (string)</li>
 <li>append(vec, any) - append to a vector</li>
-<li>setsize(vec) - reallocate to the specified size</li>
+<li><i>setsize(vec) - truncate/reallocate to the specified size</i></li>
 <li>pop(vec) - remove and return the last element, shrinking size by one</li>
 </ul><ul>
-<li>try(func,args...) - call func with args, return a die() argument or nil</li>
-<li>die(arg) - jump to the nearest enclosing try() call, passing arg</li>
+<li><i>try(func,args...) - call func with args, return a die() argument or nil</i></li>
+<li><i>die(arg) - jump to the nearest enclosing try() call, passing arg</i></li>
 </ul>
 </body>
 </html>
