@@ -1,5 +1,38 @@
 #include "naslimpl.h"
 
+struct HashNode {
+    unsigned int key;
+    void* val;
+    struct naHashNode* next;
+};
+
+static void realloc(naHash* h)
+{
+    int i, sz, oldsz;
+
+    // Keep a handle to our original objects
+    char* oldmem = (char*)h->table;
+    struct HashNode* oldnodes = h->nodes;
+    oldsz = h->size;
+
+    // Allocate new ones (note that all the records are allocated in a
+    // single chunk, to avoid zillions of tiny node allocations)
+    h->lgalloced++;
+    sz = 1<<h->lgalloced;
+    h->table = ALLOC(sz*(sizeof(struct HashNode) + sizeof(void*)));
+    BZERO(h->table, sz*sizeof(void*));
+    h->nodes = (struct HashNode*)((char*)h->table + sz*sizeof(void*));
+    h->nextnode = 0;
+    h->size = 0;
+
+    // Re-insert everything from scratch
+    for(i=0; i<oldsize; i++)
+        naHash_set(h, oldnodes[i].key, oldnodes[i].val);
+
+    // Free the old memory
+    FREE(oldmem);
+}
+
 // Computes a hash code for a given scalar
 static unsigned int hashcode(naScalar* s)
 {
@@ -45,11 +78,6 @@ static char equals(naScalar* a, naScalar* b)
         return naScalar_cmp(a, b) == 0;
 }
 
-static void realloc(naHash* h)
-{
-    
-}
-
 HashNode* find(naHash* h, naScalar* key)
 {
     HashNode* hn = h->table[hashcolumn(h, key)];
@@ -82,7 +110,7 @@ void naHash_set(naHash* h, naScalar* key, naObj* val)
         realloc(h);
 
     col = hashcolumn(h, key);
-    n = NEW_NODE();
+    n = h->nodes[h->nextnode++];
     n->key = key;
     n->val = val;
     n->next = h->table[col];

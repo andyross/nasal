@@ -28,7 +28,8 @@ static void appendfree(naPool*p, naObj* o)
 
 static void freeelem(naPool* p, naObj* o)
 {
-    // Free any intrinsic storage the object might have
+    // Free any intrinsic (i.e. non-garbage collected) storage the
+    // object might have
     switch(o->type) {
     case T_DIR_NUM:
     case T_DIR_NONUM:
@@ -40,6 +41,9 @@ static void freeelem(naPool* p, naObj* o)
     case T_HASH:
         FREE(((naHash*)o)->table);
         FREE(((naHash*)o)->nodes);
+        break;
+    case T_CODE:
+        FREE(((naCode*)o)->refs);
         break;
     }
 
@@ -98,6 +102,14 @@ void naGC_mark(naObj* o)
                 hn = hn->next;
             }
         }
+        break;
+    case T_CODE:
+        for(i=0; i<c->nrefs; i++)
+            naGC_mark(c->refs[i]);
+        break;
+    case T_FUNC:
+        naGC_mark(f->namespace);
+        naGC_mark(f->code);
         break;
     }
 }
