@@ -53,6 +53,7 @@ struct Parser {
     // Computed line number table for the lexer
     int* lines;
     int  nLines;
+    int lastLine; // used in code generation
 
     // Accumulated byte code array
     unsigned char* byteCode;

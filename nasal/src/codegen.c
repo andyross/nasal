@@ -24,6 +24,13 @@ static void emit(struct Parser* p, int byte)
     p->byteCode[p->nBytes++] = (unsigned char)byte;
 }
 
+static void emitImmediate(struct Parser* p, int byte, int arg)
+{
+    emit(p, byte);
+    emit(p, arg >> 8);
+    emit(p, arg & 0xff);
+}
+
 static void genBinOp(int op, struct Parser* p, struct Token* t)
 {
     genExpr(p, LEFT(t));
@@ -73,9 +80,7 @@ static void genScalarConstant(struct Parser* p, struct Token* t)
     }
 
     idx = internConstant(p, c);
-    emit(p, OP_PUSHCONST);
-    emit(p, idx >> 8);
-    emit(p, idx & 0xff);
+    emitImmediate(p, OP_PUSHCONST, idx);
 }
 
 static int genLValue(struct Parser* p, struct Token* t)
@@ -122,9 +127,7 @@ static void genLambda(struct Parser* p, struct Token* t)
     p->nConsts     = nConsts; 
 
     idx = newConstant(p, codeObj);
-    emit(p, OP_PUSHCONST);
-    emit(p, idx >> 8);
-    emit(p, idx & 0xff);
+    emitImmediate(p, OP_PUSHCONST, idx);
 }
 
 static void genList(struct Parser* p, struct Token* t)
@@ -179,13 +182,6 @@ static void genFuncall(struct Parser* p, struct Token* t)
     emit(p, OP_NEWVEC);
     genList(p, RIGHT(t));
     emit(p, op);
-}
-
-static void emitJumpTo(struct Parser* p, int addr)
-{
-    emit(p, OP_JMP);
-    emit(p, addr >> 8);
-    emit(p, addr & 0xff);
 }
 
 // Emit a jump operation, and return the location of the address in
@@ -255,7 +251,7 @@ static void genLoop(struct Parser* p, struct Token* body,
     emit(p, OP_POP);
     continueSpot = p->nBytes;
     if(update) { genExpr(p, update); emit(p, OP_POP); }
-    emitJumpTo(p, loopTop);
+    emitImmediate(p, OP_JMP, loopTop);
     fixJumpTarget(p, jumpEnd);
 }
 
@@ -331,6 +327,9 @@ static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
     if(t == 0) naParseError(p, "empty expression", t->line);
+    if(t->line != p->lastLine)
+        emitImmediate(p, OP_LINE, t->line);
+    p->lastLine = t->line;
     switch(t->type) {
     case TOK_IF:
         genIfElse(p, t);

@@ -49,6 +49,7 @@ void naParseInit(struct Parser* p)
     p->len = 0;
     p->lines = 0;
     p->nLines = 0;
+    p->lastLine = 0;
     p->chunks = 0;
     p->chunkSizes = 0;
     p->nChunks = 0;
