@@ -1,6 +1,10 @@
 #include "nasal.h"
 #include "data.h"
 
+#define EQUAL(a, b) (((a).ref.reftag == (b).ref.reftag \
+                      && (a).ref.ptr.obj == (b).ref.ptr.obj) \
+                     || naEqual(a, b))
+
 static void realloc(naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
@@ -73,7 +77,7 @@ static struct HashNode* find(struct naHash* h, naRef key)
         return 0;
     hn = h->table[hashcolumn(h, key)];
     while(hn) {
-        if(naEqual(key, hn->key))
+        if(EQUAL(key, hn->key))
             return hn;
         hn = hn->next;
     }
@@ -180,7 +184,7 @@ void naHash_delete(naRef hash, naRef key)
     col = hashcolumn(h, key);
     hn = h->table[col];
     while(hn) {
-        if(naEqual(hn->key, key)) {
+        if(EQUAL(hn->key, key)) {
             if(last == 0) h->table[col] = hn->next;
             else last->next = hn->next;
             h->size--;

@@ -78,12 +78,31 @@ static int internConstant(struct Parser* p, naRef c)
     return newConstant(p, c);
 }
 
+static naRef internSymbol(naRef sym)
+{
+    naRef result;
+    if(naHash_get(globals->symbols, sym, &result))
+        return result;
+    naHash_set(globals->symbols, sym, sym);
+    return sym;
+}
+
+static int findConstantIndex(struct Parser* p, struct Token* t)
+{
+    naRef c = naNil();
+    if(t->str) {
+        c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
+        if(t->type == TOK_SYMBOL)
+            c = internSymbol(c);
+    } else {
+        c = naNum(t->num);
+    }
+    return internConstant(p, c);
+}
+
 static void genScalarConstant(struct Parser* p, struct Token* t)
 {
-    naRef c = (t->str
-               ? naStr_fromdata(naNewString(p->context), t->str, t->strlen)
-               : naNum(t->num));
-    int idx = internConstant(p, c);
+    int idx = findConstantIndex(p, t);
     emitImmediate(p, OP_PUSHCONST, idx);
 }
 
@@ -168,8 +187,7 @@ static void genFuncall(struct Parser* p, struct Token* t)
     if(LEFT(t)->type == TOK_DOT) {
         genExpr(p, LEFT(LEFT(t)));
         emit(p, OP_DUP);
-        genScalarConstant(p, RIGHT(LEFT(t)));
-        emit(p, OP_MEMBER);
+        emitImmediate(p, OP_MEMBER, findConstantIndex(p, RIGHT(LEFT(t))));
         op = OP_MCALL;
     } else {
         genExpr(p, LEFT(t));
@@ -454,8 +472,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         emit(p, OP_NOT);
         break;
     case TOK_SYMBOL:
-        genScalarConstant(p, t);
-        emit(p, OP_LOCAL);
+        emitImmediate(p, OP_LOCAL, findConstantIndex(p, t));
         break;
     case TOK_LITERAL:
         genScalarConstant(p, t);
@@ -479,8 +496,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
         if(RIGHT(t)->type != TOK_SYMBOL)
             naParseError(p, "object field not symbol", RIGHT(t)->line);
-        genScalarConstant(p, RIGHT(t));
-        emit(p, OP_MEMBER);
+        emitImmediate(p, OP_MEMBER, findConstantIndex(p, RIGHT(t)));
         break;
     case TOK_EMPTY: case TOK_NIL:
         emit(p, OP_PUSHNIL); break; // *NOT* a noop!

@@ -38,6 +38,9 @@ struct Globals {
     naRef argRef;
     naRef parentsRef;
 
+    // A hash of symbol names
+    naRef symbols;
+
     // GC-findable reference point for objects that may live on the
     // processor ("real") stack during execution.  naNew() places them
     // here, and clears the array each time we return from a C
@@ -70,6 +73,8 @@ struct Context {
     struct Context* nextFree;
     struct Context* nextAll;
 };
+
+extern struct Globals* globals;
 
 void printRefDEBUG(naRef r);
 

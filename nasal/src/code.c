@@ -125,6 +125,8 @@ static void initGlobals()
     globals->meRef = naStr_fromdata(naNewString(c), "me", 2);
     globals->argRef = naStr_fromdata(naNewString(c), "arg", 3);
     globals->parentsRef = naStr_fromdata(naNewString(c), "parents", 7);
+
+    globals->symbols = naNewHash(c);
 }
 
 struct Context* naNewContext()
@@ -352,6 +354,8 @@ static void evalEach(struct Context* ctx)
     PUSH(ctx, naVec_get(vec, idx));
 }
 
+#define CONSTARG() cd->constants[ARG16(cd->byteCode, f)]
+
 static void run1(struct Context* ctx, struct Frame* f, naRef code)
 {
     naRef a, b, c;
@@ -411,7 +415,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         PUSH(ctx, naNum(boolify(ctx, a) ? 0 : 1));
         break;
     case OP_PUSHCONST:
-        a = cd->constants[ARG16(cd->byteCode, f)];
+        a = CONSTARG();
         if(IS_CODE(a)) a = bindFunction(ctx, f, a);
         PUSH(ctx, a);
         break;
@@ -439,7 +443,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         naHash_set(a, b, c);
         break;
     case OP_LOCAL:
-        a = getLocal(ctx, f, POP(ctx));
+        a = getLocal(ctx, f, CONSTARG());
         PUSH(ctx, a);
         break;
     case OP_SETLOCAL:
@@ -447,10 +451,10 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         PUSH(ctx, setLocal(f, b, a));
         break;
     case OP_MEMBER:
-        a = POP(ctx); b = POP(ctx);
-        if(!getMember(ctx, b, a, &c))
+        a = POP(ctx);
+        if(!getMember(ctx, a, CONSTARG(), &b))
             ERR(ctx, "no such member");
-        PUSH(ctx, c);
+        PUSH(ctx, b);
         break;
     case OP_SETMEMBER:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: hash, key, val

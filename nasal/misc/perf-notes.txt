@@ -84,9 +84,18 @@ from the parse tree).  Note: you can't collect local arguments without
 doing data flow analysis to make sure they aren't saved off by passing
 the arg vector to a sub function, etc...
 
-Try disabling the LINE opcode and see what it does.
-
 Since strings will always be at least MINLEN (16) bytes long, put that
 buffer in the string object.  This saves memory for short strings, and
 wastes only a little for long ones.  And it avoids the allocation
 overhead involved in creating a string with ~.
+
+Optimising local variable and object field lookup times: Interning
+symbols and using a pointer equality test first in hash.c.
+Pre-optimization objperf.nas: 8.622s; post 8.325 (3.6%).  Using an
+immediate index argument to OP_LOCAL instead of a prior OP_PUSHCONST:
+7.12s (14%).  Doing the same for OP_MEMBER gets to 6.38s (+10%).  So
+the total looks to be a 25% speedup.  Not huge, but not bad.  And it
+adds comparatively little code.
+
+Eliminating OP_LINE instructions seemed to get 0.85% speedup in the
+tests above.
