@@ -10,7 +10,7 @@ static int StrLen(char* s)
     return s - s0;
 }
 
-static naRef size(naContext c, naRef args)
+static naRef size(naContext c, naRef me, naRef args)
 {
     naRef r;
     if(naVec_size(args) == 0) return naNil();
@@ -21,7 +21,7 @@ static naRef size(naContext c, naRef args)
     return naNil();
 }
 
-static naRef keys(naContext c, naRef args)
+static naRef keys(naContext c, naRef me, naRef args)
 {
     naRef v, h = naVec_get(args, 0);
     if(!naIsHash(h)) return naNil();
@@ -30,7 +30,7 @@ static naRef keys(naContext c, naRef args)
     return v;
 }
 
-static naRef append(naContext c, naRef args)
+static naRef append(naContext c, naRef me, naRef args)
 {
     naRef v = naVec_get(args, 0);
     naRef e = naVec_get(args, 1);
@@ -39,14 +39,14 @@ static naRef append(naContext c, naRef args)
     return v;
 }
 
-static naRef pop(naContext c, naRef args)
+static naRef pop(naContext c, naRef me, naRef args)
 {
     naRef v = naVec_get(args, 0);
     if(!naIsVector(v)) return naNil();
     return naVec_removelast(v);
 }
 
-static naRef setsize(naContext c, naRef args)
+static naRef setsize(naContext c, naRef me, naRef args)
 {
     naRef v = naVec_get(args, 0);
     int sz = (int)naNumValue(naVec_get(args, 1)).num;
@@ -55,7 +55,7 @@ static naRef setsize(naContext c, naRef args)
     return v;
 }
 
-static naRef subvec(naContext c, naRef args)
+static naRef subvec(naContext c, naRef me, naRef args)
 {
     int i;
     naRef nlen, result, v = naVec_get(args, 0);
@@ -73,7 +73,7 @@ static naRef subvec(naContext c, naRef args)
     return result;
 }
 
-static naRef delete(naContext c, naRef args)
+static naRef delete(naContext c, naRef me, naRef args)
 {
     naRef h = naVec_get(args, 0);
     naRef k = naVec_get(args, 1);
@@ -81,19 +81,19 @@ static naRef delete(naContext c, naRef args)
     return naNil();
 }
 
-static naRef intf(naContext c, naRef args)
+static naRef intf(naContext c, naRef me, naRef args)
 {
     naRef n = naNumValue(naVec_get(args, 0));
     if(!naIsNil(n)) n.num = (int)n.num;
     return n;
 }
 
-static naRef num(naContext c, naRef args)
+static naRef num(naContext c, naRef me, naRef args)
 {
     return naNumValue(naVec_get(args, 0));
 }
 
-static naRef streq(naContext c, naRef args)
+static naRef streq(naContext c, naRef me, naRef args)
 {
     int i;
     naRef a = naVec_get(args, 0);
@@ -106,7 +106,7 @@ static naRef streq(naContext c, naRef args)
     return naNum(1);
 }
 
-static naRef substr(naContext c, naRef args)
+static naRef substr(naContext c, naRef me, naRef args)
 {
     naRef src = naVec_get(args, 0);
     naRef startR = naVec_get(args, 1);
@@ -126,7 +126,7 @@ static naRef substr(naContext c, naRef args)
     return naStr_substr(naNewString(c), src, start, len);
 }
 
-static naRef contains(naContext c, naRef args)
+static naRef contains(naContext c, naRef me, naRef args)
 {
     naRef hash = naVec_get(args, 0);
     naRef key = naVec_get(args, 1);
@@ -135,7 +135,7 @@ static naRef contains(naContext c, naRef args)
     return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
 }
 
-static naRef typeOf(naContext c, naRef args)
+static naRef typeOf(naContext c, naRef me, naRef args)
 {
     naRef r = naVec_get(args, 0);
     char* t = "unknown";

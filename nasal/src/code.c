@@ -148,11 +148,12 @@ void naGarbageCollect()
         naGC_reap(&(c->pools[i]));
 }
 
-void setupFuncall(struct Context* ctx, naRef func, naRef args)
+void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args)
 {
     struct Frame* f;
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
+    f->obj = obj;
     f->ip = 0;
     f->bp = ctx->opTop;
     f->line = 0;
@@ -450,12 +451,12 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
-        setupFuncall(ctx, a, b);
+        setupFuncall(ctx, naNil(), a, b);
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
         naVec_append(ctx->temps, a);
-        setupFuncall(ctx, b, c);
+        setupFuncall(ctx, a, b, c);
         naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->meRef, a);
         break;
     case OP_RETURN:
@@ -491,7 +492,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
 static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
 {
     naCFunction fptr = ccode.ref.ptr.ccode->fptr;
-    naRef result = (*fptr)(ctx, f->args);
+    naRef result = (*fptr)(ctx, f->obj, f->args);
     ctx->fTop--;
     ctx->fStack[ctx->fTop].args.ref.ptr.vec->size = 0;
     PUSH(ctx, result);
@@ -578,8 +579,9 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         naHash_set(locals, ctx->meRef, obj);
 
     ctx->fTop = ctx->opTop = ctx->markTop = 0;
-    setupFuncall(ctx, func, args);
+    setupFuncall(ctx, obj, func, args);
     ctx->fStack[ctx->fTop-1].locals = locals;
+
 
     return run(ctx);
 }

@@ -7,7 +7,7 @@
 
 #include "nasal.h"
 
-static naRef f_sin(naContext c, naRef args)
+static naRef f_sin(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     if(naIsNil(a))
@@ -16,7 +16,7 @@ static naRef f_sin(naContext c, naRef args)
     return a;
 }
 
-static naRef f_cos(naContext c, naRef args)
+static naRef f_cos(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     if(naIsNil(a))
@@ -25,7 +25,7 @@ static naRef f_cos(naContext c, naRef args)
     return a;
 }
 
-static naRef f_exp(naContext c, naRef args)
+static naRef f_exp(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     if(naIsNil(a))
@@ -34,7 +34,7 @@ static naRef f_exp(naContext c, naRef args)
     return a;
 }
 
-static naRef f_ln(naContext c, naRef args)
+static naRef f_ln(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     if(naIsNil(a))
@@ -43,7 +43,7 @@ static naRef f_ln(naContext c, naRef args)
     return a;
 }
 
-static naRef f_sqrt(naContext c, naRef args)
+static naRef f_sqrt(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     if(naIsNil(a))
@@ -52,7 +52,7 @@ static naRef f_sqrt(naContext c, naRef args)
     return a;
 }
 
-static naRef f_atan2(naContext c, naRef args)
+static naRef f_atan2(naContext c, naRef me, naRef args)
 {
     naRef a = naNumValue(naVec_get(args, 0));
     naRef b = naNumValue(naVec_get(args, 1));

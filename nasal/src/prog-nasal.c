@@ -8,7 +8,7 @@
 #include "nasal.h"
 
 // A Nasal extension function (prints its argument list to stdout)
-static naRef print(naContext c, naRef args)
+static naRef print(naContext c, naRef me, naRef args)
 {
     int i, n;
     n = naVec_size(args);
