@@ -18,8 +18,8 @@ static void realloc(naRef hash)
     struct HashNode** oldtable = h->table;
 
     // Figure out how big we need to be (start with a minimum size of
-    // 16 entries)
-    for(i=3; 1<<i < oldsz; i++);
+    // 4 entries)
+    for(i=1; 1<<i < oldsz; i++);
     h->lgalloced = i+1;
     
     // Allocate new ones (note that all the records are allocated in a
@@ -170,6 +170,28 @@ int naHash_tryset(naRef hash, naRef key, naRef val)
     n = find(hash.ref.ptr.hash, key);
     if(n) n->val = val;
     return n != 0;
+}
+
+// Special purpose optimization for use in function call setups.  Sets
+// a value that is known *not* to be present in the hash table.  As
+// for naHash_sym, the key must be a string with a precomputed hash
+// code.
+void naHash_newsym(struct naHash* h, naRef* sym, naRef* val)
+{
+    int col;
+    struct HashNode* n;
+    if(h->size+1 >= 1<<h->lgalloced) {
+        naRef hash = naNil();
+        hash.ref.ptr.hash = h;
+        realloc(hash);
+    }
+    col = (HASH_MAGIC * sym->ref.ptr.str->hashcode) >> (32 - h->lgalloced);
+    n = h->nodes + h->nextnode++;
+    n->key = *sym;
+    n->val = *val;
+    n->next = h->table[col];
+    h->table[col] = n;
+    h->size++;
 }
 
 void naHash_set(naRef hash, naRef key, naRef val)

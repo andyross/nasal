@@ -133,6 +133,7 @@ void naVec_init(naRef vec);
 
 int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
 int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out);
+void naHash_newsym(struct naHash* h, naRef* sym, naRef* val);
 void naHash_init(naRef hash);
 
 void naGC_init(struct naPool* p, int type);

@@ -187,22 +187,22 @@ void naGarbageCollect()
 struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
 {
     int i;
-    naRef args, *func;
+    naRef *frame;
     struct Frame* f;
     struct naCode* c;
     
     DBG(printf("setupFuncall(nargs:%d, mcall:%d)\n", nargs, mcall);)
-        
-    func = &ctx->opStack[ctx->opTop - nargs - 1];
-    if(!IS_FUNC(*func))
+
+    frame = &ctx->opStack[ctx->opTop - nargs - 1];
+    if(!IS_FUNC(frame[0]))
         ERR(ctx, "function/method call invoked on uncallable object");
 
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one (unless it's a tail call!).
-    if(func->ref.ptr.func->code.ref.ptr.obj->type == T_CCODE) {
-        naRef obj = mcall ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
-        naCFunction fp = func->ref.ptr.func->code.ref.ptr.ccode->fptr;
-        naRef result = (*fp)(ctx, obj, nargs, &ctx->opStack[ctx->opTop-nargs]);
+    if(frame[0].ref.ptr.func->code.ref.ptr.obj->type == T_CCODE) {
+        naRef obj = mcall ? frame[-1] : naNil();
+        naCFunction fp = frame[0].ref.ptr.func->code.ref.ptr.ccode->fptr;
+        naRef result = (*fp)(ctx, obj, nargs, frame + 1);
         ctx->opTop -= nargs + 1 + mcall;
         PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);
@@ -213,36 +213,32 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
 
     f = &(ctx->fStack[ctx->fTop++]);
     f->locals = naNewHash(ctx);
-    f->func = ctx->opStack[ctx->opTop - nargs - 1];
+    f->func = frame[0];
     f->ip = 0;
     f->bp = ctx->opTop - (nargs + 1 + mcall);
 
     // Set the argument symbols, and put any remaining args in a vector
-    c = func->ref.ptr.func->code.ref.ptr.code;
+    c = (*frame++).ref.ptr.func->code.ref.ptr.code;
     if(nargs < c->nArgs) ERR(ctx, "not enough arguments to function call");
     for(i=0; i<c->nArgs; i++)
-        naHash_set(f->locals, c->constants[c->argSyms[i]],
-                   ctx->opStack[ctx->opTop - nargs + i]);
-    for(i=0; i<c->nOptArgs; i++) {
-        naRef val = c->constants[c->optArgVals[i]];
-        if(i + c->nArgs < nargs)
-            val = ctx->opStack[ctx->opTop - nargs + c->nArgs + i];
-        naHash_set(f->locals, c->constants[c->optArgSyms[i]], val);
-    }
-    if(c->needArgVector || (nargs > c->nArgs + c->nOptArgs))
+        naHash_newsym(f->locals.ref.ptr.hash,
+                      &c->constants[c->argSyms[i]], &frame[i]);
+    frame += c->nArgs;
+    nargs -= c->nArgs;
+    for(i=0; i<c->nOptArgs; i++, nargs--)
+        naHash_newsym(f->locals.ref.ptr.hash, &c->constants[c->optArgSyms[i]], 
+                   nargs > 0 ? &frame[i] : &c->constants[c->optArgVals[i]]);
+    if(c->needArgVector || nargs > 0)
     {
-        *(int*)0=0;
-        args = naNewVector(ctx);
-        naVec_setsize(args, nargs - c->nArgs - c->nOptArgs);
-        for(i=0; i<(nargs - c->nArgs - c->nOptArgs); i++)
-            args.ref.ptr.vec->array[i] =
-                ctx->opStack[ctx->opTop - nargs + c->nArgs + c->nOptArgs + i];
-        naHash_set(f->locals, c->restArgSym, args);
+        naRef args = naNewVector(ctx);
+        naVec_setsize(args, nargs > 0 ? nargs : 0);
+        for(i=0; i<nargs; i++)
+            args.ref.ptr.vec->array[i] = *frame++;
+        naHash_newsym(f->locals.ref.ptr.hash, &c->restArgSym, &args);
     }
 
     if(mcall)
-        naHash_set(f->locals, globals->meRef,
-                   ctx->opStack[ctx->opTop - nargs - 2]);
+        naHash_set(f->locals, globals->meRef, frame[-1]);
 
     ctx->opTop = f->bp; // Pop the stack last, to avoid GC lossage
     DBG(printf("Entering frame %d with %d args\n", ctx->fTop-1, nargs);)
