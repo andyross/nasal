@@ -1,55 +1,49 @@
-#include "naslimpl.h"
+#include "nasl.h"
 
-static void realloc(v)
+static void realloc(struct naVec* v)
 {
-    int n = v->end - v->start;
-    int newsz = (n*3)>>1;
-    void** na = ALLOC(sizeof(void*)*newsz);
-    for(i=0; i<n; i++)
-        na[i] = v->array[i+v->start];
-    v->start = 0;
-    v->end = n-1;
+    int i, newsz = (v->size*3)>>1;
+    naRef* na = ALLOC(sizeof(naRef) * newsz);
     v->alloced = newsz;
+    for(i=0; i<v->size; i++)
+        na[i] = v->array[i];
+    FREE(v->array);
     v->array = na;
 }
 
-naObj* naVec_get(naVec* v, int i)
+naRef naVec_get(naRef v, int i)
 {
-    return (naObj*)v->array[i];
+    return v.ref.ptr.vec->array[i];
 }
 
-void naVec_set(naVec* v, int i, naObj* o)
+void naVec_set(naRef vec, int i, naRef o)
 {
+    struct naVec* v = vec.ref.ptr.vec;
+    if(i >= v->size) ERR("element set past end of vector");
     v->array[i] = o;
 }
 
-int naVec_size(naVec* v)
+int naVec_size(naRef v)
 {
-    return v->end - v->start;
+    return v.ref.ptr.vec->size;
 }
 
-int naVec_append(naVec* v, naObj* o)
+int naVec_append(naRef vec, naRef o)
 {
-    if(v->end >= v->alloced)
+    struct naVec* v = vec.ref.ptr.vec;
+    if(v->size >= v->alloced)
         realloc(v);
-    v->end++;
-    v->array[v->end] = o;
+    v->array[v->size] = o;
+    return v->size++;
 }
 
-naObj* naVec_removelast(naVec* v)
+naRef naVec_removelast(naRef vec)
 {
-    naObj* o = v->array[v->end];
-    v->end--;
-    if(v->end - v->start < (v->alloced >> 1))
-        realloc(v);
-    return o;
-}
-
-naObj* naVec_removefirst(naVec* v)
-{
-    naObj* o = v->array[v->start];
-    v->start++;
-    if(v->end - v->start < (v->alloced >> 1))
+    struct naVec* v = vec.ref.ptr.vec;
+    if(v->size == 0) ERR("removelast on zero-length array");
+    naRef o = v->array[v->size - 1];
+    v->size--;
+    if(v->size < (v->alloced >> 1))
         realloc(v);
     return o;
 }
