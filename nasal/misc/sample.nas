@@ -1,3 +1,6 @@
+# A no-op function used below to get this file to run.  Ignore and read on...
+dummyFunc = func { 1 }
+
 #
 # Literal numbers can be decimal or exponential
 #
@@ -43,6 +46,7 @@ hash1["name"] == "Andy";
 # function argument to the local "dist" variable.  There is no
 # function declaration syntax in Nasl.
 #
+sqrt = dummyFunc;
 dist = func {
     x1 = arg[0]; y1 = arg[1];
     x2 = arg[2]; y2 = arg[3];
@@ -82,6 +86,8 @@ if(a and a.field == 42) {
 # takes a local variable name as its first argument and a vector as
 # its second.
 #
+doSomething = dummyFunc;
+
 stillGoing = 0;
 while(stillGoing) { doSomething(); };
 
@@ -90,7 +96,7 @@ for(i=0; i < 3; i = i+1) {
     doSomething(elem);
 };
 
-foreach(elem; list) { doSomething(elem) };  # Shorthand for above
+foreach(elem; list1) { doSomething(elem) };  # Shorthand for above
 
 #
 # Define a class object with one method, one field and one "new"
@@ -113,9 +119,9 @@ Class1.getcount = func {
 };
 
 c = Class1.new();
-c.getcount(); # returns 1
-c.getcount(); # returns 2
-c.getcount(); # returns 3
+print(c.getcount(), "\n"); # prints 1
+print(c.getcount(), "\n"); # prints 2
+print(c.getcount(), "\n"); # prints 3
 
 #
 # This creates an identical class using alternative syntax.
@@ -171,6 +177,8 @@ join = func {
 # Labeled break/continue syntax puts the label in as an extra first
 # argument to the for/while/foreach.
 #
+doneWithInnerLoopEarly = dummyFunc;
+completelyDone = dummyFunc;
 for(OUTER; i=0; i<100; i = i+1) {
     for(j=0; j<100; j = j+1) {
         if(doneWithInnerLoopEarly()) {
@@ -190,19 +198,20 @@ a = func{ arg[0] + 1 }(232);  # "a" now equals 233
 #
 # Functional programming B.  All expressions have a value, the last
 # expression in a code block is the return value of that code block.
-# There are no "statements" in NaSL, although some expressions
+# There are no "statements" in Nasl, although some expressions
 # (assignment, duh) have side effects.  e.g. The "if" expression works
 # both for code flow and as the ?: expression in C/C++.
 #
 factorial = func { if(arg[0] == 0) { 1 }
-                   else            { arg[0] * factorial(arg[0]-1); } };
+                   else            { arg[0] * factorial(arg[0]-1) } };
+print(factorial(10), "\n");
 
 #
 # Functional programming C:  Lexical closures.
 #
 getcounter = func { count = 0; return func { count = count + 1 } };
 mycounter = getcounter();
-mycounter(); # Returns 1
-mycounter(); # Returns 2
-mycounter(); # Returns 3
-mycounter(); # Returns 4...
+print(mycounter(), "\n"); # prints 1
+print(mycounter(), "\n"); # prints 2
+print(mycounter(), "\n"); # prints 3
+print(mycounter(), "\n"); # prints 4...
