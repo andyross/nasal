@@ -1,13 +1,14 @@
 #include "parse.h"
 #include "code.h"
 
-// These are more sensical names in most contexts
+// These are more sensical predicate names in most contexts in this file
 #define LEFT(tok)   ((tok)->children)
 #define RIGHT(tok)  ((tok)->lastChild)
 #define BINARY(tok) (LEFT(tok) != RIGHT(tok))
 
-// Forward reference
+// Forward references for recursion
 static void genExpr(struct Parser* p, struct Token* t);
+static void genExprList(struct Parser* p, struct Token* t);
 
 static void emit(struct Parser* p, int byte)
 {
@@ -96,7 +97,7 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_BREAK: break;
     case TOK_CONTINUE: break;
 
-    case TOK_TOP: genExpr(p, LEFT(t)); break;
+    case TOK_TOP: genExprList(p, LEFT(t)); break;
     case TOK_FUNC:
         genLambda(p, t);
         break;
@@ -154,6 +155,7 @@ static void genExprList(struct Parser* p, struct Token* t)
 {
     if(t->type == TOK_SEMI) {
         genExpr(p, t->children);
+        emit(p, OP_POP);
         genExprList(p, t->lastChild);
     } else {
         genExpr(p, t);

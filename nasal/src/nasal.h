@@ -76,6 +76,7 @@ struct naHash {
     int nextnode;
 };
 
+// FIXME: multiple code objects can share the same constant pool
 struct naCode {
     GC_HEADER;
     unsigned char* byteCode;

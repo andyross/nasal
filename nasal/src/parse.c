@@ -19,6 +19,7 @@ struct precedence {
     int rule;
 } PRECEDENCE[] = {
     { { TOK_SEMI, TOK_COMMA },                 PREC_REVERSE },
+    { { TOK_COLON },                           PREC_BINARY },
     { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
     { { TOK_ASSIGN },                          PREC_REVERSE },
     { { TOK_OR },                              PREC_BINARY  },
@@ -263,6 +264,13 @@ static struct Token* emptyToken(struct Parser* p)
     return t;
 }
 
+static int isBrace(int type)
+{
+    return type == TOK_LPAR || type == TOK_LBRA || type == TOK_LCURL;
+}
+
+static void precChildren(struct Parser* p, struct Token* t);
+
 static struct Token* parsePrecedence(struct Parser* p,
                                      struct Token* start, struct Token* end,
                                      int level)
@@ -288,21 +296,16 @@ static struct Token* parsePrecedence(struct Parser* p,
     if(end->next) end->next->prev = 0;
     start->prev = end->next = 0;
 
-    // Single tokens parse as themselves.  Remember to parse any
-    // preexisting (block structure) children.
+    // Single tokens parse as themselves.  Recurse into braces, and
+    // parse children of block structure if they are braces.
     if(start == end) {
-        // FIXME: handle bare LBRA and LPAR here: "{a:1,b:2}"
-        if(start->children) {
+        if(isBrace(start->type)) {
+            precChildren(p, start);
+        } else {
             t = start->children;
             while(t) {
-                if(t->type == TOK_LPAR
-                   || t->type == TOK_LBRA
-                   || t->type == TOK_LCURL)
-                {
-                    top = parsePrecedence(p, t->children, t->lastChild, 0);
-                    t->children = top;
-                    t->lastChild = top;
-                }
+                if(isBrace(t->type))
+                    precChildren(p, t);
                 t = t->next;
             }
         }
@@ -381,6 +384,13 @@ static struct Token* parsePrecedence(struct Parser* p,
     top->lastChild = right;
     top->next = top->prev = 0;
     return top;
+}
+
+static void precChildren(struct Parser* p, struct Token* t)
+{
+    struct Token* top = parsePrecedence(p, t->children, t->lastChild, 0);
+    t->children = top;
+    t->lastChild = top;
 }
 
 void dumpTokenList(struct Token* t, int prefix); // DEBUG
