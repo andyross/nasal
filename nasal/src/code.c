@@ -12,8 +12,8 @@ struct Context globalContext;
 #define ERR(c, msg) naRuntimeError((c),(msg))
 void naRuntimeError(struct Context* c, char* msg)
 { 
-    printf("%s\n", msg);
-    exit(1);
+    c->error = msg;
+    longjmp(c->jumpHandle, 1);
 }
 
 char* opStringDEBUG(int op);
@@ -94,8 +94,10 @@ static void initContext(struct Context* c)
 
     c->fTop = c->opTop = c->markTop = 0;
 
-    BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame));
-    BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
+    BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame)); // DEBUG
+    BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
+
+    c->parserTemporaries = naNewVector(c);
 
     // Cache pre-calculated "me" and "arg" scalars
     c->meRef = naNewString(c);
@@ -126,11 +128,10 @@ void naGarbageCollect()
     for(i=0; i <= c->opTop-1; i++)
         naGC_mark(c->opStack[i]);
 
+    naGC_mark(c->parserTemporaries);
+
     for(i=0; i<NUM_NASL_TYPES; i++)
         naGC_reap(&(c->pools[i]));
-
-    // FIXME: need to include constants for Parser's during
-    // compilation, they aren't referenced anywhere yet!
 }
 
 void setupFuncall(struct Context* ctx, naRef func, naRef args)
@@ -459,6 +460,11 @@ void naRun(struct Context* ctx, naRef code)
 {
     naRef func = naNewFunc(ctx, code, naNil());
     setupFuncall(ctx, func, naNewVector(ctx));
+
+    if(setjmp(ctx->jumpHandle)) {
+        printf("Runtime error: %s\n", ctx->error);
+        exit(1);
+    }
 
     ctx->done = 0;
     while(!ctx->done) {

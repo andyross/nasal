@@ -77,6 +77,7 @@ static void genScalarConstant(struct Parser* p, struct Token* t)
     if(t->str) {
         c = naNewString(p->context);
         naStr_fromdata(c, t->str, t->strlen);
+        naVec_append(p->context->parserTemporaries, c);
     } else {
         c = naNum(t->num);
     }
@@ -519,7 +520,9 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     cg.byteCode = naParseAlloc(p, cg.codeAlloced);
     cg.nBytes = 0;
     cg.consts = naNewHash(p->context);
+    naVec_append(p->context->parserTemporaries, cg.consts);
     cg.interned = naNewHash(p->context);
+    naVec_append(p->context->parserTemporaries, cg.interned);
     cg.nConsts = 0;
     cg.loopTop = 0;
     p->cg = &cg;
@@ -528,6 +531,7 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
 
     // Now make a code object
     codeObj = naNewCode(p->context);
+    naVec_append(p->context->parserTemporaries, codeObj);
     code = codeObj.ref.ptr.code;
     code->nBytes = cg.nBytes;
     code->byteCode = ALLOC(cg.nBytes);

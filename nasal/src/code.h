@@ -1,6 +1,7 @@
 #ifndef _CODE_H
 #define _CODE_H
 
+#include <setjmp.h>
 #include "nasl.h"
 
 #define MAX_STACK_DEPTH 1024
@@ -26,7 +27,10 @@ struct Frame {
 };
 
 struct Context {
+    // Garbage collecting allocators:
     struct naPool pools[NUM_NASL_TYPES];
+
+    // Stack(s)
     struct Frame fStack[MAX_RECURSION];
     int fTop;
     naRef opStack[MAX_STACK_DEPTH];
@@ -34,9 +38,19 @@ struct Context {
     int markStack[MAX_MARK_DEPTH];
     int markTop;
     int done;
+
+    // Constants
     naRef meRef;
     naRef argRef;
     naRef parentsRef;
+
+    // Error handling
+    jmp_buf jumpHandle;
+    char* error;
+
+    // GC-findable reference point for parser temporaries that may
+    // live on the C stack during code generation.
+    naRef parserTemporaries;
 };
 
 void naRun(struct Context* ctx, naRef code);

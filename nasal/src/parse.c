@@ -504,12 +504,15 @@ naRef naParseCode(struct Context* c, char* buf, int len)
     p.tree.children = t;
     p.tree.lastChild = t;
 
-    dumpTokenList(&(p.tree), 0); // DEBUG
+    // dumpTokenList(&(p.tree), 0);
 
+    // Generate code!
     codeObj = naCodeGen(&p, &(p.tree));
 
     // Clean up our mess
     naParseDestroy(&p);
+    FREE(c->parserTemporaries.ref.ptr.vec->array);
+    naVec_init(c->parserTemporaries);
 
     return codeObj;
 }
