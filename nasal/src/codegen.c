@@ -449,16 +449,16 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
 static void newLineEntry(struct Parser* p, int line)
 {
     int i;
-    if(p->nextLineIp >= p->nLineIps) {
-        int nsz = p->nLineIps*2 + 1;
+    if(p->cg->nextLineIp >= p->cg->nLineIps) {
+        int nsz = p->cg->nLineIps*2 + 1;
         unsigned short* n = naParseAlloc(p, sizeof(unsigned short)*2*nsz);
-        for(i=0; i<(p->nextLineIp*2); i++)
-            n[i] = p->lineIps[i];
-        p->lineIps = n;
-        p->nLineIps = nsz;
+        for(i=0; i<(p->cg->nextLineIp*2); i++)
+            n[i] = p->cg->lineIps[i];
+        p->cg->lineIps = n;
+        p->cg->nLineIps = nsz;
     }
-    p->lineIps[p->nextLineIp++] = (unsigned short) p->cg->nBytes;
-    p->lineIps[p->nextLineIp++] = (unsigned short) line;
+    p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) p->cg->nBytes;
+    p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) line;
 }
 
 static void genExpr(struct Parser* p, struct Token* t)
@@ -592,6 +592,9 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     cg.nBytes = 0;
     cg.consts = naNewVector(p->context);
     cg.loopTop = 0;
+    cg.lineIps = 0;
+    cg.nLineIps = 0;
+    cg.nextLineIp = 0;
     p->cg = &cg;
 
     genExprList(p, t);
@@ -608,9 +611,9 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     code->srcFile = p->srcFile;
     for(i=0; i<code->nConstants; i++)
         code->constants[i] = getConstant(p, i);
-    code->nLines = p->nextLineIp;
-    code->lineIps = naAlloc(sizeof(unsigned short)*p->nLineIps*2);
-    for(i=0; i<p->nLineIps*2; i++)
-        code->lineIps[i] = p->lineIps[i];
+    code->nLines = p->cg->nextLineIp;
+    code->lineIps = naAlloc(sizeof(unsigned short)*p->cg->nLineIps*2);
+    for(i=0; i<p->cg->nLineIps*2; i++)
+        code->lineIps[i] = p->cg->lineIps[i];
     return codeObj;
 }

@@ -165,20 +165,19 @@ static naRef f_call(naContext c, naRef me, naRef args)
     if(!naIsFunc(func)) return naNil();
     if(naIsNil(callargs)) callargs = naNewVector(c);
     else if(!naIsVector(callargs)) return naNil();
-    if(!naIsNil(callme) && !naIsHash(callme)) return naNil();
+    if(!naIsHash(callme)) callme = naNil();
     subc = naNewContext();
     result = naCall(subc, func, callargs, callme, naNil());
-    naFreeContext(subc); // Doesn't free memory, so the next line is OK:
     if(naVec_size(args) > 2 &&
        naGetError(subc) && (strcmp(naGetError(subc), "__die__") == 0))
     {
         naRef ex = naVec_get(args, naVec_size(args) - 1);
         if(naIsVector(ex)) {
-            naVec_append(ex, c->dieArg);
+            naVec_append(ex, subc->dieArg);
             // FIXME: append stack trace
         }
-        return naNil();
     }
+    naFreeContext(subc);
     return result;
 }
 

@@ -162,7 +162,7 @@ void naGarbageCollect()
         }
         for(i=0; i < c->opTop; i++)
             naGC_mark(c->opStack[i]);
-
+        naGC_mark(c->dieArg);
         c = c->nextAll;
     }
 
@@ -599,6 +599,8 @@ naRef naGetSourceFile(struct Context* ctx, int frame)
 
 char* naGetError(struct Context* ctx)
 {
+    if(IS_STR(ctx->dieArg))
+        return ctx->dieArg.ref.ptr.str->data;
     return ctx->error;
 }
 
@@ -638,6 +640,8 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         naHash_set(locals, globals->argRef, args);
     if(!IS_NIL(obj))
         naHash_set(locals, globals->meRef, obj);
+
+    ctx->dieArg = naNil();
 
     ctx->opTop = ctx->markTop = 0;
     ctx->fTop = 1;

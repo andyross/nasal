@@ -58,11 +58,6 @@ struct Parser {
     // Computed line number table for the lexer
     int* lines;
     int  nLines;
-
-    // Inst. -> line table, stores pairs of {ip, line}
-    unsigned short* lineIps;
-    int nLineIps; // number of pairs
-    int nextLineIp;
     
     struct CodeGenerator* cg;
 };
@@ -74,6 +69,11 @@ struct CodeGenerator {
     unsigned char* byteCode;
     int nBytes;
     int codeAlloced;
+
+    // Inst. -> line table, stores pairs of {ip, line}
+    unsigned short* lineIps;
+    int nLineIps; // number of pairs
+    int nextLineIp;
 
     // Stack of "loop" frames for break/continue statements
     struct {
