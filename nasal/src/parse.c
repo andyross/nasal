@@ -78,12 +78,14 @@ static void collectBrace(struct Token* start)
 {
     struct Token* t;
     int closer = -1;
+    printf("collectBrace()...\n");
     if(start->type == TOK_LPAR)  closer = TOK_RPAR;
     if(start->type == TOK_LBRA)  closer = TOK_RBRA;
     if(start->type == TOK_LCURL) closer = TOK_RCURL;
 
     t = start->next;
     while(t) {
+        struct Token* next;
         switch(t->type) {
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
             collectBrace(t);
@@ -95,9 +97,9 @@ static void collectBrace(struct Token* start)
             // Drop this node on the floor, stitch up the list and return
             start->next = t->next;
             if(t->next) t->next->prev = start;
-            if(t->prev) t->prev->next = 0;
             return;
         }
+        next = t->next;
 
         // Snip t out of the existing list, and append it to start's
         // children.
@@ -106,11 +108,11 @@ static void collectBrace(struct Token* start)
         t->next = 0;
         t->prev = start->lastChild;
         if(start->lastChild) start->lastChild->next = t;
+        if(!start->children) start->children = t;
         start->lastChild = t;
 
-        t = t->next;
+        t = next;
     }
-
     error("unterminated brace", start->line);
 }
 
@@ -119,7 +121,7 @@ static void collectBrace(struct Token* start)
 // right token disappears.
 static void braceMatch(struct Token* start)
 {
-    struct Token* t = start->next;
+    struct Token* t = start;
     while(t) {
         switch(t->type) {
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
