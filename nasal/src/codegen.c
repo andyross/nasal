@@ -31,12 +31,37 @@ static void genBinOp(int op, struct Parser* p, struct Token* t)
     emit(p, op);
 }
 
-static void genConstant(struct Parser* p, struct Token* t)
+static int newConstant(struct Parser* p, naRef c)
 {
-    naRef c, val;
+    int i = p->nConsts++;
+    if(i > 0xffff) naParseError(p, "Too many constants in code block", 0);
+    naHash_set(p->consts, naNum(i), c);
+    return i;
+}
+
+static naRef getConstant(struct Parser* p, int idx)
+{
+    return naHash_get(p->consts, naNum(idx));
+}
+
+// Interns a scalar (!) constant and returns its index
+static int internConstant(struct Parser* p, naRef c)
+{
+    naRef r = naHash_get(p->interned, c);
+    if(!IS_NIL(r)) {
+        return (int)r.num;
+    } else {
+        int idx = newConstant(p, c);
+        naHash_set(p->interned, c, naNum(idx));
+        return idx;
+    }
+}
+
+static void genScalarConstant(struct Parser* p, struct Token* t)
+{
+    naRef c;
     int idx;
 
-    // Generate a Nasl scalar from the token data
     if(t->str) {
         c = naNewString(p->context);
         naStr_fromdata(c, t->str, t->strlen);
@@ -44,21 +69,7 @@ static void genConstant(struct Parser* p, struct Token* t)
         c = naNum(t->num);
     }
 
-    // Is it already there?  Create a new index if not.
-    val = naHash_get(p->constHash, c);
-    if(IS_NIL(val)) {
-        idx = p->nConsts++;
-        val = naNum(idx);
-        naHash_set(p->constHash, c, val);
-    } else {
-        idx = val.num;
-    }
-
-    // Static limit
-    if(p->nConsts > 0x10000)
-        naParseError(p, "Too many constants in code block", 0);
-    
-    // Emit the code
+    idx = internConstant(p, c);
     emit(p, OP_PUSHCONST);
     emit(p, idx >> 8);
     emit(p, idx & 0xff);
@@ -69,11 +80,11 @@ static int genLValue(struct Parser* p, struct Token* t)
     if(t->type == TOK_LPAR) {
         return genLValue(p, LEFT(t)); // Handle stuff like "(a) = 1"
     } else if(t->type == TOK_SYMBOL) {
-        genConstant(p, t);
+        genScalarConstant(p, t);
         return OP_SETLOCAL;
     } else if(t->type == TOK_DOT && RIGHT(t) && RIGHT(t)->type == TOK_SYMBOL) {
         genExpr(p, LEFT(t));
-        genConstant(p, RIGHT(t));
+        genScalarConstant(p, RIGHT(t));
         return OP_SETMEMBER;
     } else if(t->type == TOK_LBRA) {
         genExpr(p, LEFT(t));
@@ -85,9 +96,33 @@ static int genLValue(struct Parser* p, struct Token* t)
     }
 }
 
+
+// Hackish.  Save off the current lambda state and recurse
 static void genLambda(struct Parser* p, struct Token* t)
 {
-    *(int*)0=0;
+    int idx;
+
+    unsigned char* byteCode    = p->byteCode;
+    int            nBytes      = p->nBytes;
+    int            codeAlloced = p->codeAlloced;
+    naRef          consts      = p->consts;
+    naRef          interned    = p->interned;
+    int            nConsts     = p->nConsts;
+
+    if(LEFT(t)->type != TOK_LCURL) ERR("bad function definition");
+    naRef codeObj = naCodeGen(p, LEFT(LEFT(t)));
+
+    p->byteCode    = byteCode;
+    p->nBytes      = nBytes;
+    p->codeAlloced = codeAlloced;
+    p->consts      = consts;
+    p->interned    = interned;
+    p->nConsts     = nConsts;
+
+    idx = newConstant(p, codeObj);
+    emit(p, OP_PUSHCONST);
+    emit(p, idx >> 8);
+    emit(p, idx & 0xff);
 }
 
 static void genList(struct Parser* p, struct Token* t)
@@ -172,18 +207,18 @@ static void genExpr(struct Parser* p, struct Token* t)
         emit(p, OP_NOT);
         break;
     case TOK_SYMBOL:
-        genConstant(p, t);
+        genScalarConstant(p, t);
         emit(p, OP_LOCAL);
         break;
     case TOK_LITERAL:
-        genConstant(p, t);
+        genScalarConstant(p, t);
         break;
     case TOK_MINUS:
         if(BINARY(t)) {
             genBinOp(OP_MINUS,  p, t);  // binary subtraction
         } else if(RIGHT(t)->type == TOK_LITERAL && !RIGHT(t)->str) {
             RIGHT(t)->num *= -1;        // Pre-negate constants
-            genConstant(p, RIGHT(t));
+            genScalarConstant(p, RIGHT(t));
         } else {
             genExpr(p, RIGHT(t));       // unary negation
             emit(p, OP_NEG);
@@ -191,12 +226,14 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_DOT:
         genExpr(p, LEFT(t));
-        genConstant(p, RIGHT(t));
+        genScalarConstant(p, RIGHT(t));
         emit(p, OP_MEMBER);
         break;
+    case TOK_AND: // FIXME: short-circuit
+        genBinOp(OP_AND,    p, t); break;
+    case TOK_OR:  // FIXME: short-circuit
+        genBinOp(OP_OR,     p, t); break;
     case TOK_EMPTY: emit(p, OP_PUSHNIL); break; // *NOT* a noop!
-    case TOK_AND:   genBinOp(OP_AND,    p, t); break;
-    case TOK_OR:    genBinOp(OP_OR,     p, t); break;
     case TOK_MUL:   genBinOp(OP_MUL,    p, t); break;
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;
@@ -226,14 +263,15 @@ static void genExprList(struct Parser* p, struct Token* t)
 naRef naCodeGen(struct Parser* p, struct Token* t)
 {
     int i;
-    naRef codeObj, vec;
+    naRef codeObj;
     struct naCode* code;
 
     p->codeAlloced = 1024; // Start fairly big, this is a cheap allocation
     p->byteCode = naParseAlloc(p, p->codeAlloced);
     p->nBytes = 0;
 
-    p->constHash = naNewHash(p->context);
+    p->consts = naNewHash(p->context);
+    p->interned = naNewHash(p->context);
     p->nConsts = 0;
 
     genExprList(p, t);
@@ -247,17 +285,8 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
         code->byteCode[i] = p->byteCode[i];
     code->nConstants = p->nConsts;
     code->constants = ALLOC(code->nConstants * sizeof(naRef));
-
-    // Invert the hash.  In C.  Fun.  I wish I could do this part in
-    // Nasl. :)
-    vec = naNewVector(p->context);
-    naHash_keys(vec, p->constHash);
-    for(i=0; i < code->nConstants; i++) {
-        naRef key = naVec_get(vec, i);
-        naRef idx = naHash_get(p->constHash, key);
-        int i = (int)idx.num;
-        code->constants[i] = key;
-    }
+    for(i=0; i<code->nConstants; i++)
+        code->constants[i] = getConstant(p, i);
 
     return codeObj;
 }

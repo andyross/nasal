@@ -44,6 +44,8 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE,
 #define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_STR)
 #define IS_VEC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_VEC)
 #define IS_HASH(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_HASH)
+#define IS_CODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CODE)
+#define IS_CLOSURE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
 #define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == T_STR)
 

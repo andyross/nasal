@@ -62,9 +62,9 @@ struct Parser {
     int nBytes;
     int codeAlloced;
 
-    // A hash to store the constants and symbols, to coalesce repeated
-    // values.
-    naRef constHash;
+    // Dynamic storage for constants, to be compiled into a static table
+    naRef consts;   // index -> naRef
+    naRef interned; // naRef -> index (scalars only!)
     int nConsts;
 };
 

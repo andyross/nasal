@@ -168,6 +168,17 @@ static naRef evalBinaryNumeric(int op, naRef ra, naRef rb)
     return naNil();
 }
 
+// When a code object comes out of the constant pool and shows up on
+// the stack, it needs to be bound with the lexical context.
+// FIXME: transitive binding?
+static naRef bindFunction(struct Context* ctx, naRef code, naRef locals)
+{
+    naRef result = naNewClosure(ctx);
+    result.ref.ptr.closure->code = code;
+    result.ref.ptr.closure->namespace = locals;
+    return result;
+}
+
 static naRef getLocal(struct Frame* f, naRef sym)
 {
     // Locals first, then the function closure
@@ -197,11 +208,13 @@ static inline void PUSH(struct Context* ctx, naRef r)
 
 static inline naRef POP(struct Context* ctx)
 {
+    if(ctx->opTop == 0) ERR("stack underflow");
     return ctx->opStack[--ctx->opTop];
 }
 
 static inline naRef TOP(struct Context* ctx)
 {
+    if(ctx->opTop == 0) ERR("stack underflow");
     return ctx->opStack[ctx->opTop-1];
 }
 
@@ -217,7 +230,7 @@ static void run1(struct Context* ctx)
     naRef a, b, c;
     struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
     struct naCode* cd = f->code.ref.ptr.code;
-    int i, op = cd->byteCode[f->ip++];
+    int op = cd->byteCode[f->ip++];
 
     printf("OP: %s\n", opStringDEBUG(op));
     switch(op) {
@@ -248,8 +261,9 @@ static void run1(struct Context* ctx)
         PUSH(ctx, naNum(naTrue(a) ? 0 : 1));
         break;
     case OP_PUSHCONST:
-        i = ARG16(cd->byteCode, f);
-        PUSH(ctx, cd->constants[i]);
+        a = cd->constants[ARG16(cd->byteCode, f)];
+        if(IS_CODE(a)) a = bindFunction(ctx, f->locals, a);
+        PUSH(ctx, a);
         break;
     case OP_PUSHNIL:
         PUSH(ctx, naNil());
@@ -324,12 +338,17 @@ void printRefDEBUG(naRef r)
             printRefDEBUG(r.ref.ptr.vec->array[i]);
         }
         printf("]\n");
+    } else if(IS_CODE(r)) {
+        printf("ACK: code object on stack!\n");
+        *(int*)0=0;
+    } else if(IS_CLOSURE(r)) {
+        printf("<func>\n");
     } else if(IS_HASH(r)) {
         printf("<hash>\n");
     } else *(int*)0=0;
 }
 
-void printStack(struct Context* ctx)
+void printStackDEBUG(struct Context* ctx)
 {
     int i;
     printf("\n");
@@ -343,32 +362,13 @@ void printStack(struct Context* ctx)
 
 void naRun(struct Context* ctx, naRef code)
 {
-    naRef namespace, closure;
-
-    namespace = naNewHash(ctx);
-    
-    closure = naNewClosure(ctx);
-    closure.ref.ptr.closure->code = code;
-    closure.ref.ptr.closure->namespace = namespace;
-
-#if 0
-    { // DEBUG
-        int i;
-        struct naCode* c = code.ref.ptr.code;
-        printf("Constants:\n");
-        for(i=0; i<c->nConstants; i++) {
-            printf("%d ", i);
-            printRefDEBUG(c->constants[i]);
-        }
-        printf("--\n");
-    } // DEBUG
-#endif
-
+    naRef closure;
+    closure = bindFunction(ctx, code, naNewHash(ctx));
     setupFuncall(ctx, closure);
 
     ctx->done = 0;
     while(!ctx->done) {
         run1(ctx);
-        printStack(ctx); // DEBUG
+        printStackDEBUG(ctx); // DEBUG
     }
 }
