@@ -25,8 +25,8 @@ struct precedence {
     { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_REVERSE  },
     { { TOK_MUL, TOK_DIV },                    PREC_BINARY  },
     { { TOK_MINUS, TOK_NOT },                  PREC_PREFIX  },
-    { { TOK_DOT },                             PREC_BINARY  },
     { { TOK_LPAR, TOK_LBRA },                  PREC_SUFFIX  },
+    { { TOK_DOT },                             PREC_BINARY  },
 };
 #define PRECEDENCE_LEVELS (sizeof(PRECEDENCE)/sizeof(struct precedence))
 
