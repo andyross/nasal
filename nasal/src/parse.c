@@ -82,10 +82,10 @@ void* naParseAlloc(struct Parser* p, int bytes)
 static void addNewChild(struct Token* p, struct Token* c)
 {
     if(c->prev) c->prev->next = c->next;
-    else c->parent->children = c->next;
+    else if(c->parent) c->parent->children = c->next;
 
     if(c->next) c->next->prev = c->prev;
-    else c->parent->lastChild = c->next;
+    else if(c->parent) c->parent->lastChild = c->next;
 
     c->parent = p;
     c->next = 0;
