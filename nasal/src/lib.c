@@ -94,6 +94,15 @@ static naRef substr(naContext c, naRef args)
     return s;
 }
 
+static naRef contains(naContext c, naRef args)
+{
+    naRef hash = naVec_get(args, 0);
+    naRef key = naVec_get(args, 1);
+    if(IS_NIL(hash) || IS_NIL(key)) return naNil();
+    if(!IS_HASH(hash)) return naNil();
+    return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
+}
+
 struct func { char* name; naCFunction func; };
 struct func funcs[] = {
     { "print", print },
@@ -104,6 +113,7 @@ struct func funcs[] = {
     { "int", intf },
     { "streq", streq },
     { "substr", substr },
+    { "contains", contains },
 };
 
 naRef naStdLib(naContext c)
