@@ -8,6 +8,14 @@ struct Block {
     char* block;
 };
 
+// Decremented every allocation.  When it reaches zero, we do a
+// garbage collection.  The value is reset to 1/2 of the total object
+// count each collection, which is sane: it ensures that no more than
+// 50% growth can happen between collections, and ensures that garbage
+// collection work is constant with allocation work (i.e. that O(N)
+// work is done only every O(1/2N) allocations).
+static int GlobalAllocCount = 256;
+
 static void appendfree(struct naPool*p, struct naObj* o)
 {
     // Need more space?
@@ -48,6 +56,33 @@ static void freeelem(struct naPool* p, struct naObj* o)
     appendfree(p, o);
 }
 
+static void newBlock(struct naPool* p, int need)
+{
+    int i;
+    char* buf;
+    struct Block* newblocks;
+
+    if(need < MIN_BLOCK_SIZE)
+        need = MIN_BLOCK_SIZE;
+    
+    newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
+    for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
+    naFree(p->blocks);
+    p->blocks = newblocks;
+    buf = naAlloc(need * p->elemsz);
+    naBZero(buf, need * p->elemsz);
+    p->blocks[p->nblocks].size = need;
+    p->blocks[p->nblocks].block = buf;
+    p->nblocks++;
+    
+    for(i=0; i<need; i++) {
+        struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
+        o->mark = 0;
+        o->type = p->type;
+        appendfree(p, o);
+    }
+}
+
 void naGC_init(struct naPool* p, int type)
 {
     p->type = type;
@@ -60,11 +95,27 @@ void naGC_init(struct naPool* p, int type)
     naGC_reap(p);
 }
 
-// Grabs a free object.  Returns 0 if none is available (i.e., it's
-// time to collect)
+int naGC_size(struct naPool* p)
+{
+    int i, total=0;
+    for(i=0; i<p->nblocks; i++)
+        total += ((struct Block*)(p->blocks + i))->size;
+    return total;
+}
+
 struct naObj* naGC_get(struct naPool* p)
 {
-    if(p->nfree == 0) return 0;
+    // Collect every GlobalAllocCount allocations.
+    // This gets set to ~50% of the total object count each
+    // collection (it's incremented in naGC_reap()).
+    if(--GlobalAllocCount < 0) {
+        GlobalAllocCount = 0;
+        naGarbageCollect();
+    }
+
+    // If we're out, then allocate an extra 12.5%
+    if(p->nfree == 0)
+        newBlock(p, naGC_size(p)/8);
     return p->free[--p->nfree];
 }
 
@@ -128,40 +179,21 @@ void naGC_reap(struct naPool* p)
             struct naObj* o = (struct naObj*)(b->block + elem * p->elemsz);
             if(o->mark == 0)
                 freeelem(p, o);
-
-            // And clear the mark for the next time
             o->mark = 0;
         }
     }
 
-    // Allocate more if necessary (try to keep 33% available)
-    if(3*p->nfree <= total) {
-        char* buf;
-        struct Block* newblocks;
-
+    // Add 50% of our total to the global count
+    GlobalAllocCount += total/2;
+    
+    // Allocate more if necessary (try to keep 25-50% of the objects
+    // available)
+    if(p->nfree < total/4) {
         int used = total - p->nfree;
-        int need = 3*used/2 - total;
-        if(need < 0)
-            return;
-        if(need < MIN_BLOCK_SIZE)
-            need = MIN_BLOCK_SIZE;
-
-        newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
-        for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
-        naFree(p->blocks);
-        p->blocks = newblocks;
-        buf = naAlloc(need * p->elemsz);
-        naBZero(buf, need * p->elemsz);
-        p->blocks[p->nblocks].size = need;
-        p->blocks[p->nblocks].block = buf;
-        p->nblocks++;
-
-        for(i=0; i<need; i++) {
-            struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
-            o->mark = 0;
-            o->type = p->type;
-            appendfree(p, o);
-        }
+        int avail = total - used;
+        int need = used/2 - avail;
+        if(need > 0)
+            newBlock(p, need);
     }
 }
 

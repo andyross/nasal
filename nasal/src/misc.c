@@ -39,13 +39,7 @@ naRef naStringValue(naContext c, naRef r)
 
 naRef naNew(struct Context* c, int type)
 {
-    naRef result;
-    struct naObj* o;
-    if((o = naGC_get(&(c->pools[type]))) == 0) {
-        naGarbageCollect();
-        o = naGC_get(&(c->pools[type]));
-    }
-    result = naObj(type, o);
+    naRef result = naObj(type, naGC_get(&(c->pools[type])));
     naVec_append(c->temps, result);
     return result;
 }

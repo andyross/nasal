@@ -132,12 +132,13 @@ void naGarbageCollect()
 
     naGC_mark(c->temps);
 
-    for(i=0; i<NUM_NASL_TYPES; i++)
-        naGC_reap(&(c->pools[i]));
-
     naGC_mark(c->meRef);
     naGC_mark(c->argRef);
     naGC_mark(c->parentsRef);
+
+    // Finally collect all the freed objects
+    for(i=0; i<NUM_NASL_TYPES; i++)
+        naGC_reap(&(c->pools[i]));
 }
 
 void setupFuncall(struct Context* ctx, naRef func, naRef args)

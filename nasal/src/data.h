@@ -122,6 +122,7 @@ void naHash_init(naRef hash);
 
 void naGC_init(struct naPool* p, int type);
 struct naObj* naGC_get(struct naPool* p);
+int naGC_size(struct naPool* p);
 void naGC_mark(naRef r);
 void naGC_reap(struct naPool* p);
 
