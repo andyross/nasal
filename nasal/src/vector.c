@@ -2,7 +2,7 @@
 
 static void realloc(struct naVec* v)
 {
-    int i, newsz = (v->size*3)>>1;
+    int i, newsz = 1 + ((v->size*3)>>1);
     naRef* na = ALLOC(sizeof(naRef) * newsz);
     v->alloced = newsz;
     for(i=0; i<v->size; i++)

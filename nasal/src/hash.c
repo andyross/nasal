@@ -58,18 +58,14 @@ static unsigned int hashcolumn(struct naHash* h, naRef key)
     return (2654435769u * hashcode(key)) >> (32 - h->lgalloced);
 }
 
-// True if the two scalars are equal
-static char equals(naRef a, naRef b)
-{
-    if(IS_NUM(a) && IS_NUM(b) && a.num == b.num) return 1;
-    return naStr_equal(a, b);
-}
-
 struct HashNode* find(struct naHash* h, naRef key)
 {
-    struct HashNode* hn = h->table[hashcolumn(h, key)];
+    struct HashNode* hn;
+    if(h->table == 0)
+        return 0;
+    hn = h->table[hashcolumn(h, key)];
     while(hn) {
-        if(equals(key, hn->key))
+        if(naEqual(key, hn->key))
             return hn;
         hn = hn->next;
     }
@@ -113,8 +109,7 @@ void naHash_set(naRef hash, naRef key, naRef val)
         return;
     }
 
-    h->size++;
-    if(h->size > 1<<h->lgalloced)
+    if(h->size+1 >= 1<<h->lgalloced)
         realloc(hash);
 
     col = hashcolumn(h, key);
@@ -123,6 +118,7 @@ void naHash_set(naRef hash, naRef key, naRef val)
     n->val = val;
     n->next = h->table[col];
     h->table[col] = n;
+    h->size++;
 }
 
 void naHash_delete(naRef hash, naRef key)
@@ -130,7 +126,7 @@ void naHash_delete(naRef hash, naRef key)
     struct naHash* h = hash.ref.ptr.hash;
     struct HashNode* hn = h->table[hashcolumn(h, key)];
     while(hn->next) {
-        if(equals(hn->next->key, key)) {
+        if(naEqual(hn->next->key, key)) {
             hn->next = hn->next->next;
             h->size--;
             if(h->size < 1<<(h->lgalloced - 1))

@@ -9,7 +9,8 @@
 // Note sneaky hack: on little endian systems, placing reftag after
 // ptr and putting 1's in the top 13 bits makes the double value a
 // NaN, and thus unmistakable.  Swap the byte order *and* the
-// structure order on other systems.
+// structure order on big-endian systems.  On 64 bit sytems, reftag
+// and the double won't be coincident anyway.
 #define NASL_REFTAG 0x7ff56789
 typedef union {
     double num;
@@ -32,14 +33,15 @@ typedef union {
     unsigned char mark; \
     unsigned char type
 
-#define TYPE_NASTR  0
-#define TYPE_NAVEC  1
-#define TYPE_NAHASH 2
+#define TYPE_NASTR  's'
+#define TYPE_NAVEC  'v'
+#define TYPE_NAHASH 'h'
 
 #define IS_REF(r) ((r).ref.reftag == NASL_REFTAG)
 #define IS_NUM(r) ((r).ref.reftag != NASL_REFTAG)
 #define IS_NIL(r) (IS_REF((r)) && (r).ref.ptr.obj == 0)
-#define IS_SCALAR(r) IS_NUM((r)) || ((r).ref.ptr.obj->type == TYPE_NASTR)
+#define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == TYPE_NASTR)
+#define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == TYPE_NASTR)
 
 struct naObj {
     GC_HEADER;
@@ -88,11 +90,13 @@ void* ALLOC(int n);
 void ERR(char* msg);
 void BZERO(void* m, int n);
 
+int naEqual(naRef a, naRef b);
 naRef naNum(double num);
-naRef naObj(struct naObj* o);
+naRef naObj(int type, struct naObj* o);
 
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
-double naStr_tonum(naRef str);
+naRef naStr_tonum(naRef str);
+int naStr_parsenum(naRef str, double* result);
 void naStr_fromnum(naRef dest, double num);
 int naStr_equal(naRef s1, naRef s2);
 void naStr_substr(naRef dest, naRef str, int start, int len);

@@ -10,21 +10,6 @@
 static int tonum(unsigned char* s, int len, double* result);
 static int fromnum(double val, unsigned char* s);
 
-naRef naNum(double num)
-{
-    naRef r;
-    r.num = num;
-    return r;
-}
-
-naRef naObj(struct naObj* o)
-{
-    naRef r;
-    r.ref.reftag = NASL_REFTAG;
-    r.ref.ptr.obj = o;
-    return r;
-}
-
 int naStr_len(naRef s)
 {
     return s.ref.ptr.str->len;
@@ -85,12 +70,20 @@ void naStr_fromnum(naRef dest, double num)
     memcpy(dst->data, buf, dst->len);
 }
 
-double naStr_tonum(naRef str)
+int naStr_parsenum(naRef str, double* result)
 {
+    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, result);
+}
+
+naRef naStr_tonum(naRef str)
+{
+    naRef r;
     struct naStr* s = str.ref.ptr.str;
     double n;
     if(!tonum(s->data, s->len, &n)) ERR("string not number");
-    return n;
+    r.ref.reftag = 0;
+    r.num = n;
+    return r;
 }
 
 ////////////////////////////////////////////////////////////////////////

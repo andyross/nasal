@@ -10,11 +10,13 @@ struct Block {
 static void appendfree(struct naPool*p, struct naObj* o)
 {
     // Need more space?
-    if(p->nfree == p->freesz) {
-        int i, n = (3*p->nfree)>>1;
+    if(p->freesz <= p->nfree) {
+        int i, n = 1+((3*p->nfree)>>1);
         void** newf = ALLOC(n * sizeof(void*));
         for(i=0; i<p->nfree; i++)
             newf[i] = p->free[i];
+        FREE(p->free);
+        p->free = newf;
         p->freesz = n;
     }
 
@@ -28,12 +30,15 @@ static void freeelem(struct naPool* p, struct naObj* o)
     switch(o->type) {
     case TYPE_NASTR:
         FREE(((struct naStr*)o)->data);
+        ((struct naStr*)o)->data = 0;
         break;
     case TYPE_NAVEC:
         FREE(((struct naVec*)o)->array);
+        ((struct naVec*)o)->array = 0;
         break;
     case TYPE_NAHASH:
         FREE(((struct naHash*)o)->nodes);
+        ((struct naHash*)o)->nodes = 0;
         break;
     }
 
@@ -56,7 +61,7 @@ void naGC_init(struct naPool* p, int elemsz)
 struct naObj* naGC_get(struct naPool* p)
 {
     if(p->nfree == 0) return 0;
-    return p->free[p->nfree--];
+    return p->free[--p->nfree];
 }
 
 // Sets the reference bit on the object, and recursively on all
@@ -76,7 +81,7 @@ void naGC_mark(naRef r)
     r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
     case TYPE_NAVEC:
-        for(i=0; i<=r.ref.ptr.vec->size; i++)
+        for(i=0; i<r.ref.ptr.vec->size; i++)
             naGC_mark(r.ref.ptr.vec->array[i]);
         break;
     case TYPE_NAHASH:
@@ -112,7 +117,7 @@ void naGC_reap(struct naPool* p)
     }
 
     // Allocate more if necessary
-    if(2*total < 3*p->nfree) {
+    if(2*total <= 3*p->nfree) {
         char* buf;
         struct Block* newblocks;
 
@@ -122,7 +127,10 @@ void naGC_reap(struct naPool* p)
 
         newblocks = ALLOC((p->nblocks+1) * sizeof(struct Block));
         for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
+        FREE(p->blocks);
+        p->blocks = newblocks;
         buf = ALLOC(need * p->elemsz);
+        BZERO(buf, need * p->elemsz);
         p->blocks[p->nblocks].size = need;
         p->blocks[p->nblocks].block = buf;
         p->nblocks++;
