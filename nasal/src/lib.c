@@ -150,6 +150,11 @@ static naRef typeOf(naContext c, naRef me, naRef args)
     return r;
 }
 
+static naRef f_exec(naContext c, naRef me, naRef args)
+{
+    return naNil();
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -165,6 +170,7 @@ static struct func funcs[] = {
     { "substr", substr },
     { "contains", contains },
     { "typeof", typeOf },
+    { "exec", f_exec },
 };
 
 naRef naStdLib(naContext c)

@@ -29,9 +29,29 @@ struct Frame {
     int line; // current line number
 };
 
-struct Context {
+struct Globals {
     // Garbage collecting allocators:
     struct naPool pools[NUM_NASAL_TYPES];
+
+    // Constants
+    naRef meRef;
+    naRef argRef;
+    naRef parentsRef;
+
+    // GC-findable reference point for objects that may live on the
+    // processor ("real") stack during execution.  naNew() places them
+    // here, and clears the array each time we return from a C
+    // function.
+    naRef temps;
+
+    naRef save;
+
+    struct Context* freeContexts;
+    struct Context* allContexts;
+};
+
+struct Context {
+    struct Globals* globals;
 
     // Stack(s)
     struct Frame fStack[MAX_RECURSION];
@@ -42,22 +62,13 @@ struct Context {
     int markTop;
     int done;
 
-    // Constants
-    naRef meRef;
-    naRef argRef;
-    naRef parentsRef;
-
     // Error handling
     jmp_buf jumpHandle;
     char* error;
 
-    // GC-findable reference point for objects that may live on the
-    // processor ("real") stack during execution.  naNew() places them
-    // here, and clears the array each time we return from a C
-    // function.
-    naRef temps;
-
-    naRef save;
+    // Linked list pointers in globals
+    struct Context* nextFree;
+    struct Context* nextAll;
 };
 
 void printRefDEBUG(naRef r);

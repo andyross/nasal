@@ -79,6 +79,7 @@ typedef naRef (*naCFunction)(naContext ctx, naRef me, naRef args);
 
 // All Nasal code runs under the watch of a naContext:
 naContext naNewContext();
+    void naFreeContext(naContext c);
 
 // Save this object in the context, preventing it (and objects
 // referenced by it) from being garbage collected.

@@ -490,7 +490,7 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
     struct Parser p;
 
     // Protect from garbage collection
-    naVec_append(c->temps, srcFile);
+    naVec_append(c->globals->temps, srcFile);
 
     // Catch parser errors here.
     *errLine = 0;
@@ -523,7 +523,7 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
 
     // Clean up our mess
     naParseDestroy(&p);
-    naVec_append(c->temps, codeObj);
+    naVec_append(c->globals->temps, codeObj);
 
     return codeObj;
 }

@@ -17,8 +17,7 @@ void printRefDEBUG(naRef r);
 void printStackDEBUG(struct Context* ctx);
 ////////////////////////////////////////////////////////////////////////
 
-// FIXME: need to store a list of all contexts
-struct Context globalContext;
+struct Globals* globals = 0;
 
 #define ERR(c, msg) naRuntimeError((c),(msg))
 void naRuntimeError(struct Context* c, char* msg)
@@ -89,8 +88,6 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 static void initContext(struct Context* c)
 {
     int i;
-    for(i=0; i<NUM_NASAL_TYPES; i++)
-        naGC_init(&(c->pools[i]), i);
 
     c->fTop = c->opTop = c->markTop = 0;
 
@@ -102,50 +99,83 @@ static void initContext(struct Context* c)
     for(i=0; i<MAX_RECURSION; i++)
         c->fStack[i].args = naNil();
 
+    c->globals = globals;
+    c->nextAll = globals->allContexts;
+    globals->allContexts = c;
+}
+
+void initGlobals()
+{
+    globals = (struct Globals*)naAlloc(sizeof(struct Globals));
+
+    int i;
+    for(i=0; i<NUM_NASAL_TYPES; i++)
+        naGC_init(&(globals->pools[i]), i);
+
     // Note we can't use naNewVector() for this; it requires that
     // temps exist first.
-    c->temps = naObj(T_VEC, naGC_get(&(c->pools[T_VEC])));
+    globals->temps = naObj(T_VEC, naGC_get(&(globals->pools[T_VEC])));
 
-    c->save = naNil();
+    globals->save = naNil();
+
+    // Initialize a single context
+    globals->freeContexts = 0;
+    globals->allContexts = 0;
+    struct Context* c = naNewContext();
 
     // Cache pre-calculated "me", "arg" and "parents" scalars
-    c->meRef = naStr_fromdata(naNewString(c), "me", 2);
-    c->argRef = naStr_fromdata(naNewString(c), "arg", 3);
-    c->parentsRef = naStr_fromdata(naNewString(c), "parents", 7);
+    globals->meRef = naStr_fromdata(naNewString(c), "me", 2);
+    globals->argRef = naStr_fromdata(naNewString(c), "arg", 3);
+    globals->parentsRef = naStr_fromdata(naNewString(c), "parents", 7);
 }
 
 struct Context* naNewContext()
 {
-    // FIXME: need more than one!
-    struct Context* c = &globalContext;
+    if(globals == 0)
+        initGlobals();
+
+    struct Context* c = globals->freeContexts;
+    if(!c) c = (struct Context*)naAlloc(sizeof(struct Context));
+    else   globals->freeContexts = c->nextFree;
+    c->nextFree = 0;
     initContext(c);
     return c;
+}
+
+void naFreeContext(struct Context* c)
+{
+    c->nextFree = globals->freeContexts;
+    globals->freeContexts = c;
 }
 
 void naGarbageCollect()
 {
     int i;
-    struct Context* c = &globalContext; // FIXME: more than one!
+    struct Context* c = globals->allContexts;
 
-    for(i=0; i < c->fTop; i++) {
-        naGC_mark(c->fStack[i].func);
-        naGC_mark(c->fStack[i].locals);
+    while(c) {
+        for(i=0; i < c->fTop; i++) {
+            naGC_mark(c->fStack[i].func);
+            naGC_mark(c->fStack[i].locals);
+        }
+        for(i=0; i < MAX_RECURSION; i++)
+            naGC_mark(c->fStack[i].args); // collect *all* the argument lists
+        for(i=0; i < c->opTop; i++)
+            naGC_mark(c->opStack[i]);
+
+        c = c->nextAll;
     }
-    for(i=0; i < MAX_RECURSION; i++)
-        naGC_mark(c->fStack[i].args); // collect *all* the argument lists
-    for(i=0; i < c->opTop; i++)
-        naGC_mark(c->opStack[i]);
 
-    naGC_mark(c->temps);
-    naGC_mark(c->save);
+    naGC_mark(globals->temps);
+    naGC_mark(globals->save);
 
-    naGC_mark(c->meRef);
-    naGC_mark(c->argRef);
-    naGC_mark(c->parentsRef);
+    naGC_mark(globals->meRef);
+    naGC_mark(globals->argRef);
+    naGC_mark(globals->parentsRef);
 
     // Finally collect all the freed objects
     for(i=0; i<NUM_NASAL_TYPES; i++)
-        naGC_reap(&(c->pools[i]));
+        naGC_reap(&(globals->pools[i]));
 }
 
 void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args)
@@ -172,7 +202,7 @@ void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args)
         f->locals = naNil();
     } else if(IS_CODE(func.ref.ptr.func->code)) {
         f->locals = naNewHash(ctx);
-        naHash_set(f->locals, ctx->argRef, args);
+        naHash_set(f->locals, ctx->globals->argRef, args);
     }
 }
 
@@ -265,7 +295,7 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
     if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
     if(naHash_get(obj, fld, result)) {
         return 1;
-    } else if(naHash_get(obj, ctx->parentsRef, &p)) {
+    } else if(naHash_get(obj, ctx->globals->parentsRef, &p)) {
         int i;
         if(!IS_VEC(p)) ERR(ctx, "parents field not vector");
         for(i=0; i<p.ref.ptr.vec->size; i++)
@@ -457,9 +487,9 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
-        naVec_append(ctx->temps, a);
+        naVec_append(ctx->globals->temps, a);
         setupFuncall(ctx, a, b, c);
-        naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->meRef, a);
+        naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->globals->meRef, a);
         break;
     case OP_RETURN:
         a = POP(ctx);
@@ -502,7 +532,7 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
 
 void naSave(struct Context* ctx, naRef obj)
 {
-    ctx->save = obj;
+    ctx->globals->save = obj;
 }
 
 int naStackDepth(struct Context* ctx)
@@ -542,7 +572,7 @@ static naRef run(naContext ctx)
         if(IS_CCODE(code)) nativeCall(ctx, f, code);
         else               run1(ctx, f, code);
         
-        ctx->temps.ref.ptr.vec->size = 0; // Reset the temporaries
+        ctx->globals->temps.ref.ptr.vec->size = 0; // Reset the temporaries
         DBG(printStackDEBUG(ctx);)
     }
 
@@ -562,10 +592,10 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
     // C-space arguments.
-    naVec_append(ctx->temps, func);
-    naVec_append(ctx->temps, args);
-    naVec_append(ctx->temps, obj);
-    naVec_append(ctx->temps, locals);
+    naVec_append(ctx->globals->temps, func);
+    naVec_append(ctx->globals->temps, args);
+    naVec_append(ctx->globals->temps, obj);
+    naVec_append(ctx->globals->temps, locals);
 
     if(IS_NIL(args))
         args = naNewVector(ctx);
@@ -578,7 +608,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         func.ref.ptr.func->closure = naNewClosure(ctx, locals, naNil());
     }
     if(!IS_NIL(obj))
-        naHash_set(locals, ctx->meRef, obj);
+        naHash_set(locals, ctx->globals->meRef, obj);
 
     ctx->fTop = ctx->opTop = ctx->markTop = 0;
     setupFuncall(ctx, obj, func, args);
