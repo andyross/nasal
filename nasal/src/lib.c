@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "nasal.h"
 
 // No need to include <string.h> just for this:
@@ -84,7 +86,9 @@ static naRef delete(naContext c, naRef me, naRef args)
 static naRef intf(naContext c, naRef me, naRef args)
 {
     naRef n = naNumValue(naVec_get(args, 0));
-    if(!naIsNil(n)) n.num = (int)n.num;
+    if(naIsNil(n)) return n;
+    if(n.num < 0) n.num = -floor(-n.num);
+    else n.num = floor(n.num);
     return n;
 }
 
