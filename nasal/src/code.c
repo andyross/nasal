@@ -98,6 +98,8 @@ static void initContext(struct Context* c)
     for(i=0; i<MAX_RECURSION; i++)
         c->fStack[i].args = naNil();
 
+    c->argPool = naNewVector(c);
+
     // Note we can't use naNewVector() for this; it requires that
     // temps exist first.
     c->temps = naObj(T_VEC, naGC_get(&(c->pools[T_VEC])));
@@ -447,7 +449,8 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         a = POP(ctx);
         ctx->opTop = f->bp; // restore the correct stack frame!
         ctx->fTop--;
-        ctx->fStack[ctx->fTop].args.ref.ptr.vec->size = 0;
+ 	ctx->fStack[ctx->fTop].args.ref.ptr.vec->size = 0;
+        naVec_append(ctx->argPool, ctx->fStack[ctx->fTop].args);
         PUSH(ctx, a);
         break;
     case OP_LINE:
@@ -464,6 +467,10 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
         ctx->opTop = ctx->markStack[--ctx->markTop];
+        break;
+    case OP_NEWARGS: // push a new function arg vector
+        PUSH(ctx, (naVec_size(ctx->argPool) ?
+                   naVec_removelast(ctx->argPool) : naNewVector(ctx)));
         break;
     default:
         ERR(ctx, "BUG: bad opcode");
