@@ -1,0 +1,81 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Nasal - Not another scripting language</title>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<style>
+/* Hacked up stylesheet.  Should replace with something cleaner. */
+body { width:750px }
+h1, h2, h3, h4 { padding:2px; font-family:helvetica,arial,sans-serif }
+h1 { text-align:center }
+h1, h2 { background-color:#555588 }
+h1, h2, h3 { color:white; padding-left:10px }
+h3 { background-color:#8888ac }
+h4 { border-bottom:1px solid #000033; color:#000033 }
+pre { background-color:#dddddd; margin-left:20px; margin-right:100px; padding:6px }
+pre, code { color:#000033; }
+dt { font-weight:bold; color:#000033 }
+</style>
+</head>
+<body>
+
+<h1>Nasal: Not another scripting language!</h1>
+
+<h2>Executive summary:</h2>
+<ul>
+ <li>Vectors, Hashes and Scalars (number/strings)</li>
+ <li>"Normal" OOP syntax</li>
+ <li>Small!  100k source code. Easily embeddable and extensible</li>
+ <li>Functional programming</li>
+ <li>Garbage collection</li>
+ <li>Threadsafe</li>
+</ul>
+
+Nasal is a language that I wrote for use in a personal project.  It is
+still immature, incomplete in places and probably buggy (although I
+can claim at least to not be aware of any bugs at the moment).  It is
+working well enough to make a pre-release worthwhile, as I am about to
+turn my attention to other parts of the project.
+<p>
+There is some minimal <a href="http://www.plausible.org/nasal/doc.html">documentation</a> available
+for browsing, along with some annotated <a href="http://www.plausible.org/nasal/sample.nas">sample
+code</a> so you can examine the syntax.  Source code is available
+under the terms of the <a href="http://www.gnu.org/licenses/licenses.html">
+LGPL</a>, and is <a href="http://www.plausible.org/nasal/nasal-0.2.2.tar.gz">downloadable here.</a>
+</p><p>
+Questions and comments can go to the author,
+<a href="mailto:andy@plausible.org">Andy Ross</a>, via email at <a href="mailto:andy@plausible.org">andy@plausible.org</a>.
+</p><hr>
+<h2>Updates</h2>
+
+<h3>23 Sep 2003</h3>
+
+Another <a href="http://www.plausible.org/nasal/nasal-0.2.2.tar.gz">release</a> is available for
+public consumption.  This fixes several bugs, including crashing
+issues with the garbage collector and bytecode interpreter.
+
+<p>Also note that the name has been officially (if unimaginatively)
+changed from "Nasl" to "Nasal" to avoid collision with the nice folks
+at Nessus.  I'm still open to better names.  I picked this one because
+it allowed me to avoid changing the pronunciation or naXXX C symbol
+prefix.
+
+</p><h3>18 Feb 2003</h3>
+It has been brought to my attention that I have stepped on someone
+else's name.  The <a href="http://www.nessus.org/">Nessus Project</a>
+has already christened their extension language "NASL".  Oops.
+Unfortunately, I currently lack the time or creativity to come up with
+something better.  This will stay "Nasl" for now (different
+capitalization, different acronymoid), but I promise to come up with
+something less ambiguous before the next major release, if there is
+one.  Suggestions are welcome.
+<p>
+There is a new <a href="http://www.plausible.org/nasal/nasl-0.2.1.tar.gz">package file</a>, with some
+garbage collection performance/determinism improvements and two new
+sample scripts to test/benchmark <a href="http://www.plausible.org/nasal/gcperf.nas">garbage
+collection overhead</a> and <a href="http://www.plausible.org/nasal/objperf.nas">object access
+speed</a>.  Both are acceptable and within design goals: GC is about
+twice as fast as perl, object access about twice as slow.
+</p><hr>
+<i>Last updated 18 Feb 2003</i>
+</body></html>
