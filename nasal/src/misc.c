@@ -21,6 +21,7 @@ naRef naNumValue(naRef n)
 {
     double d;
     if(IS_NUM(n)) return n;
+    if(IS_NIL(n)) return naNil();
     if(IS_STR(n) && naStr_tonum(n, &d))
         return naNum(d);
     return naNil();
