@@ -133,6 +133,7 @@ void naGC_mark(naRef r)
     if(r.ref.ptr.obj->mark == 1)
         return;
 
+    r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
     case T_VEC:
         for(i=0; i<r.ref.ptr.vec->size; i++)
@@ -163,7 +164,6 @@ void naGC_mark(naRef r)
         naGC_mark(r.ref.ptr.func->closure);
         break;
     }
-    r.ref.ptr.obj->mark = 1;
 }
 
 // Collects all the unreachable objects into a free list, and
