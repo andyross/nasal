@@ -33,6 +33,7 @@ static int boolify(struct Context* ctx, naRef r)
     if(IS_NIL(r)) return 0;
     if(IS_STR(r)) {
         double d;
+        if(naStr_len(r) == 0) return 0;
         if(naStr_tonum(r, &d)) return d != 0;
         else return 1;
     }
