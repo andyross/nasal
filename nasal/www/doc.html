@@ -1,0 +1,205 @@
+<html>
+<head><title>Nasl - Not another scripting language</title></head>
+<body>
+
+<h1>Nasl: Not another scripting language!</h1>
+
+<h2>Executive summary:</h2>
+<ul>
+ <li>Vectors, Hashes and Scalars (number/strings)</li>
+ <li>"Normal" OOP syntax</li>
+ <li>Small!  100k source code. Easily embeddable and extensible</li>
+ <li>Functional programming</li>
+ <li>Garbage collection</li>
+ <li>Threadsafe</li>
+</ul>
+
+<h2>Design Philosophy</h2>
+
+Performance is not a design goal.  Nasl isn't especially slow.  Early
+benchmarks of the garbage collector showed it as faster than perl's
+reference counter, and its number crunching performance is on par with
+python.  But in all cases, simplicity, transparency and a sane feature
+set are preferred over speed.
+<p>
+World domination is not a design goal.  Nasl is designed for use as an
+extension language in an larger project.  The problem with many
+otherwise excellent languages in this environment is that they are
+huge.  Perl and python are great, but enormous.  Even their "core"
+interpreters and library code are larger than most projects that
+require an embedded language.  They cannot be readily shipped with
+their host application and need to be installed system-wide.  This is
+a pain and a compatibility hassle.
+<p>
+Conversely, neither is minimalism a design goal.  The chief problem
+with "small" scripting languages (scheme, lua, tcl) is that they tend
+to support only a minimal set of features that the author found
+useful.  While these languages are provably sufficient to support
+their intended usage, they make for tedious and unproductuve
+development environments.  Except for the select few to whome they
+appeal, these languages aren't "fun".
+<p>
+The goal with Nasl is to have a language that supports most "normal"
+programming idioms (objects, functions, arrays, hashes) while avoiding
+the bloat that comes from "platform" scripting languages like perl,
+python and php.
+<h2>Notable Characteristics</h2>
+Like perl, python and javascript, nasl uses vectors (expandable
+arrays) and hash tables as its native data format.  This is a
+well-understood idiom, and it works very well.  I felt no need to rock
+the boat here.
+<p>
+Like perl, and unlike everything else, nasl combines numbers and
+strings into a single "scalar" datatype.  No conversion needs to
+happen in user code, which simplifies common string handling tasks.
+<p>
+Like perl, but unlike python, hash keys must by scalars in nasl.
+Python supports a "tuple" constant type that can be used as well, but
+there is no equivalent in nasl (you can't use vectors as keys because
+they might change after the insertion).
+<p>
+Like perl and python, nasl uses a # character to indicate and
+end-of-line comment.  There is no multiline begin/end comment syntax
+as in Javascript.
+<p>
+Like perl, nasl functions do not have named parameters.  They get
+their arguments in a vector named "arg", and can extract them however
+they like.  Unlike perl, Nasl takes advantage of this feature to do
+away with function "declaration" entirly; see below.
+<p>
+Like python, there is no hidden local object scope in a function call.
+The object on which a method was called is available to a function as
+a local variable named "me" (python calls this "self" by convention,
+but because nasl has no declared function arguments, there is no
+opportunity to change it).
+<p>
+Like perl, "objects" in nasl are simply hash tables.  Looking an item
+up by name in a hash table and extracting a symbol for an object are
+just different syntax for the same operation*:
+<p>
+   <code> a["b"] = 1 </code> means the same thing as: <code> a.b = 1 </code>
+<p>
+The above paragraph is a minor lie.  The "dot" syntax is also the clue
+to the interpreter to "save" the left hand side as the "me" reference
+if the expression is used as a function/method call.  That is, these
+expressions are *not* equivalent (one is a plain function call, the
+other a method invocation on the object a):
+<p>
+     <code> a["b"](arg1, arg2) </code> isn't the same as:
+     <code> a.b(arg1, arg2) </code>
+<p>
+Like javascript (and self, but no one has ever heard of self), nasl
+lacks a specific "class" syntax for OOP programming.  Instead, classes
+are simply objects.  Each object supports a "parents" member array;
+symbol lookup on the object at runtime bounces to the parents (and the
+parents' parents) if the symbol is not found in the hash.  The parents
+field is just like any other object field, you can set it however you
+like and even change it at runtime if you are feeling especially
+perverse.
+<p>
+Like lisp, javascript and perl, nasl supports lexical closures.  This
+means that the local symbol namespace available to your function when
+it is assigned remain constant over time.  If you don't know what this
+means, you don't need to care.  It is this feature that allows
+functions to use variables declared in the outer scope when it is
+defined (e.g. seeing "module" variables).
+<p>
+Like all other scripting languages, functions are just symbols in a
+namespace, but unlike all other scripting languages, there is no
+function "declaration" syntax.  A function is always an anonymous
+object (a lambda in the parlance), which you assign to a variable in
+order to use.  Like so:
+<p>
+<pre>
+myfunction = func { arg[0] + 1 }
+myfunction(1) # returns 2
+</pre>
+<p>
+Nasl has a straightforward, readable syntax which is closest to
+javascript among other scripting languages.  Although unlike
+javascript, it includes has a hash lookup syntax along the lines of
+python (that is, you can do both a.b and a["b"]).
+<p>
+Unlike python, nasl has a grammar which is not whitespace-sensitive.
+This doesn't make python hard to write, and it arguably makes it
+easier to read.  But it is different from the way the rest of the
+world works, and makes python distinctly unsuitable for "embedded"
+environments (consider PHP, Javascript, ASP or in-configuration-file
+scripts) where it needs to live as a plain old string inside of
+another program's code or data file.
+<p>
+Nasl garbage collects runtime storage, so the programmer need not
+worry about manual allocation, or even circular references.  The
+current implementation is a simple mark/sweep collector, which should
+be acceptable for most applications.  Future enhancements will include
+a "return early" capability for latency-critical applications.  The
+collector can be instructred to return after a certain maximum delay,
+and be restarted later.  Fancy items like generational collectors fail
+the "small and simple" criteria and are not likely to be included.
+<p>
+Like python, nasl supports exception handling as a first-class
+language feature, with built-in runtime-inspectable stack trace.
+Rather like perl, however, there is no special "try" syntax for
+exception handling, nor inheritance-based catching semantics.
+Instead, you call a "try" function on another function, and inspect
+the return value on your own.  Code simply calls die with an argument
+list, which is returned from the closest enclosing try() invocation.
+Elaborate exception handling isn't really appropriate for embedded
+scripting languages.  [NOTE: this isn't finished yet]
+<p>
+Nasl tries to be stricter than perl.  Operations like converting a
+non-numeric value to a string, reading or writing past the end of an
+array or operating on a nil reference, which are generally legal in
+perl, throw exceptions in nasl.  Perl sometimes tries to bend over
+backwards to do something "reasonable" with your instructions
+(e.g. what's the boolean truth value of a hash reference?); nasl
+doesn't try ("error: non-scalar used in boolean context at line 92")
+<p>
+Nasl is very small, very simple, written in ANSI C, and generally an
+excellent choice for embedded applications.  It uses a simple and
+transparent syntax interpretable by a simple "bracket matching and
+operator precedence" parser.  It does not depend on any third party
+libraries other than the standard C library.
+<p>
+Nasl makes no use of the processor stack when running recursive code.
+This is important for embedded languages as it provides the ability to
+"exit early" from a Nasl context.  An outside application may have
+realtime constraints, and Nasl can be instructed to run for only a
+certain number of "cycles" before returning.  Later calls will
+automatically pick up the interpreter state where it left off.
+<p>
+Nasl's provides "minimal threadsafety".  Multithreaded operations on
+NaSL objects are safe in the sense that they cannot crash or corrupt
+the interpreter.  They are not guaranteed to be atomic.  In
+particular, poorly synchronized insertions into containers can "drop"
+objects into oblivion (which is OK from an interpreter stability
+standpoint, since the GC will clean them up normally).  Race
+conditions have to be the programmer's problem anyway, this is just
+another symptom.  Garbage collection will block all threads before
+running. [NOTE: this part is still unimplemented.]
+
+<h2>Core library:</h2>
+
+<ul>
+<li>typeof(thing) - returns a string: nil/scalar/vector/hash/func</li>
+</ul><ul>
+<li>int(str) - convert to integer</li>
+<li>streq(str,str) - string equality (so "0" and "0.0" aren't equal)</li>
+<li>substr(str,start,len) - substring</li>
+<li>find(substr,str) - finds and returns the index of substr in str</li>
+<li>split(delim,str) - splits str, return a vector of the substrings</li>
+<li>join(str,vec) - join elements of vec with "str" between them</li>
+</ul><ul>
+<li>keys(hash) - vector of keys</li>
+<li>contains(hash,elem) - is elem a key in hash?</li>
+</ul><ul>
+<li>size(vec) - size in elements (container) or bytes (string)</li>
+<li>append(vec, any) - append to a vector</li>
+<li>setsize(vec) - reallocate to the specified size</li>
+<li>pop(vec) - remove and return the last element, shrinking size by one</li>
+</ul><ul>
+<li>try(func,args...) - call func with args, return a die() argument or nil</li>
+<li>die(arg) - jump to the nearest enclosing try() call, passing arg</li>
+</ul>
+</body>
+</html>
