@@ -21,9 +21,7 @@ enum {
 
 struct Frame {
     naRef func; // naFunc object
-    naRef obj;  // object on which a method is called, or nil
     naRef locals; // local per-call namespace
-    naRef args; // vector of arguments
     int ip; // instruction pointer into code
     int bp; // opStack pointer to start of frame
 };

@@ -27,13 +27,15 @@ void naRuntimeError(struct Context* c, char* msg)
     longjmp(c->jumpHandle, 1);
 }
 
-// FIXME: returns true for the string "0".  Need to convert to number
-// as per the standard rules.
 static int boolify(struct Context* ctx, naRef r)
 {
-    if(IS_NIL(r)) return 0;
     if(IS_NUM(r)) return r.num != 0;
-    if(IS_STR(r)) return 1;
+    if(IS_NIL(r)) return 0;
+    if(IS_STR(r)) {
+        double d;
+        if(naStr_tonum(r, &d)) return d != 0;
+        else return 1;
+    }
     ERR(ctx, "non-scalar used in boolean context");
     return 0;
 }
@@ -90,17 +92,10 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 
 static void initContext(struct Context* c)
 {
-    int i;
-
     c->fTop = c->opTop = c->markTop = 0;
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
-
-    // Make sure the args vectors (which are static with the context)
-    // are initialized to nil.
-    for(i=0; i<MAX_RECURSION; i++)
-        c->fStack[i].args = naNil();
 
     c->globals = globals;
 }
@@ -117,8 +112,6 @@ static void initGlobals()
     // temps exist first.
     globals->temps = naObj(T_VEC, naGC_get(&(globals->pools[T_VEC])));
 
-    globals->save = naNil();
-
     // Initialize a single context
     globals->freeContexts = 0;
     globals->allContexts = 0;
@@ -130,6 +123,7 @@ static void initGlobals()
     globals->parentsRef = naInternSymbol(naStr_fromdata(naNewString(c), "parents", 7));
 
     globals->symbols = naNewHash(c);
+    globals->save = naNewVector(c);
 }
 
 struct Context* naNewContext()
@@ -166,8 +160,6 @@ void naGarbageCollect()
             naGC_mark(c->fStack[i].func);
             naGC_mark(c->fStack[i].locals);
         }
-        for(i=0; i < MAX_RECURSION; i++)
-            naGC_mark(c->fStack[i].args); // collect *all* the argument lists
         for(i=0; i < c->opTop; i++)
             naGC_mark(c->opStack[i]);
 
@@ -202,12 +194,8 @@ static void nativeCall(struct Context* ctx, naRef ccode, naRef args, naRef obj)
 static struct Frame* setupFuncall(struct Context* ctx, naRef obj, naRef func,
                                   naRef args, naRef locals)
 {
-    if(!IS_FUNC(func) ||
-       !(IS_CCODE(func.ref.ptr.func->code) ||
-         IS_CODE(func.ref.ptr.func->code)))
-    {
+    if(!IS_FUNC(func))
         ERR(ctx, "function/method call invoked on uncallable object");
-    }
 
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one.
@@ -218,24 +206,23 @@ static struct Frame* setupFuncall(struct Context* ctx, naRef obj, naRef func,
 
     if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
 
+    // Protect from the collector, as these are no longer on the stack
+    // and we're about to call naNew*() functions.  The func and
+    // locals references get saved by putting them into the Frame.
+    naVec_append(globals->temps, obj);
+    naVec_append(globals->temps, args);
+
     struct Frame* f;
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
-    f->obj = obj;
     f->ip = 0;
     f->bp = ctx->opTop;
-    f->args = args;
     f->locals = locals;
 
-    // Set up an argument reference (don't bother for C functions).
-    // Be sure to do this *after* setting up the frame above, as the
-    // naNew() call here can invoke the GC, and everything needs to be
-    // findable!
-    if(!IS_CCODE(func)) {
-        if(IS_NIL(f->locals)) f->locals = naNewHash(ctx);
-        naHash_set(f->locals, ctx->globals->argRef, args);
-        if(!IS_NIL(obj)) naHash_set(f->locals, ctx->globals->meRef, obj);
-    }
+    // Set up the "arg" and "me" locals
+    if(IS_NIL(f->locals)) f->locals = naNewHash(ctx);
+    naHash_set(f->locals, ctx->globals->argRef, args);
+    if(!IS_NIL(obj)) naHash_set(f->locals, ctx->globals->meRef, obj);
 
     DBG(printf("Entering frame %d\n", ctx->fTop-1);)
     return f;
@@ -553,7 +540,7 @@ static naRef run(struct Context* ctx)
 
 void naSave(struct Context* ctx, naRef obj)
 {
-    ctx->globals->save = obj;
+    naVec_append(globals->save, obj);
 }
 
 int naStackDepth(struct Context* ctx)
