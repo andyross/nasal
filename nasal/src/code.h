@@ -50,9 +50,11 @@ struct Context {
     jmp_buf jumpHandle;
     char* error;
 
-    // GC-findable reference point for parser temporaries that may
-    // live on the C stack during code generation.
-    naRef parserTemporaries;
+    // GC-findable reference point for objects that may live on the
+    // processor ("real") stack during execution.  naNew() places them
+    // here, and clears the array each time we return from a C
+    // function.
+    naRef temps;
 };
 
 void printRefDEBUG(naRef r);

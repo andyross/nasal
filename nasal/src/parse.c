@@ -506,8 +506,6 @@ naRef naParseCode(struct Context* c, char* buf, int len, int* errLine)
 
     // Clean up our mess
     naParseDestroy(&p);
-    naFree(c->parserTemporaries.ref.ptr.vec->array);
-    naVec_init(c->parserTemporaries);
 
     return codeObj;
 }

@@ -69,17 +69,10 @@ static int internConstant(struct Parser* p, naRef c)
 
 static void genScalarConstant(struct Parser* p, struct Token* t)
 {
-    naRef c;
-    int idx;
-
-    if(t->str) {
-        c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
-        naVec_append(p->context->parserTemporaries, c);
-    } else {
-        c = naNum(t->num);
-    }
-
-    idx = internConstant(p, c);
+    naRef c = (t->str
+               ? naStr_fromdata(naNewString(p->context), t->str, t->strlen)
+               : naNum(t->num));
+    int idx = internConstant(p, c);
     emitImmediate(p, OP_PUSHCONST, idx);
 }
 
@@ -518,9 +511,7 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     cg.byteCode = naParseAlloc(p, cg.codeAlloced);
     cg.nBytes = 0;
     cg.consts = naNewHash(p->context);
-    naVec_append(p->context->parserTemporaries, cg.consts);
     cg.interned = naNewHash(p->context);
-    naVec_append(p->context->parserTemporaries, cg.interned);
     cg.nConsts = 0;
     cg.loopTop = 0;
     p->cg = &cg;
@@ -529,7 +520,6 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
 
     // Now make a code object
     codeObj = naNewCode(p->context);
-    naVec_append(p->context->parserTemporaries, codeObj);
     code = codeObj.ref.ptr.code;
     code->nBytes = cg.nBytes;
     code->byteCode = naAlloc(cg.nBytes);

@@ -8,13 +8,6 @@ struct Block {
     char* block;
 };
 
-// A simple memset() equivalent for debugging
-static void CLOBBER(void* m, int n)
-{
-    int i;
-    for(i=0; i<n; i++) ((unsigned char*)m)[i]=0x42;
-}
-
 static void appendfree(struct naPool*p, struct naObj* o)
 {
     // Need more space?
@@ -38,27 +31,17 @@ static void freeelem(struct naPool* p, struct naObj* o)
     switch(o->type) {
     case T_STR:
         naStr_gcclean((struct naStr*)o);
-        CLOBBER(o, sizeof(struct naStr)); // DEBUG
         break;
     case T_VEC:
         naVec_gcclean((struct naVec*)o);
-        CLOBBER(o, sizeof(struct naVec)); // DEBUG
         break;
     case T_HASH:
         naHash_gcclean((struct naHash*)o);
-        CLOBBER(o, sizeof(struct naHash)); // DEBUG
         break;
     case T_CODE:
         naFree(((struct naCode*)o)->byteCode);
         naFree(((struct naCode*)o)->constants);
-        CLOBBER(o, sizeof(struct naCode)); // DEBUG
         break;
-    case T_CLOSURE:
-        CLOBBER(o, sizeof(struct naClosure)); // DEBUG
-        break;
-    case T_FUNC:
-        CLOBBER(o, sizeof(struct naFunc)); // DEBUG
-        break; // Nothing there
     }
 
     // And add it to the free list
@@ -97,7 +80,6 @@ void naGC_mark(naRef r)
     if(r.ref.ptr.obj->mark == 1)
         return;
 
-    r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
     case T_VEC:
         for(i=0; i<r.ref.ptr.vec->size; i++)
@@ -128,6 +110,7 @@ void naGC_mark(naRef r)
         naGC_mark(r.ref.ptr.func->closure);
         break;
     }
+    r.ref.ptr.obj->mark = 1;
 }
 
 // Collects all the unreachable objects into a free list, and

@@ -94,7 +94,11 @@ static void initContext(struct Context* c)
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame)); // DEBUG
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
 
-    c->parserTemporaries = naNewVector(c);
+    // Note we can't use naNewVector() for this; it requires that
+    // temps exist first.  Call naGC_get() once first to seed the
+    // array.
+    naGC_reap(&(c->pools[T_VEC]));
+    c->temps = naObj(T_VEC, naGC_get(&(c->pools[T_VEC])));
 
     // Cache pre-calculated "me", "arg" and "parents" scalars
     c->meRef = naStr_fromdata(naNewString(c), "me", 2);
@@ -123,7 +127,7 @@ void naGarbageCollect()
     for(i=0; i <= c->opTop-1; i++)
         naGC_mark(c->opStack[i]);
 
-    naGC_mark(c->parserTemporaries);
+    naGC_mark(c->temps);
 
     for(i=0; i<NUM_NASL_TYPES; i++)
         naGC_reap(&(c->pools[i]));
@@ -227,22 +231,6 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
     return val;
 }
 
-// OP_EACH works like a vector get, except that it leaves the vector
-// and index on the stack, increments the index after use, and pops
-// the arguments and pushes a nil if the index is beyond the end.
-static void evalEach(struct Context* ctx)
-{
-    int idx = (int)(ctx->opStack[ctx->opTop-1].num);
-    naRef vec = ctx->opStack[ctx->opTop-2];
-    if(idx >= vec.ref.ptr.vec->size) {
-        ctx->opTop -= 2; // pop two values
-        PUSH(ctx, naNil());
-        return;
-    }
-    ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
-    PUSH(ctx, naVec_get(vec, idx));
-}
-
 // Recursively descend into the parents lists
 static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
 {
@@ -283,6 +271,22 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
     int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
     f->ip += 2;
     return arg;
+}
+
+// OP_EACH works like a vector get, except that it leaves the vector
+// and index on the stack, increments the index after use, and pops
+// the arguments and pushes a nil if the index is beyond the end.
+static void evalEach(struct Context* ctx)
+{
+    int idx = (int)(ctx->opStack[ctx->opTop-1].num);
+    naRef vec = ctx->opStack[ctx->opTop-2];
+    if(idx >= vec.ref.ptr.vec->size) {
+        ctx->opTop -= 2; // pop two values
+        PUSH(ctx, naNil());
+        return;
+    }
+    ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
+    PUSH(ctx, naVec_get(vec, idx));
 }
 
 static void run1(struct Context* ctx, struct Frame* f, naRef code)
@@ -488,6 +492,8 @@ naRef naCall(struct Context* ctx, naRef code, naRef namespace)
         naRef code = f->func.ref.ptr.func->code;
         if(IS_CCODE(code)) nativeCall(ctx, f, code);
         else               run1(ctx, f, code);
+
+        ctx->temps.ref.ptr.vec->size = 0; // Reset the temporaries
         DBG(printStackDEBUG(ctx);)
     }
     DBG(printStackDEBUG(ctx);)
