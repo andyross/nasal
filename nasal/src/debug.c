@@ -118,6 +118,7 @@ char* tokString(int tok)
     case TOK_MUL: return "TOK_MUL";
     case TOK_PLUS: return "TOK_PLUS";
     case TOK_MINUS: return "TOK_MINUS";
+    case TOK_NEG: return "TOK_NEG";
     case TOK_DIV: return "TOK_DIV";
     case TOK_CAT: return "TOK_CAT";
     case TOK_COLON: return "TOK_COLON";

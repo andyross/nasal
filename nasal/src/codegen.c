@@ -460,6 +460,10 @@ static void genExpr(struct Parser* p, struct Token* t)
             emit(p, OP_NEG);
         }
         break;
+    case TOK_NEG:
+        genExpr(p, RIGHT(t)); // unary negation (see also TOK_MINUS!)
+        emit(p, OP_NEG);
+        break;
     case TOK_DOT:
         genExpr(p, LEFT(t));
         if(RIGHT(t)->type != TOK_SYMBOL)

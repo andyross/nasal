@@ -115,6 +115,14 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->children = 0;
     tok->lastChild = 0;
 
+    // Context sensitivity hack: a "-" following a binary operator of
+    // higher precedence (MUL and DIV, basically) must be a unary
+    // negation.  Needed to get precedence right in the parser for
+    // expressiong like "a * -2"
+    if(type == TOK_MINUS && tok->prev)
+        if(tok->prev->type == TOK_MUL || tok->prev->type == TOK_DIV)
+            tok->type = type = TOK_NEG;
+
     if(!p->tree.children) p->tree.children = tok;
     if(p->tree.lastChild) p->tree.lastChild->next = tok;
     p->tree.lastChild = tok;
