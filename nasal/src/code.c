@@ -673,6 +673,11 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     if(setjmp(ctx->jumpHandle))
         return naNil();
 
+    if(IS_CCODE(func.ref.ptr.func->code)) {
+        naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
+        struct naVec* av = args.ref.ptr.vec;
+        return (*fp)(ctx, obj, av->size, av->array);
+    }
     return run(ctx);
 }
 
