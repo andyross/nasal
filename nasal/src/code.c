@@ -26,7 +26,7 @@ void naRuntimeError(struct Context* c, char* msg)
     longjmp(c->jumpHandle, 1);
 }
 
-int boolify(struct Context* ctx, naRef r)
+static int boolify(struct Context* ctx, naRef r)
 {
     if(IS_NIL(r)) return 0;
     if(IS_NUM(r)) return r.num != 0;
@@ -102,7 +102,7 @@ static void initContext(struct Context* c)
     c->globals = globals;
 }
 
-void initGlobals()
+static void initGlobals()
 {
     globals = (struct Globals*)naAlloc(sizeof(struct Globals));
 
@@ -181,7 +181,8 @@ void naGarbageCollect()
         naGC_reap(&(globals->pools[i]));
 }
 
-void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args, naRef locals)
+static void setupFuncall(struct Context* ctx, naRef obj, naRef func,
+                         naRef args, naRef locals)
 {
     if(!IS_FUNC(func) ||
        !(IS_CCODE(func.ref.ptr.func->code) ||

@@ -66,7 +66,7 @@ static unsigned int hashcolumn(struct naHash* h, naRef key)
     return (2654435769u * hashcode(key)) >> (32 - h->lgalloced);
 }
 
-struct HashNode* find(struct naHash* h, naRef key)
+static struct HashNode* find(struct naHash* h, naRef key)
 {
     struct HashNode* hn;
     if(h->table == 0)
