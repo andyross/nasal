@@ -149,7 +149,7 @@ static int poolsize(struct naPool* p)
 struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 {
     struct naObj** result;
-    naLock(globals->threads->bigLock);
+    LOCK();
     naCheckGCLockWithLock();
     if(globals->allocCount < 0 || (p->nfree == 0 && p->freetop >= p->freesz)) {
         globals->allocCount = 0;
@@ -162,7 +162,7 @@ struct naObj** naGC_get(struct naPool* p, int n, int* nout)
     p->nfree -= n;
     globals->allocCount -= n;
     result = (struct naObj**)(p->free + p->nfree);
-    naUnlock(globals->threads->bigLock);
+    UNLOCK();
     return result;
 }
 
@@ -265,12 +265,12 @@ void naGC_freedead()
 // giant lock.
 void naGC_swapfree(void** target, void* val)
 {
-    naLock(globals->threads->bigLock);
+    LOCK();
     while(globals->ndead >= globals->deadsz) {
         naWaitForGC();
         naGCWakeup();
     }
     globals->deadBlocks[globals->ndead++] = *target;
     *target = val;
-    naUnlock(globals->threads->bigLock);
+    UNLOCK();
 }

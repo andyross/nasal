@@ -146,7 +146,7 @@ struct Context* naNewContext()
     if(globals == 0)
         initGlobals();
 
-    naLock(globals->threads->bigLock);
+    LOCK();
     struct Context* c = globals->freeContexts;
     if(!c) {
         c = (struct Context*)naAlloc(sizeof(struct Context));
@@ -156,7 +156,7 @@ struct Context* naNewContext()
         globals->freeContexts = c->nextFree;
     }
     c->nextFree = 0;
-    naUnlock(globals->threads->bigLock);
+    UNLOCK();
 
     initContext(c);
     return c;
