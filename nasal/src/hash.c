@@ -102,6 +102,9 @@ void naHash_set(naRef hash, naRef key, naRef val)
     unsigned int col;
     struct HashNode* n;
 
+    if(IS_NIL(val))
+        return naHash_delete(hash, key);
+
     if(!IS_SCALAR(key)) ERR("Hash insert by non-scalar illegal");
     n = find(h, key);
     if(n) {
