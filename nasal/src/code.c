@@ -531,6 +531,7 @@ static naRef run(naContext ctx)
 {
     // Return early if an error occurred.  It will be visible to the
     // caller via naGetError().
+    ctx->error = 0;
     if(setjmp(ctx->jumpHandle))
         return naNil();
     
