@@ -120,6 +120,11 @@ myfunction = func { arg[0] + 1 }
 myfunction(1); # returns 2
 </pre>
 <p>
+One annoyance of this feature is that Nasal functions don't have
+unique internal "names".  So a debugging or exception stack trace can
+only give you a source line number, and not a function name as
+reference.
+<p>
 Nasal has a straightforward, readable syntax which is closest to
 javascript among other scripting languages.  Like later versions of
 javascript, it includes has a hash lookup syntax as well as an object
