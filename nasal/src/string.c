@@ -278,7 +278,7 @@ static int fromnum(double val, unsigned char* s)
         if(raw[i] != '0') break;
     digs = i+1;
 
-    if(exp > 0 || exp < -(DIGITS+2)) {
+    if(exp > 0 || exp < -(DIGITS+3)) {
         // Standard scientific notation
         exp += DIGITS-1;
         *ptr++ = raw[0];
