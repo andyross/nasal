@@ -1,16 +1,7 @@
 #include <math.h>
+#include <string.h>
 
 #include "nasal.h"
-
-// No need to include <string.h> just for this:
-// It needs a funny name because MSVC wants to treat "strlen" as a
-// special symbol.  Ugh...
-static int StrLen(char* s)
-{
-    char* s0 = s;
-    while(*s) s++;
-    return s - s0;
-}
 
 static naRef size(naContext c, naRef me, naRef args)
 {
@@ -150,7 +141,7 @@ static naRef typeOf(naContext c, naRef me, naRef args)
     else if(naIsHash(r)) t = "hash";
     else if(naIsFunc(r)) t = "func";
     else if(naIsGhost(r)) t = "ghost";
-    r = naStr_fromdata(naNewString(c), t, StrLen(t));
+    r = naStr_fromdata(naNewString(c), t, strlen(t));
     return r;
 }
 
@@ -222,7 +213,7 @@ naRef naStdLib(naContext c)
     for(i=0; i<n; i++) {
         naRef code = naNewCCode(c, funcs[i].func);
         naRef name = naStr_fromdata(naNewString(c),
-                                    funcs[i].name, StrLen(funcs[i].name));
+                                    funcs[i].name, strlen(funcs[i].name));
         naHash_set(namespace, name, naNewFunc(c, code));
     }
     return namespace;
