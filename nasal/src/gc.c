@@ -38,8 +38,11 @@ static void freeelem(struct naPool* p, struct naObj* o)
         naHash_gcclean((struct naHash*)o);
         break;
     case T_CODE:
+        FREE(((struct naCode*)o)->byteCode);
+        FREE(((struct naCode*)o)->constants);
+        break;
     case T_CLOSURE:
-        *(int*)0=0;
+        break; // Nothing there
     }
 
     // And add it to the free list
@@ -97,8 +100,13 @@ void naGC_mark(naRef r)
         }
         break;
     case T_CODE:
+        for(i=0; i<r.ref.ptr.code->nConstants; i++)
+            naGC_mark(r.ref.ptr.code->constants[i]);
+        break;
     case T_CLOSURE:
-        *(int*)0=0;
+        naGC_mark(r.ref.ptr.closure->code);
+        naGC_mark(r.ref.ptr.closure->namespace);
+        break;
     }
 }
 

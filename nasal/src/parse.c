@@ -31,14 +31,18 @@ struct precedence {
 };
 #define PRECEDENCE_LEVELS (sizeof(PRECEDENCE)/sizeof(struct precedence))
 
-// FIXME - longjmp
-static void error(char* msg, int line)
+// ERROR HANDLING IS A MESS. FIX IT.
+void naParseError(char* msg)
 {
-    printf("Error: %s at line %d\n", msg, line);
+    printf(msg);
     exit(1);
 }
-
-// Generic parse error
+static void error(char* msg, int line)
+{
+    char buf[128];
+    sprintf(buf, "Error: %s at line %d\n", msg, line);
+    naParseError(buf);
+}
 static void oops(struct Token* t)
 {
     error("parse error", t->line);
@@ -73,6 +77,7 @@ void naParseDestroy(struct Parser* p)
     for(i=0; i<p->nChunks; i++) FREE(p->chunks[i]);
     FREE(p->chunks);
     FREE(p->chunkSizes);
+    p->buf = 0;
 }
 
 void* naParseAlloc(struct Parser* p, int bytes)
@@ -288,6 +293,7 @@ static struct Token* parsePrecedence(struct Parser* p,
     // Single tokens parse as themselves.  Remember to parse any
     // preexisting (block structure) children.
     if(start == end) {
+        // FIXME: handle bare LBRA and LPAR here: "{a:1,b:2}"
         if(start->children) {
             t = start->children;
             while(t) {
@@ -379,17 +385,38 @@ static struct Token* parsePrecedence(struct Parser* p,
     return top;
 }
 
-
-void naParse(struct Parser* p)
+void dumpTokenList(struct Token* t, int prefix); // DEBUG
+naRef naParseCode(struct Context* c, char* buf, int len)
 {
+    naRef codeObj;
     struct Token* t;
+    struct Parser p;
 
-    naLex(p);
-    braceMatch(p->tree.children);
-    fixBlockStructure(p->tree.children);
+    naParseInit(&p);
+    p.context = c;
+    p.buf = buf;
+    p.len = len;
 
-    t = parsePrecedence(p, p->tree.children, p->tree.lastChild, 0);
+    // Lexify, match brace structure, fixup if/for/etc...
+    naLex(&p);
+    braceMatch(p.tree.children);
+    fixBlockStructure(p.tree.children);
+
+    // Recursively run the precedence parser, and fixup the treetop
+    t = parsePrecedence(&p, p.tree.children, p.tree.lastChild, 0);
     t->prev = t->next = 0;
-    p->tree.children = t;
-    p->tree.lastChild = t;
+    p.tree.children = t;
+    p.tree.lastChild = t;
+
+    dumpTokenList(&(p.tree), 0); // DEBUG
+
+    // Generate code here...
+    codeObj = naCodeGen(&p, &(p.tree));
+    // ...
+
+    // Clean up our mess
+    naParseDestroy(&p);
+    return naNil();
 }
+
+

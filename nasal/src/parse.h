@@ -50,13 +50,24 @@ struct Parser {
 
     // Start of current symbol in the lexer
     int symbolStart;
+
+    // Accumulated byte code array
+    unsigned char* byteCode;
+    int nBytes;
+    int codeAlloced;
+
+    // A hash to store the constants and symbols, to coalesce repeated
+    // values.
+    naRef constHash;
+    int nConsts;
 };
 
+void naParseError(char* msg);
 void naParseInit(struct Parser* p);
 void* naParseAlloc(struct Parser* p, int bytes);
 void naParseDestroy(struct Parser* p);
 void naLex(struct Parser* p);
-void naCodeGen(struct Parser* p);
+naRef naCodeGen(struct Parser* p, struct Token* tok);
 
 void naParse(struct Parser* p);
 

@@ -10,6 +10,10 @@
 static int tonum(unsigned char* s, int len, double* result);
 static int fromnum(double val, unsigned char* s);
 
+void naStr_init(naRef s)
+{
+}
+
 int naStr_len(naRef s)
 {
     return s.ref.ptr.str->len;

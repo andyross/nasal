@@ -19,9 +19,9 @@ static void initContext(struct Context* c)
 
 struct Context* naNewContext()
 {
+    // FIXME: make need more than one!
     struct Context* c = &globalContext;
-    if(c->stack != 0) *(int*)0=0; // FIXME
-
+    if(c->stack != 0) *(int*)0=0;
     initContext(c);
     return c;
 }
@@ -39,5 +39,8 @@ void naGarbageCollect()
     }
     for(i=0; i<NUM_NASL_TYPES; i++)
         naGC_reap(&(c->pools[i]));
+
+    // FIXME: need to include constants for Parser's during compilation
 }
+
 

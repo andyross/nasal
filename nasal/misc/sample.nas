@@ -29,7 +29,7 @@ list1 = ["a", "b", 1, 2];
 # comfortable with literals.
 #
 hash1 = { name : "Andy", job : "Hacker" };
-hash2 = { "one" : "uno", "two": "dos", "blue" : "azul" };
+EnglishEspanol = { "one" : "uno", "two": "dos", "blue" : "azul" };
 
 #
 # Both vectors and hashes use square brackets for the lookup operation:

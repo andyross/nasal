@@ -20,6 +20,8 @@ typedef union {
             struct naStr* str;
             struct naVec* vec;
             struct naHash* hash;
+            struct naCode* code;
+            struct naClosure* closure;
         } ptr;
         int reftag;
     } ref;
@@ -78,14 +80,14 @@ struct naCode {
     GC_HEADER;
     unsigned char* byteCode;
     int nBytes;
-    naRef* contstants;
+    naRef* constants;
     int nConstants;
 };
 
 struct naClosure {
     GC_HEADER;
-    struct naCode* code;
-    struct naHash* namespace;
+    naRef code;
+    naRef namespace;
 };
 
 struct naPool {
@@ -106,15 +108,15 @@ void BZERO(void* m, int n);
 // Predicates
 int naEqual(naRef a, naRef b);
 naRef naNil();
-
-naRef naObj(int type, struct naObj* o); // Make a naRef from an object pointer
-
-struct Context* naNewContext();
-void naGarbageCollect();
-
 int naTypeSize(int type);
 
+// Context-level stuff
+struct Context* naNewContext();
+void naGarbageCollect();
+naRef naParseCode(struct Context* c, char* buf, int len);
+
 // Allocators/generators:
+naRef naObj(int type, struct naObj* o);
 naRef naNew(struct Context* c, int type);
 naRef naNum(double num);
 naRef naNewString(struct Context* c);
@@ -137,6 +139,7 @@ int naStr_len(naRef s);
 void naStr_gcclean(struct naStr* s);
 
 // Vector utilities:
+void naVec_init(naRef vec);
 naRef naVec_removelast(naRef vec);
 int naVec_append(naRef vec, naRef o);
 int naVec_size(naRef v);

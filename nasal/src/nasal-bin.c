@@ -114,7 +114,6 @@ int main(int argc, char** argv)
     FILE* f;
     struct stat fdat;
     char* buf;
-    struct Parser p;
     struct Context *ctx;
 
     for(i=1; i<argc; i++) {
@@ -124,16 +123,8 @@ int main(int argc, char** argv)
         fread(buf, 1, fdat.st_size, f);
 
         ctx = naNewContext();
-        naParseInit(&p);
+        naParseCode(ctx, buf, fdat.st_size);
 
-        p.buf = buf;
-        p.len = fdat.st_size;
-
-        naParse(&p);
-
-        dumpTokenList(&p.tree, 0);
-
-        naParseDestroy(&p);
         free(buf);
     }
     return 0;
