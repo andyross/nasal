@@ -18,11 +18,13 @@ static int fromnum(double val, unsigned char* s);
 
 int naStr_len(naRef s)
 {
+    if(!IS_STR(s)) return 0;
     return s.ref.ptr.str->len;
 }
 
 unsigned char* naStr_data(naRef s)
 {
+    if(!IS_STR(s)) return 0;
     return s.ref.ptr.str->data;
 }
 
@@ -42,6 +44,7 @@ static void setlen(struct naStr* s, int sz)
 
 naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
 {
+    if(!IS_STR(dst)) return naNil();
     setlen(dst.ref.ptr.str, len);
     memcpy(dst.ref.ptr.str->data, data, len);
     return dst;
@@ -52,6 +55,7 @@ naRef naStr_concat(naRef dest, naRef s1, naRef s2)
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* a = s1.ref.ptr.str;
     struct naStr* b = s2.ref.ptr.str;
+    if(!(IS_STR(s1)&&IS_STR(s2)&&IS_STR(dest))) return naNil();
     setlen(dst, a->len + b->len);
     memcpy(dst->data, a->data, a->len);
     memcpy(dst->data + a->len, b->data, b->len);
@@ -62,6 +66,7 @@ naRef naStr_substr(naRef dest, naRef str, int start, int len)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* s = str.ref.ptr.str;
+    if(!(IS_STR(dest)&&IS_STR(str))) return naNil();
     if(start + len > s->len) { dst->len = 0; dst->data = 0; return naNil(); }
     setlen(dst, len);
     memcpy(dst->data, s->data + start, len);

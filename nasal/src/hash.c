@@ -112,6 +112,7 @@ int naHash_get(naRef hash, naRef key, naRef* out)
 {
     struct naHash* h = hash.ref.ptr.hash;
     struct HashNode* n;
+    if(!IS_HASH(hash)) return 0;
     n = find(h, key);
     if(n) {
         *out = n->val;
@@ -125,7 +126,9 @@ int naHash_get(naRef hash, naRef key, naRef* out)
 // Simpler version.  Don't create a new node if the value isn't there
 int naHash_tryset(naRef hash, naRef key, naRef val)
 {
-    struct HashNode* n = find(hash.ref.ptr.hash, key);
+    struct HashNode* n;
+    if(!IS_HASH(hash)) return 0;
+    n = find(hash.ref.ptr.hash, key);
     if(n) n->val = val;
     return n != 0;
 }
@@ -135,6 +138,8 @@ void naHash_set(naRef hash, naRef key, naRef val)
     struct naHash* h = hash.ref.ptr.hash;
     unsigned int col;
     struct HashNode* n;
+
+    if(!IS_HASH(hash)) return;
 
     n = find(h, key);
     if(n) {
@@ -157,8 +162,11 @@ void naHash_set(naRef hash, naRef key, naRef val)
 void naHash_delete(naRef hash, naRef key)
 {
     struct naHash* h = hash.ref.ptr.hash;
-    int col = hashcolumn(h, key);
-    struct HashNode *last=0, *hn = h->table[col];
+    int col;
+    struct HashNode *last=0, *hn;
+    if(!IS_HASH(hash)) return;
+    col = hashcolumn(h, key);
+    hn = h->table[col];
     while(hn) {
         if(naEqual(hn->key, key)) {
             if(last == 0) h->table[col] = hn->next;
@@ -176,6 +184,7 @@ void naHash_keys(naRef dst, naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
     int i;
+    if(!IS_HASH(hash)) return;
     for(i=0; i<(1<<h->lgalloced); i++) {
         struct HashNode* hn = h->table[i];
         while(hn) {
@@ -187,6 +196,7 @@ void naHash_keys(naRef dst, naRef hash)
 
 int naHash_size(naRef h)
 {
+    if(!IS_HASH(h)) return 0;
     return h.ref.ptr.hash->size;
 }
 

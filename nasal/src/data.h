@@ -12,16 +12,17 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC, T_CCODE,
 
 #define IS_REF(r) ((r).ref.reftag == NASAL_REFTAG)
 #define IS_NUM(r) ((r).ref.reftag != NASAL_REFTAG)
+#define IS_OBJ(r) (IS_REF((r)) && (r).ref.ptr.obj != 0)
 #define IS_NIL(r) (IS_REF((r)) && (r).ref.ptr.obj == 0)
-#define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_STR)
-#define IS_VEC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_VEC)
-#define IS_HASH(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_HASH)
-#define IS_CODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CODE)
-#define IS_FUNC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_FUNC)
-#define IS_CLOSURE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
-#define IS_CCODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CCODE)
+#define IS_STR(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_STR)
+#define IS_VEC(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_VEC)
+#define IS_HASH(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_HASH)
+#define IS_CODE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CODE)
+#define IS_FUNC(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_FUNC)
+#define IS_CLOSURE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
+#define IS_CCODE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CCODE)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
-#define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == T_STR)
+#define IS_SCALAR(r) (IS_NUM((r)) || IS_STR((r)))
 
 // This is a macro instead of a separate struct to allow compilers to
 // avoid padding.  GCC on x86, at least, will always padd the size of

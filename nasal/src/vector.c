@@ -30,24 +30,27 @@ void naVec_gcclean(struct naVec* v)
 
 naRef naVec_get(naRef v, int i)
 {
+    if(!IS_VEC(v)) return naNil();
     return v.ref.ptr.vec->array[i];
 }
 
 void naVec_set(naRef vec, int i, naRef o)
 {
     struct naVec* v = vec.ref.ptr.vec;
-    if(i >= v->size) return;
+    if(!IS_VEC(vec) || i >= v->size) return;
     v->array[i] = o;
 }
 
 int naVec_size(naRef v)
 {
+    if(!IS_VEC(v)) return 0;
     return v.ref.ptr.vec->size;
 }
 
 int naVec_append(naRef vec, naRef o)
 {
     struct naVec* v = vec.ref.ptr.vec;
+    if(!IS_VEC(vec)) return 0;
     if(v->size >= v->alloced)
         realloc(v);
     v->array[v->size] = o;
@@ -58,7 +61,7 @@ naRef naVec_removelast(naRef vec)
 {
     naRef o;
     struct naVec* v = vec.ref.ptr.vec;
-    if(v->size == 0) return naNil();
+    if(!IS_VEC(vec) || v->size == 0) return naNil();
     o = v->array[v->size - 1];
     v->size--;
     if(v->size < (v->alloced >> 1))
