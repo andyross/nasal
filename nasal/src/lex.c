@@ -330,4 +330,6 @@ void naLex(struct Parser* p)
             }
         }
     }
+    if(p->symbolStart >= 0)
+        collectSymbol(p, p->len);
 }
