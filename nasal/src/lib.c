@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "nasal.h"
+#include "code.h"
 
 static naRef size(naContext c, naRef me, naRef args)
 {
@@ -139,38 +140,25 @@ static naRef typeOf(naContext c, naRef me, naRef args)
     return r;
 }
 
-// Does a call into a "sub" context.  Throws an error if the subcall
-// does.  Note that there is no outer API for unwinding the stack, so
-// the caller will only see the stack down to the enclosing call() or
-// eval().  That's not a good thing, how to handle this?
-static naRef subcall(naContext c, naRef func, naRef args, naRef me)
-{
-    naContext subc = naNewContext();
-    naRef result = naCall(subc, func, args, me, naNil());
-    naFreeContext(subc); // Doesn't free memory, so the next line is OK:
-    if(naGetError(subc)) naRuntimeError(c, naGetError(subc));
-    return result;
-}
-
-static naRef f_eval(naContext c, naRef me, naRef args)
+static naRef f_compile(naContext c, naRef me, naRef args)
 {
     int errLine;
     naRef script, code, fname;
     script = naVec_get(args, 0);
     if(!naIsString(script)) return naNil();
-    fname = naStr_fromdata(naNewString(c), "eval", 4);
+    fname = naStr_fromdata(naNewString(c), "<compile>", 4);
     code = naParseCode(c, fname, 1,
                        naStr_data(script), naStr_len(script), &errLine);
     if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
-    code = naBindToContext(c, code);
-    return subcall(c, code, naNil(), naNil());
+    return naBindToContext(c, code);
 }
 
 // Funcation metacall API.  Allows user code to generate an arg vector
 // at runtime and/or call function references on arbitrary objects.
 static naRef f_call(naContext c, naRef me, naRef args)
 {
-    naRef func, callargs, callme;
+    naContext subc;
+    naRef func, callargs, callme, result;
     func = naVec_get(args, 0);
     callargs = naVec_get(args, 1);
     callme = naVec_get(args, 2); // Might be nil, that's OK
@@ -178,7 +166,27 @@ static naRef f_call(naContext c, naRef me, naRef args)
     if(naIsNil(callargs)) callargs = naNewVector(c);
     else if(!naIsVector(callargs)) return naNil();
     if(!naIsNil(callme) && !naIsHash(callme)) return naNil();
-    return subcall(c, func, callargs, callme);
+    subc = naNewContext();
+    result = naCall(subc, func, callargs, callme, naNil());
+    naFreeContext(subc); // Doesn't free memory, so the next line is OK:
+    if(naVec_size(args) > 2 &&
+       naGetError(subc) && (strcmp(naGetError(subc), "__die__") == 0))
+    {
+        naRef ex = naVec_get(args, naVec_size(args) - 1);
+        if(naIsVector(ex)) {
+            naVec_append(ex, c->dieArg);
+            // FIXME: append stack trace
+        }
+        return naNil();
+    }
+    return result;
+}
+
+static naRef f_die(naContext c, naRef me, naRef args)
+{
+    c->dieArg = naVec_get(args, 0);
+    naRuntimeError(c, "__die__");
+    return naNil(); // never executes
 }
 
 struct func { char* name; naCFunction func; };
@@ -196,8 +204,9 @@ static struct func funcs[] = {
     { "substr", substr },
     { "contains", contains },
     { "typeof", typeOf },
-    { "eval", f_eval },
+    { "compile", f_compile },
     { "call", f_call },
+    { "die", f_die },
 };
 
 naRef naStdLib(naContext c)

@@ -1,3 +1,9 @@
+eval = func {
+    fn = arg[0];
+    if(typeof(fn) == "scalar") { fn = compile(fn); }
+    return call(fn, []);
+}
+
 outer = "blah";
 print("outer = ", outer, "\n");
 

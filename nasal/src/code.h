@@ -64,6 +64,7 @@ struct Context {
     // Error handling
     jmp_buf jumpHandle;
     char* error;
+    naRef dieArg;
 
     // Linked list pointers in globals
     struct Context* nextFree;
