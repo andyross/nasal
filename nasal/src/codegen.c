@@ -158,7 +158,19 @@ static void genHash(struct Parser* p, struct Token* t)
 
 static void genFuncall(struct Parser* p, struct Token* t)
 {
-    *(int*)0=0;
+    int op = OP_FCALL;
+    if(LEFT(t)->type == TOK_DOT) {
+        genExpr(p, LEFT(LEFT(t)));
+        emit(p, OP_DUP);
+        genScalarConstant(p, RIGHT(LEFT(t)));
+        emit(p, OP_MEMBER);
+        op = OP_MCALL;
+    } else {
+        genExpr(p, LEFT(t));
+    }
+    emit(p, OP_NEWVEC);
+    genList(p, RIGHT(t));
+    emit(p, op);
 }
 
 static void genExpr(struct Parser* p, struct Token* t)

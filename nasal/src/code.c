@@ -26,7 +26,8 @@ char* opStringDEBUG(int op)
     case OP_NEQ: return "NEQ";
     case OP_JMP: return "JMP";
     case OP_JIF: return "JIF";
-    case OP_CALL: return "CALL";
+    case OP_FCALL: return "FCALL";
+    case OP_MCALL: return "MCALL";
     case OP_RETURN: return "RETURN";
     case OP_PUSHCONST: return "PUSHCONST";
     case OP_PUSHNIL: return "PUSHNIL";
@@ -123,8 +124,11 @@ static void initContext(struct Context* c)
     BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 
+    // Cache pre-calculated "me" and "arg" scalars
     c->meRef = naNewString(c);
     naStr_fromdata(c->meRef, "me", 2);
+    c->argRef = naNewString(c);
+    naStr_fromdata(c->meRef, "arg", 3);
 }
 
 struct Context* naNewContext()
@@ -159,6 +163,13 @@ void setupFuncall(struct Context* ctx, naRef closure, naRef args)
 {
     struct Frame* f;
 
+    // DEBUG
+    if(!IS_CLOSURE(closure)) *(int*)0=0;
+    if(!IS_CODE(closure.ref.ptr.closure->code)) *(int*)0=0;
+    if(!IS_HASH(closure.ref.ptr.closure->namespace)) *(int*)0=0;
+    if(!IS_VEC(args)) *(int*)0=0;
+    // DEBUG
+
     if(ctx->fTop >= MAX_RECURSION) ERR("recursion too deep");
 
     f = &(ctx->fStack[ctx->fTop++]);
@@ -167,8 +178,7 @@ void setupFuncall(struct Context* ctx, naRef closure, naRef args)
     f->locals = naNewHash(ctx);
     f->ip = 0;
     f->line = 0;
-
-    naHash_set(f->locals, ctx->meRef, args);
+    naHash_set(f->locals, ctx->argRef, args);
 }
 
 static double numify(naRef o)
@@ -220,6 +230,21 @@ static naRef evalBinaryNumeric(int op, naRef ra, naRef rb)
     case OP_GTE:   return naNum(a >= b ? 1 : 0);
     }
     return naNil();
+}
+
+// OP_EACH works like a vector get, except that it leaves the vector
+// and index on the stack, increments the index after use, and pops
+// the arguments and pushes a nil if the index is beyond the end.
+static naRef evalEach(struct Context* ctx)
+{
+    int idx = (int)(ctx->opStack[ctx->opTop-1].num);
+    naRef vec = ctx->opStack[ctx->opTop-2];
+    if(idx >= vec.ref.ptr.vec->size) {
+        ctx->opTop -= 2; // pop two values
+        return naNil();
+    }
+    ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
+    return naVec_get(vec, idx);
 }
 
 // When a code object comes out of the constant pool and shows up on
@@ -291,6 +316,9 @@ static void run1(struct Context* ctx)
     case OP_POP:
         POP(ctx);
         break;
+    case OP_DUP:
+        PUSH(ctx, ctx->opStack[ctx->opTop-1]);
+        break;
     case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
         a = POP(ctx); b = POP(ctx);
@@ -320,7 +348,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_PUSHCONST:
         a = cd->constants[ARG16(cd->byteCode, f)];
-        if(IS_CODE(a)) a = bindFunction(ctx, f->locals, a);
+        if(IS_CODE(a)) a = bindFunction(ctx, a, f->locals);
         PUSH(ctx, a);
         break;
     case OP_PUSHNIL:
@@ -377,11 +405,18 @@ static void run1(struct Context* ctx)
         if(naTrue(POP(ctx)))
             f->ip = ARG16(cd->byteCode, f);
         break;
-    case OP_CALL:
+    case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
         setupFuncall(ctx, a, b);
         f = &(ctx->fStack[ctx->fTop-1]); // Fixup local variables to reflect
         cd = f->code.ref.ptr.code;       // the change of frame
+        break;
+    case OP_MCALL:
+        c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
+        setupFuncall(ctx, b, c);
+        f = &(ctx->fStack[ctx->fTop-1]); // as above
+        cd = f->code.ref.ptr.code;
+        naHash_set(f->locals, ctx->meRef, a);
         break;
     case OP_RETURN:
         ctx->fTop--;
@@ -391,6 +426,9 @@ static void run1(struct Context* ctx)
         break;
     case OP_LINE:
         f->line = ARG16(cd->byteCode, f);
+        break;
+    case OP_EACH:
+        PUSH(ctx, evalEach(ctx));
         break;
     }
 
