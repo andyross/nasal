@@ -112,7 +112,6 @@ struct naGhost {
 struct naPool {
     int           type;
     int           elemsz;
-    int           nblocks;
     struct Block* blocks;
     void**   free0; // pointer to the alloced buffer
     int     freesz; // size of the alloced buffer

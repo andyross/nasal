@@ -14,6 +14,7 @@ static void mark(naRef r);
 struct Block {
     int   size;
     char* block;
+    struct Block* next;
 };
 
 // Must be called with the bigLock!
@@ -107,27 +108,22 @@ static void freeelem(struct naPool* p, struct naObj* o)
 static void newBlock(struct naPool* p, int need)
 {
     int i;
-    char* buf;
-    struct Block* newblocks;
+    struct Block* newb;
 
     if(need < MIN_BLOCK_SIZE) need = MIN_BLOCK_SIZE;
 
-    // FIXME: store blocks in a list. This is just dumb...
-    newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
-    for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
-    naFree(p->blocks);
-    p->blocks = newblocks;
-    buf = naAlloc(need * p->elemsz);
-    naBZero(buf, need * p->elemsz);
-    p->blocks[p->nblocks].size = need;
-    p->blocks[p->nblocks].block = buf;
-    p->nblocks++;
+    newb = naAlloc(sizeof(struct Block));
+    newb->block = naAlloc(need * p->elemsz);
+    newb->size = need;
+    newb->next = p->blocks;
+    p->blocks = newb;
+    naBZero(newb->block, need * p->elemsz);
     
     if(need > p->freesz - p->freetop) need = p->freesz - p->freetop;
     p->nfree = 0;
     p->free = p->free0 + p->freetop;
     for(i=0; i < need; i++) {
-        struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
+        struct naObj* o = (struct naObj*)(newb->block + i*p->elemsz);
         o->mark = 0;
         o->lock = 0;
         o->type = T_GCFREED; // DEBUG
@@ -140,7 +136,6 @@ void naGC_init(struct naPool* p, int type)
 {
     p->type = type;
     p->elemsz = naTypeSize(type);
-    p->nblocks = 0;
     p->blocks = 0;
 
     p->free0 = p->free = 0;
@@ -150,9 +145,9 @@ void naGC_init(struct naPool* p, int type)
 
 static int poolsize(struct naPool* p)
 {
-    int i, total=0;
-    for(i=0; i<p->nblocks; i++)
-        total += ((struct Block*)(p->blocks + i))->size;
+    int total = 0;
+    struct Block* b = p->blocks;
+    while(b) { total += b->size; b = b->next; }
     return total;
 }
 
@@ -227,7 +222,8 @@ static void mark(naRef r)
 // allocates more space if needed.
 static void reap(struct naPool* p)
 {
-    int i, elem, freesz, total = poolsize(p);
+    struct Block* b;
+    int elem, freesz, total = poolsize(p);
     p->nfree = 0;
     freesz = total < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : total;
     freesz = (3 * freesz / 2) + (globals->threads->nThreads * OBJ_CACHE_SZ);
@@ -237,15 +233,13 @@ static void reap(struct naPool* p)
         p->free = p->free0 = naAlloc(sizeof(void*) * p->freesz);
     }
 
-    for(i=0; i<p->nblocks; i++) {
-        struct Block* b = p->blocks + i;
+    for(b = p->blocks; b; b = b->next)
         for(elem=0; elem < b->size; elem++) {
             struct naObj* o = (struct naObj*)(b->block + elem * p->elemsz);
             if(o->mark == 0)
                 freeelem(p, o);
             o->mark = 0;
         }
-    }
 
     // allocs of this type until the next collection
     globals->allocCount += total/2;
