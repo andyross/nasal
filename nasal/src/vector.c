@@ -55,7 +55,7 @@ int naVec_append(naRef vec, naRef o)
 naRef naVec_removelast(naRef vec)
 {
     struct naVec* v = vec.ref.ptr.vec;
-    if(v->size == 0) ERR("removelast on zero-length array");
+    if(v->size == 0) return naNil();
     naRef o = v->array[v->size - 1];
     v->size--;
     if(v->size < (v->alloced >> 1))

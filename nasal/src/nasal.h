@@ -121,7 +121,6 @@ struct naPool {
 // FIXME: write these!
 void FREE(void* m);
 void* ALLOC(int n);
-void ERR(char* msg);
 void BZERO(void* m, int n);
 
 // Predicates

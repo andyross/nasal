@@ -1,4 +1,5 @@
 #include <stdio.h> // DEBUG
+#include <stdlib.h> // DEBUG
 
 #include "nasl.h"
 #include "code.h"
@@ -8,40 +9,81 @@ struct Context globalContext;
 
 #define DBG(expr) /* expr */
 
+#define ERR(c, msg) naRuntimeError((c),(msg))
+void naRuntimeError(struct Context* c, char* msg)
+{ 
+    printf("%s\n", msg);
+    exit(1);
+}
+
 char* opStringDEBUG(int op);
 void printOpDEBUG(int ip, int op);
 void printRefDEBUG(naRef r);
 void printStackDEBUG(struct Context* ctx);
 
-static int checkVec(naRef vec, naRef idx)
+int boolify(struct Context* ctx, naRef r)
 {
-    int i;
-    if(!IS_NUM(idx)) ERR("non-numeric vector index"); // FIXME: "1"
-    i = (int)idx.num;
+    if(IS_NIL(r)) return 0;
+    if(IS_NUM(r)) return r.num != 0;
+    if(IS_STR(r)) return 1;
+    ERR(ctx, "non-scalar used in boolean context");
+    return 0;
+}
+
+static double numify(struct Context* ctx, naRef o)
+{
+    double n;
+    if(IS_NUM(o)) return o.num;
+    else if(IS_NIL(o)) ERR(ctx, "nil used in numeric context");
+    else if(!IS_STR(o)) ERR(ctx, "non-scalar in numeric context");
+    else if(naStr_tonum(o, &n)) return n;
+    else ERR(ctx, "non-numeric string in numeric context");
+    return 0;
+}
+
+
+static naRef stringify(struct Context* ctx, naRef r)
+{
+    naRef result;
+    if(IS_STR(r)) return r;
+    if(IS_NUM(r)) {
+        result = naNewString(ctx);
+        naStr_fromnum(result, r.num);
+        return result;
+    }
+    ERR(ctx, "non-scalar in string context");
+    return naNil();
+}
+
+static int checkVec(struct Context* ctx, naRef vec, naRef idx)
+{
+    int i = (int)numify(ctx, idx);
     if(i < 0 || i >= vec.ref.ptr.vec->size)
-        ERR("vector index out of bounds");
+        ERR(ctx, "vector index out of bounds");
     return i;
 }
 
-static naRef containerGet(naRef box, naRef key)
+static naRef containerGet(struct Context* ctx, naRef box, naRef key)
 {
     naRef result = naNil();
+    if(!IS_SCALAR(key)) ERR(ctx, "container index not scalar");
     if(IS_HASH(box)) {
         if(!naHash_get(box, key, &result))
-            ERR("undefined value in container");
+            ERR(ctx, "undefined value in container");
     } else if(IS_VEC(box)) {
-        result = naVec_get(box, checkVec(box, key));
+        result = naVec_get(box, checkVec(ctx, box, key));
     } else {
-        ERR("extract from non-container");
+        ERR(ctx, "extract from non-container");
     }
     return result;
 }
 
-static void containerSet(naRef box, naRef key, naRef val)
+static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 {
-    if     (IS_HASH(box)) naHash_set(box, key, val);
-    else if(IS_VEC(box))  naVec_set(box, checkVec(box, key), val);
-    else                  ERR("insert into non-container");
+    if(!IS_SCALAR(key))   ERR(ctx, "container index not scalar");
+    else if(IS_HASH(box)) naHash_set(box, key, val);
+    else if(IS_VEC(box))  naVec_set(box, checkVec(ctx, box, key), val);
+    else                  ERR(ctx, "insert into non-container");
 }
 
 static void initContext(struct Context* c)
@@ -94,7 +136,7 @@ void naGarbageCollect()
 void setupFuncall(struct Context* ctx, naRef func, naRef args)
 {
     struct Frame* f;
-    if(ctx->fTop >= MAX_RECURSION) ERR("recursion too deep");
+    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "recursion too deep");
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
     f->ip = 0;
@@ -104,35 +146,10 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     naHash_set(f->locals, ctx->argRef, args);
 }
 
-static double numify(naRef o)
+static naRef evalAndOr(struct Context* ctx, int op, naRef ra, naRef rb)
 {
-    double n;
-    if(IS_NUM(o)) return o.num;
-    else if(IS_NIL(o)) ERR("nil used in numeric context");
-    else if(!IS_STR(o)) ERR("non-scalar in numeric context");
-    else if(naStr_tonum(o, &n)) return n;
-    else ERR("non-numeric string in numeric context");
-    return 0;
-}
-
-
-static naRef stringify(struct Context* ctx, naRef r)
-{
-    naRef result;
-    if(IS_STR(r)) return r;
-    if(IS_NUM(r)) {
-        result = naNewString(ctx);
-        naStr_fromnum(result, r.num);
-        return result;
-    }
-    ERR("non-scalar in string context");
-    return naNil();
-}
-
-static naRef evalAndOr(int op, naRef ra, naRef rb)
-{
-    int a = naTrue(ra);
-    int b = naTrue(rb);
+    int a = boolify(ctx, ra);
+    int b = boolify(ctx, rb);
     int result;
     if(op == OP_AND) result = a && b ? 1 : 0;
     else             result = a || b ? 1 : 0;
@@ -145,9 +162,9 @@ static naRef evalEquality(int op, naRef ra, naRef rb)
     return naNum((op==OP_EQ) ? result : !result);
 }
 
-static naRef evalBinaryNumeric(int op, naRef ra, naRef rb)
+static naRef evalBinaryNumeric(struct Context* ctx, int op, naRef ra, naRef rb)
 {
-    double a = numify(ra), b = numify(rb);
+    double a = numify(ctx, ra), b = numify(ctx, rb);
     switch(op) {
     case OP_PLUS:  return naNum(a + b);
     case OP_MINUS: return naNum(a - b);
@@ -195,12 +212,12 @@ static int getClosure(naRef closure, naRef sym, naRef* result)
 }
 
 // Get a local symbol, or check the closure list if it isn't there
-static naRef getLocal(struct Frame* f, naRef sym)
+static naRef getLocal(struct Context* ctx, struct Frame* f, naRef sym)
 {
     naRef result;
     if(!naHash_get(f->locals, sym, &result)) {
         if(!getClosure(f->func.ref.ptr.func->closure, sym, &result))
-            ERR("undefined symbol");
+            ERR(ctx, "undefined symbol");
     }
     return result;
 }
@@ -225,19 +242,19 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
 
 static void PUSH(struct Context* ctx, naRef r)
 {
-    if(ctx->opTop >= MAX_STACK_DEPTH) ERR("stack overflow");
+    if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow");
     ctx->opStack[ctx->opTop++] = r;
 }
 
 static naRef POP(struct Context* ctx)
 {
-    if(ctx->opTop == 0) ERR("stack underflow");
+    if(ctx->opTop == 0) ERR(ctx, "stack underflow");
     return ctx->opStack[--ctx->opTop];
 }
 
 static naRef TOP(struct Context* ctx)
 {
-    if(ctx->opTop == 0) ERR("stack underflow");
+    if(ctx->opTop == 0) ERR(ctx, "stack underflow");
     return ctx->opStack[ctx->opTop-1];
 }
 
@@ -252,12 +269,12 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
 static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
 {
     naRef p;
-    if(!IS_HASH(obj)) ERR("non-objects have no members");
+    if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
     if(naHash_get(obj, fld, result)) {
         return 1;
     } else if(naHash_get(obj, ctx->parentsRef, &p)) {
         int i;
-        if(!IS_VEC(p)) ERR("parents field not vector");
+        if(!IS_VEC(p)) ERR(ctx, "parents field not vector");
         for(i=0; i<p.ref.ptr.vec->size; i++)
             if(getMember(ctx, p.ref.ptr.vec->array[i], fld, result))
                 return 1;
@@ -297,7 +314,7 @@ static void run1(struct Context* ctx)
     case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
         a = POP(ctx); b = POP(ctx);
-        PUSH(ctx, evalBinaryNumeric(op, b, a));
+        PUSH(ctx, evalBinaryNumeric(ctx, op, b, a));
         break;
     case OP_EQ: case OP_NEQ:
         a = POP(ctx); b = POP(ctx);
@@ -305,7 +322,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_AND: case OP_OR:
         a = POP(ctx); b = POP(ctx);
-        PUSH(ctx, evalAndOr(op, a, b));
+        PUSH(ctx, evalAndOr(ctx, op, a, b));
         break;
     case OP_CAT:
         a = stringify(ctx, POP(ctx)); b = stringify(ctx, POP(ctx));
@@ -315,11 +332,11 @@ static void run1(struct Context* ctx)
         break;
     case OP_NEG:
         a = POP(ctx);
-        PUSH(ctx, naNum(-numify(a)));
+        PUSH(ctx, naNum(-numify(ctx, a)));
         break;
     case OP_NOT:
         a = POP(ctx);
-        PUSH(ctx, naNum(naTrue(a) ? 0 : 1));
+        PUSH(ctx, naNum(boolify(ctx, a) ? 0 : 1));
         break;
     case OP_PUSHCONST:
         a = cd->constants[ARG16(cd->byteCode, f)];
@@ -350,7 +367,7 @@ static void run1(struct Context* ctx)
         naHash_set(a, b, c);
         break;
     case OP_LOCAL:
-        a = getLocal(f, POP(ctx));
+        a = getLocal(ctx, f, POP(ctx));
         PUSH(ctx, a);
         break;
     case OP_SETLOCAL:
@@ -360,23 +377,23 @@ static void run1(struct Context* ctx)
     case OP_MEMBER:
         a = POP(ctx); b = POP(ctx);
         if(!getMember(ctx, b, a, &c))
-            ERR("no such member");
+            ERR(ctx, "no such member");
         PUSH(ctx, c);
         break;
     case OP_SETMEMBER:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: hash, key, val
-        if(!IS_HASH(a)) ERR("non-objects have no members");
+        if(!IS_HASH(a)) ERR(ctx, "non-objects have no members");
         naHash_set(a, b, c);
         PUSH(ctx, c);
         break;
     case OP_INSERT:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: box, key, val
-        containerSet(a, b, c);
+        containerSet(ctx, a, b, c);
         PUSH(ctx, c);
         break;
     case OP_EXTRACT:
         b = POP(ctx); a = POP(ctx); // a,b: box, key
-        PUSH(ctx, containerGet(a, b));
+        PUSH(ctx, containerGet(ctx, a, b));
         break;
     case OP_JMP:
         f->ip = ARG16(cd->byteCode, f);
@@ -392,7 +409,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_JIFNOT:
         arg = ARG16(cd->byteCode, f);
-        if(!naTrue(POP(ctx))) {
+        if(!boolify(ctx, POP(ctx))) {
             f->ip = arg;
             DBG(printf("   [Jump to: %d]\n", f->ip);)
         }
@@ -431,7 +448,7 @@ static void run1(struct Context* ctx)
         ctx->opTop = ctx->markStack[--ctx->markTop];
         break;
     default:
-        ERR("bad opcode");
+        ERR(ctx, "bad opcode");
     }
 
     if(ctx->fTop <= 0)
@@ -448,5 +465,5 @@ void naRun(struct Context* ctx, naRef code)
         run1(ctx);
         DBG(printStackDEBUG(ctx);)
     }
-    DBG(printf("DONE\n");)
+    printStackDEBUG(ctx);
 }

@@ -372,7 +372,7 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
     int levels = 1, loop = -1, bp, cp, i;
     if(RIGHT(t)) {
         if(RIGHT(t)->type != TOK_SYMBOL)
-            ERR("bad break/continue label");
+            naParseError(p, "bad break/continue label", t->line);
         for(i=0; i<p->cg->loopTop; i++)
             if(tokMatch(RIGHT(t), p->cg->loops[i].label))
                 loop = i;
@@ -469,6 +469,8 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_DOT:
         genExpr(p, LEFT(t));
+        if(RIGHT(t)->type != TOK_SYMBOL)
+            naParseError(p, "object field not symbol", RIGHT(t)->line);
         genScalarConstant(p, RIGHT(t));
         emit(p, OP_MEMBER);
         break;

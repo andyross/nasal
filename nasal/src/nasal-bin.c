@@ -81,10 +81,10 @@ void printRefDEBUG(naRef r)
     } else if(IS_FUNC(r)) {
         printf("<func>\n");
     } else if(IS_CLOSURE(r)) {
-        ERR("DEBUG: closure object on stack!\n");
+        printf("DEBUG: closure object on stack!\n");
     } else if(IS_CODE(r)) {
-        ERR("DEBUG: code object on stack!\n");
-    } else ERR("DEBUG ACK");
+        printf("DEBUG: code object on stack!\n");
+    } else printf("DEBUG ACK\n");
 }
 
 void printStackDEBUG(struct Context* ctx)

@@ -7,7 +7,6 @@
 
 void FREE(void* m) { free(m); }
 void* ALLOC(int n) { return malloc(n); }
-void ERR(char* msg) { fprintf(stderr, "%s\n", msg); exit(1); }
 void BZERO(void* m, int n) { bzero(m, n); }
 
 int naTrue(naRef r)
@@ -15,7 +14,6 @@ int naTrue(naRef r)
     if(IS_NIL(r)) return 0;
     if(IS_NUM(r)) return r.num != 0;
     if(IS_STR(r)) return 1;
-    ERR("non-scalar used in boolean context");
     return 0;
 }
 
@@ -24,8 +22,7 @@ naRef naNew(struct Context* c, int type)
     struct naObj* o;
     if((o = naGC_get(&(c->pools[type]))) == 0) {
         naGarbageCollect();
-        if((o = naGC_get(&(c->pools[type]))) == 0)
-            ERR("out of memory");
+        o = naGC_get(&(c->pools[type]));
     }
     return naObj(type, o);
 }

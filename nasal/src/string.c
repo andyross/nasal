@@ -45,7 +45,7 @@ void naStr_substr(naRef dest, naRef str, int start, int len)
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* s = str.ref.ptr.str;
     FREE(dst->data);
-    if(start + len > s->len) ERR("substr out of range");
+    if(start + len > s->len) { dst->len = 0; dst->data = 0; return; }
     dst->len = len;
     dst->data = ALLOC(dst->len);
     memcpy(dst->data, s->data + start, len);
