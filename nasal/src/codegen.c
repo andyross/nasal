@@ -90,8 +90,17 @@ static int findConstantIndex(struct Parser* p, struct Token* t)
 
 static void genScalarConstant(struct Parser* p, struct Token* t)
 {
-    int idx = findConstantIndex(p, t);
-    emitImmediate(p, OP_PUSHCONST, idx);
+    // These opcodes are for special-case use in other constructs, but
+    // we might as well use them here to save a few bytes in the
+    // instruction stream.
+    if(t->str == 0 && t->num == 1) {
+        emit(p, OP_PUSHONE);
+    } else if(t->str == 0 && t->num == 0) {
+        emit(p, OP_PUSHZERO);
+    } else {
+        int idx = findConstantIndex(p, t);
+        emitImmediate(p, OP_PUSHCONST, idx);
+    }
 }
 
 static int genLValue(struct Parser* p, struct Token* t)
