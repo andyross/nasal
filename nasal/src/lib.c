@@ -1,6 +1,6 @@
 #include "nasl.h"
 
-// No need to include <string.h> just for this
+// No need to include <string.h> just for this:
 static int strlen(char* s)
 {
     char* s0 = s;
@@ -13,16 +13,16 @@ static naRef size(naContext c, naRef args)
     naRef r;
     if(naVec_size(args) == 0) return naNil();
     r = naVec_get(args, 0);
-    if(IS_STR(r)) return naNum(r.ref.ptr.str->len);
-    if(IS_VEC(r)) return naNum(r.ref.ptr.vec->size);
-    if(IS_HASH(r)) return naNum(r.ref.ptr.vec->size);
+    if(naIsString(r)) return naNum(naStr_len(r));
+    if(naIsVector(r)) return naNum(naVec_size(r));
+    if(naIsHash(r)) return naNum(naHash_size(r));
     return naNil();
 }
 
 static naRef keys(naContext c, naRef args)
 {
     naRef v, h = naVec_get(args, 0);
-    if(!IS_HASH(h)) return naNil();
+    if(!naIsHash(h)) return naNil();
     v = naNewVector(c);
     naHash_keys(v, h);
     return v;
@@ -32,7 +32,7 @@ static naRef append(naContext c, naRef args)
 {
     naRef v = naVec_get(args, 0);
     naRef e = naVec_get(args, 1);
-    if(!IS_VEC(v)) return naNil();
+    if(!naIsVector(v)) return naNil();
     naVec_append(v, e);
     return v;
 }
@@ -40,14 +40,14 @@ static naRef append(naContext c, naRef args)
 static naRef pop(naContext c, naRef args)
 {
     naRef v = naVec_get(args, 0);
-    if(!IS_VEC(v)) return naNil();
+    if(!naIsVector(v)) return naNil();
     return naVec_removelast(v);
 }
 
 static naRef intf(naContext c, naRef args)
 {
     naRef n = naNumValue(naVec_get(args, 0));
-    if(!IS_NIL(n)) n.num = (int)n.num;
+    if(!naIsNil(n)) n.num = (int)n.num;
     return n;
 }
 
@@ -56,7 +56,7 @@ static naRef streq(naContext c, naRef args)
     int i;
     naRef a = naVec_get(args, 0);
     naRef b = naVec_get(args, 1);
-    if(!IS_STR(a) || !IS_STR(b)) return naNil();
+    if(!naIsString(a) || !naIsString(b)) return naNil();
     if(naStr_len(a) != naStr_len(b)) return naNum(0);
     for(i=0; i<naStr_len(a); i++)
         if(naStr_data(a)[i] != naStr_data(b)[i])
@@ -71,15 +71,15 @@ static naRef substr(naContext c, naRef args)
     naRef startR = naVec_get(args, 1);
     naRef lenR = naVec_get(args, 2);
     int start, len;
-    if(!IS_STR(src)) return naNil();
+    if(!naIsString(src)) return naNil();
     startR = naNumValue(startR);
-    if(IS_NIL(startR)) return naNil();
+    if(naIsNil(startR)) return naNil();
     start = (int)startR.num;
-    if(IS_NIL(lenR)) {
+    if(naIsNil(lenR)) {
         len = naStr_len(src) - start;
     } else {
         lenR = naNumValue(lenR);
-        if(IS_NIL(lenR)) return naNil();
+        if(naIsNil(lenR)) return naNil();
         len = (int)lenR.num;
     }
     s = naNewString(c);
@@ -91,8 +91,8 @@ static naRef contains(naContext c, naRef args)
 {
     naRef hash = naVec_get(args, 0);
     naRef key = naVec_get(args, 1);
-    if(IS_NIL(hash) || IS_NIL(key)) return naNil();
-    if(!IS_HASH(hash)) return naNil();
+    if(naIsNil(hash) || naIsNil(key)) return naNil();
+    if(!naIsHash(hash)) return naNil();
     return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
 }
 
@@ -100,12 +100,12 @@ static naRef typeOf(naContext c, naRef args)
 {
     naRef r = naVec_get(args, 0);
     char* t = "unknown";
-    if(IS_NIL(r)) t = "nil";
-    else if(IS_NUM(r)) t = "scalar";
-    else if(IS_STR(r)) t = "scalar";
-    else if(IS_VEC(r)) t = "vector";
-    else if(IS_HASH(r)) t = "hash";
-    else if(IS_FUNC(r)) t = "func";
+    if(naIsNil(r)) t = "nil";
+    else if(naIsNum(r)) t = "scalar";
+    else if(naIsString(r)) t = "scalar";
+    else if(naIsVector(r)) t = "vector";
+    else if(naIsHash(r)) t = "hash";
+    else if(naIsFunc(r)) t = "func";
     r = naStr_fromdata(naNewString(c), t, strlen(t));
     return r;
 }

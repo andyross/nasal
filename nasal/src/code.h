@@ -3,6 +3,7 @@
 
 #include <setjmp.h>
 #include "nasl.h"
+#include "data.h"
 
 #define MAX_STACK_DEPTH 1024
 #define MAX_RECURSION 128

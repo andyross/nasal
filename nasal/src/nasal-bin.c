@@ -14,7 +14,7 @@ static naRef print(naContext c, naRef args)
     n = naVec_size(args);
     for(i=0; i<n; i++) {
         naRef s = naStringValue(c, naVec_get(args, i));
-        if(IS_NIL(s)) continue;
+        if(naIsNil(s)) continue;
         fwrite(naStr_data(s), 1, naStr_len(s), stdout);
     }
     return naNil();

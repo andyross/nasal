@@ -4,6 +4,7 @@
 #include <setjmp.h>
 
 #include "nasl.h"
+#include "data.h"
 #include "code.h"
 
 enum {

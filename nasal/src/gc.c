@@ -1,4 +1,5 @@
 #include "nasl.h"
+#include "data.h"
 
 #define MIN_BLOCK_SIZE 256
 

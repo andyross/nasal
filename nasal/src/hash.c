@@ -1,4 +1,5 @@
 #include "nasl.h"
+#include "data.h"
 
 static void realloc(naRef hash)
 {
