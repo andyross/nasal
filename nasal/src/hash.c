@@ -5,9 +5,11 @@ static void realloc(naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
     int i, sz, oldsz = h->size;
+    int oldcols = h->table ? 1 << h->lgalloced : 0;
 
     // Keep a handle to our original objects
     struct HashNode* oldnodes = h->nodes;
+    struct HashNode** oldtable = h->table;
 
     // Figure out how big we need to be (start with a minimum size of
     // 16 entries)
@@ -24,8 +26,13 @@ static void realloc(naRef hash)
     h->size = 0;
 
     // Re-insert everything from scratch
-    for(i=0; i<oldsz; i++)
-        naHash_set(hash, oldnodes[i].key, oldnodes[i].val);
+    for(i=0; i<oldcols; i++) {
+        struct HashNode* hn = oldtable[i];
+        while(hn) {
+            naHash_set(hash, hn->key, hn->val);
+            hn = hn->next;
+        }
+    }
 
     // Free the old memory
     naFree(oldnodes);
@@ -159,6 +166,11 @@ void naHash_set(naRef hash, naRef key, naRef val)
     h->size++;
 }
 
+// FIXME: this implementation does a realloc() after each delete, and
+// is therefore needlessly O(N).  (The reason is that this avoids the
+// need to keep a free list around for the much more common case of
+// adding a new value.  Modifying an existing value is O(1), of
+// course.)
 void naHash_delete(naRef hash, naRef key)
 {
     struct naHash* h = hash.ref.ptr.hash;
@@ -171,8 +183,8 @@ void naHash_delete(naRef hash, naRef key)
         if(naEqual(hn->key, key)) {
             if(last == 0) h->table[col] = hn->next;
             else last->next = hn->next;
-            if((--h->size) < (1<<(h->lgalloced - 1)))
-                realloc(hash);
+            h->size--;
+            realloc(hash);
             return;
         }
         last = hn;
