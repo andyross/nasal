@@ -96,8 +96,8 @@ static void initContext(struct Context* c)
 
     c->fTop = c->opTop = c->markTop = 0;
 
-    BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame)); // DEBUG
-    BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
+    naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame)); // DEBUG
+    naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
 
     c->parserTemporaries = naNewVector(c);
 

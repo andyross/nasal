@@ -63,7 +63,6 @@ struct naHash {
     int nextnode;
 };
 
-// FIXME: multiple code objects can share the same constant pool
 struct naCode {
     GC_HEADER;
     unsigned char* byteCode;
@@ -98,10 +97,9 @@ struct naPool {
     void**        free;    // pointers to usable elements
 };
 
-// FIXME: naXXX names
-void FREE(void* m);
-void* ALLOC(int n);
-void BZERO(void* m, int n);
+void naFree(void* m);
+void* naAlloc(int n);
+void naBZero(void* m, int n);
 
 int naTypeSize(int type);
 void naGarbageCollect();

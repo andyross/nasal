@@ -23,9 +23,9 @@ unsigned char* naStr_data(naRef s)
 
 naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
 {
-    FREE(dst.ref.ptr.str->data);
+    naFree(dst.ref.ptr.str->data);
     dst.ref.ptr.str->len = len;
-    dst.ref.ptr.str->data = ALLOC(len);
+    dst.ref.ptr.str->data = naAlloc(len);
     memcpy(dst.ref.ptr.str->data, data, len);
     return dst;
 }
@@ -35,9 +35,9 @@ void naStr_concat(naRef dest, naRef s1, naRef s2)
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* a = s1.ref.ptr.str;
     struct naStr* b = s2.ref.ptr.str;
-    FREE(dst->data);
+    naFree(dst->data);
     dst->len = a->len + b->len;
-    dst->data = ALLOC(dst->len);
+    dst->data = naAlloc(dst->len);
     memcpy(dst->data, a->data, a->len);
     memcpy(dst->data + a->len, b->data, b->len);
 }
@@ -46,10 +46,10 @@ void naStr_substr(naRef dest, naRef str, int start, int len)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* s = str.ref.ptr.str;
-    FREE(dst->data);
+    naFree(dst->data);
     if(start + len > s->len) { dst->len = 0; dst->data = 0; return; }
     dst->len = len;
-    dst->data = ALLOC(dst->len);
+    dst->data = naAlloc(dst->len);
     memcpy(dst->data, s->data + start, len);
 }
 
@@ -68,7 +68,7 @@ void naStr_fromnum(naRef dest, double num)
     struct naStr* dst = dest.ref.ptr.str;
     unsigned char buf[DIGITS+8];
     dst->len = fromnum(num, buf);
-    dst->data = ALLOC(dst->len);
+    dst->data = naAlloc(dst->len);
     memcpy(dst->data, buf, dst->len);
 }
 
@@ -90,7 +90,7 @@ int naStr_numeric(naRef str)
 
 void naStr_gcclean(struct naStr* str)
 {
-    FREE(str->data);
+    naFree(str->data);
     str->len = 0;
     str->data = 0;
 }

@@ -20,10 +20,10 @@ static void appendfree(struct naPool*p, struct naObj* o)
     // Need more space?
     if(p->freesz <= p->nfree) {
         int i, n = 1+((3*p->nfree)>>1);
-        void** newf = ALLOC(n * sizeof(void*));
+        void** newf = naAlloc(n * sizeof(void*));
         for(i=0; i<p->nfree; i++)
             newf[i] = p->free[i];
-        FREE(p->free);
+        naFree(p->free);
         p->free = newf;
         p->freesz = n;
     }
@@ -49,8 +49,8 @@ static void freeelem(struct naPool* p, struct naObj* o)
         CLOBBER(o, sizeof(struct naHash)); // DEBUG
         break;
     case T_CODE:
-        FREE(((struct naCode*)o)->byteCode);
-        FREE(((struct naCode*)o)->constants);
+        naFree(((struct naCode*)o)->byteCode);
+        naFree(((struct naCode*)o)->constants);
         CLOBBER(o, sizeof(struct naCode)); // DEBUG
         break;
     case T_CLOSURE:
@@ -161,12 +161,12 @@ void naGC_reap(struct naPool* p)
         if(need < MIN_BLOCK_SIZE)
             need = MIN_BLOCK_SIZE;
 
-        newblocks = ALLOC((p->nblocks+1) * sizeof(struct Block));
+        newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
         for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
-        FREE(p->blocks);
+        naFree(p->blocks);
         p->blocks = newblocks;
-        buf = ALLOC(need * p->elemsz);
-        BZERO(buf, need * p->elemsz);
+        buf = naAlloc(need * p->elemsz);
+        naBZero(buf, need * p->elemsz);
         p->blocks[p->nblocks].size = need;
         p->blocks[p->nblocks].block = buf;
         p->nblocks++;

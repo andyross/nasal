@@ -66,9 +66,9 @@ void naParseInit(struct Parser* p)
 void naParseDestroy(struct Parser* p)
 {
     int i;
-    for(i=0; i<p->nChunks; i++) FREE(p->chunks[i]);
-    FREE(p->chunks);
-    FREE(p->chunkSizes);
+    for(i=0; i<p->nChunks; i++) naFree(p->chunks[i]);
+    naFree(p->chunks);
+    naFree(p->chunkSizes);
     p->buf = 0;
 }
 
@@ -86,20 +86,20 @@ void* naParseAlloc(struct Parser* p, int bytes)
 
         sz = p->len;
         if(sz < bytes) sz = bytes;
-        newChunk = ALLOC(sz);
+        newChunk = naAlloc(sz);
 
         p->nChunks++;
 
-        newChunks = ALLOC(p->nChunks * sizeof(void*));
+        newChunks = naAlloc(p->nChunks * sizeof(void*));
         for(i=1; i<p->nChunks; i++) newChunks[i] = p->chunks[i-1];
         newChunks[0] = newChunk;
-        FREE(p->chunks);
+        naFree(p->chunks);
         p->chunks = newChunks;
 
-        newChunkSizes = ALLOC(p->nChunks * sizeof(int));
+        newChunkSizes = naAlloc(p->nChunks * sizeof(int));
         for(i=1; i<p->nChunks; i++) newChunkSizes[i] = p->chunkSizes[i-1];
         newChunkSizes[0] = sz;
-        FREE(p->chunkSizes);
+        naFree(p->chunkSizes);
         p->chunkSizes = newChunkSizes;
 
         p->leftInChunk = sz;
@@ -506,7 +506,7 @@ naRef naParseCode(struct Context* c, char* buf, int len, int* errLine)
 
     // Clean up our mess
     naParseDestroy(&p);
-    FREE(c->parserTemporaries.ref.ptr.vec->array);
+    naFree(c->parserTemporaries.ref.ptr.vec->array);
     naVec_init(c->parserTemporaries);
 
     return codeObj;

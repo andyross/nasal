@@ -4,11 +4,11 @@
 static void realloc(struct naVec* v)
 {
     int i, newsz = 1 + ((v->size*3)>>1);
-    naRef* na = ALLOC(sizeof(naRef) * newsz);
+    naRef* na = naAlloc(sizeof(naRef) * newsz);
     v->alloced = newsz;
     for(i=0; i<v->size; i++)
         na[i] = v->array[i];
-    FREE(v->array);
+    naFree(v->array);
     v->array = na;
 }
 
@@ -21,7 +21,7 @@ void naVec_init(naRef vec)
 
 void naVec_gcclean(struct naVec* v)
 {
-    FREE(v->array);
+    naFree(v->array);
     v->size = 0;
     v->alloced = 0;
     v->array = 0;

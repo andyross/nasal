@@ -17,9 +17,9 @@ static void realloc(naRef hash)
     // Allocate new ones (note that all the records are allocated in a
     // single chunk, to avoid zillions of tiny node allocations)
     sz = 1<<h->lgalloced;
-    h->nodes = ALLOC(sz * (sizeof(struct HashNode) + sizeof(void*)));
+    h->nodes = naAlloc(sz * (sizeof(struct HashNode) + sizeof(void*)));
     h->table = ((void*)h->nodes) + sz*sizeof(struct HashNode);
-    BZERO(h->table, sz * sizeof(void*));
+    naBZero(h->table, sz * sizeof(void*));
     h->nextnode = 0;
     h->size = 0;
 
@@ -28,7 +28,7 @@ static void realloc(naRef hash)
         naHash_set(hash, oldnodes[i].key, oldnodes[i].val);
 
     // Free the old memory
-    FREE(oldnodes);
+    naFree(oldnodes);
 }
 
 // Computes a hash code for a given scalar
@@ -165,7 +165,7 @@ int naHash_size(naRef h)
 
 void naHash_gcclean(struct naHash* h)
 {
-    FREE(h->nodes);
+    naFree(h->nodes);
     h->nodes = 0;
     h->size = 0;
     h->lgalloced = 0;

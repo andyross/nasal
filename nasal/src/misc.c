@@ -5,9 +5,9 @@
 #include "nasl.h"
 #include "code.h"
 
-void FREE(void* m) { free(m); }
-void* ALLOC(int n) { return malloc(n); }
-void BZERO(void* m, int n) { bzero(m, n); }
+void naFree(void* m) { free(m); }
+void* naAlloc(int n) { return malloc(n); }
+void naBZero(void* m, int n) { bzero(m, n); }
 
 int naTrue(naRef r)
 {

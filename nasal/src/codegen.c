@@ -532,11 +532,11 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     naVec_append(p->context->parserTemporaries, codeObj);
     code = codeObj.ref.ptr.code;
     code->nBytes = cg.nBytes;
-    code->byteCode = ALLOC(cg.nBytes);
+    code->byteCode = naAlloc(cg.nBytes);
     for(i=0; i < cg.nBytes; i++)
         code->byteCode[i] = cg.byteCode[i];
     code->nConstants = cg.nConsts;
-    code->constants = ALLOC(code->nConstants * sizeof(naRef));
+    code->constants = naAlloc(code->nConstants * sizeof(naRef));
     for(i=0; i<code->nConstants; i++)
         code->constants[i] = getConstant(p, i);
 
