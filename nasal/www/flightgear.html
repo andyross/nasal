@@ -118,9 +118,14 @@ methods.  See the reference below for complete documentation.
 
 <p>As seen above in the discussion on <code>fgcommand()</code>, you
 can also create new, "rootless" <code>Node</code> objects using
-<code>props.Node.new()</code>.  You can pass a hash table to this
-constructor as an initializer; each key/value pair in the hash will
-become a sub-node of the property node.
+<code>props.Node.new()</code>.
+
+<p>The most powerful method on a Node object is
+<code>setValues()</code>.  This takes a Nasal hash table as its only
+argument, and initializes properties under the node using the
+key/value pairs in the hash.  This works with vectors (i.e. indexed
+properties) and recursively, essentially making a deep copy of a Nasal
+object in the property tree.
 
 <p>For debugging (and amusement) purposes, the <code>props</code>
 modules also defines a <code>dump()</code> function which recursively
@@ -286,10 +291,10 @@ FlightGear-specific library code is documented here:
     required.
 
 <dt>fgcommand()
-<dd>The first argument is a string specifying a FlightGear command
-    to execute (e.g. "show-dialog").  The second is a path to a
-    global property sub-tree which will be passed to the command as
-    arguments.
+<dd>The first argument is a string specifying a FlightGear command to
+    execute (e.g. "show-dialog").  The second is a property sub-tree
+    (either a global path string or a props.Node object) which will be
+    passed to the command as arguments.
 
 <dt>settimer()
 <dd>The first argument is a Nasal expression which evaluates to a
@@ -356,11 +361,17 @@ children with that name exist, returns the one with an index of zero.
 <dd>Returns a Node specified by its "relative path" to this node, or
 nil if none exists.  The optional second argument, if true, causes the
 node to be created if it does not exist.
+<dt>setValues()
+<dd>Takes a hash as argument, and sets all the key/value pairs in the
+hash as property subnodes of the object.  This works recursively, with
+sub-hashes and vectors; thus making a deep copy of the Nasal hash in
+the property tree.
 </dl>
 
 <dt>props.Node.new()
 <dd>Static "constructor" function returning a new, rootless
-    <code>Node</code> object.
+    <code>Node</code> object.  Takes a hash argument to initialize the
+    new node via setValues().
 
 <dt>props.globals
 <dd>This is a <code>Node</code> object representing the root of the
