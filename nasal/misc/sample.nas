@@ -53,7 +53,7 @@ dist = func {
     dx = x2-x1;
     dy = y2-y1;
     return sqrt(dx*dx + dy*dy);
-};
+}
 dist(0,0,1,1); # == sqrt(2)
 
 #
@@ -62,7 +62,7 @@ dist(0,0,1,1); # == sqrt(2)
 # what the ?: does in C.  The last semicolon in a code block is
 # optional, to make this prettier.
 #
-abs = func { if(arg[0] < 0) { -arg[0] } else { arg[0] } };
+abs = func { if(arg[0] < 0) { -arg[0] } else { arg[0] } }
 
 #
 # Nasl supports a "nil" value for use as a null pointer equivalent.
@@ -89,14 +89,14 @@ if(a and a.field == 42) {
 doSomething = dummyFunc;
 
 stillGoing = 0;
-while(stillGoing) { doSomething(); };
+while(stillGoing) { doSomething(); }
 
 for(i=0; i < 3; i = i+1) {
     elem = list1[i];
     doSomething(elem);
-};
+}
 
-foreach(elem; list1) { doSomething(elem) };  # Shorthand for above
+foreach(elem; list1) { doSomething(elem) }  # Shorthand for above
 
 #
 # Define a class object with one method, one field and one "new"
@@ -111,12 +111,12 @@ Class1.new = func {
     obj = { parents : [Class1],
             count : 0 };
     return obj;
-};
+}
 
 Class1.getcount = func {
     me.count = me.count + 1;
     return me.count;
-};
+}
 
 c = Class1.new();
 print(c.getcount(), "\n"); # prints 1
@@ -152,15 +152,15 @@ invert = func {
     hash = {};
     for(i=0; i<size(vec); i = i+1) {
         hash[vec[i]] = i;
-    };
+    }
     return hash;
-};
+}
 
 #
 # Use the return value of the above function to do an "index of"
 # lookup on a vector
 #
-vecfind = func{ return invert(arg[0])[arg[1]]; };
+vecfind = func{ return invert(arg[0])[arg[1]]; }
 
 #
 # Joins its arguments with the empty string and returns a scalar.
@@ -169,9 +169,9 @@ vecfind = func{ return invert(arg[0])[arg[1]]; };
 #
 join = func { 
     s = "";
-    foreach(elem; arg) { s = s ~ elem; };
+    foreach(elem; arg) { s = s ~ elem; }
     return s;
-};
+}
 
 #
 # Labeled break/continue syntax puts the label in as an extra first
@@ -187,7 +187,7 @@ for(OUTER; i=0; i<100; i = i+1) {
             break OUTER;
         }
     }
-};
+}
 
 #
 # Functional programming A: All function expressions are inherently
@@ -203,13 +203,13 @@ a = func{ arg[0] + 1 }(232);  # "a" now equals 233
 # both for code flow and as the ?: expression in C/C++.
 #
 factorial = func { if(arg[0] == 0) { 1 }
-                   else            { arg[0] * factorial(arg[0]-1) } };
+                   else            { arg[0] * factorial(arg[0]-1) } }
 print(factorial(10), "\n");
 
 #
 # Functional programming C:  Lexical closures.
 #
-getcounter = func { count = 0; return func { count = count + 1 } };
+getcounter = func { count = 0; return func { count = count + 1 } }
 mycounter = getcounter();
 print(mycounter(), "\n"); # prints 1
 print(mycounter(), "\n"); # prints 2
