@@ -60,12 +60,18 @@ struct naVec {
     naRef* array;
 };
 
+struct HashNode {
+    naRef key;
+    naRef val;
+    struct HashNode* next;
+};
+
 struct naHash {
     GC_HEADER;
     int size;
     int lgalloced;
     struct HashNode* nodes;
-    struct HashNode** table; // (struct HashNode defined in hash.c)
+    struct HashNode** table;
     int nextnode;
 };
 

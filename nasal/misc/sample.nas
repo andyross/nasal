@@ -1,4 +1,3 @@
-
 #
 # Typical little function
 #
@@ -69,12 +68,12 @@ vecfind = func{ return invert(arg[0]){arg[0]}; };
 
 #
 # Joins its arguments with the empty string and returns a scalar.
-# Note use of "|" operator to do string concatenation (Nasl's only
+# Note use of "~" operator to do string concatenation (Nasl's only
 # funny syntax).
 #
 join = func { 
     s = "";
-    foreach(elem, arg) { s = s | elem; }
+    foreach(elem, arg) { s = s ~ elem; }
     return s;
 };
 

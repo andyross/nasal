@@ -1,18 +1,22 @@
+#include "nasl.h"
+
+#define MIN_BLOCK_SIZE 4096
+
 struct Block {
     int   size;
     char* block;
 };
 
 struct naPool {
-    int    elemsz;
-    int    nblocks;
-    Block* blocks;
-    int    nfree;
-    int    freesz;
-    void** free;
+    int           elemsz;
+    int           nblocks;
+    struct Block* blocks;
+    int           nfree;   // number of entries in the free array
+    int           freesz;  // size of the free array
+    void**        free;    // pointers to usable elements
 };
 
-static void appendfree(naPool*p, naObj* o)
+static void appendfree(struct naPool*p, struct naObj* o)
 {
     // Need more space?
     if(p->nfree == p->freesz) {
@@ -26,24 +30,19 @@ static void appendfree(naPool*p, naObj* o)
     p->free[p->nfree++] = o;
 }
 
-static void freeelem(naPool* p, naObj* o)
+static void freeelem(struct naPool* p, struct naObj* o)
 {
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
     switch(o->type) {
-    case T_DIR_NUM:
-    case T_DIR_NONUM:
-        FREE(((naScalar*)o)->dir.str);
+    case TYPE_NASTR:
+        FREE(((struct naStr*)o)->data);
         break;
-    case T_VECTOR:
-        FREE(((naVec*)o)->array);
+    case TYPE_NAVEC:
+        FREE(((struct naVec*)o)->array);
         break;
-    case T_HASH:
-        FREE(((naHash*)o)->table);
-        FREE(((naHash*)o)->nodes);
-        break;
-    case T_CODE:
-        FREE(((naCode*)o)->refs);
+    case TYPE_NAHASH:
+        FREE(((struct naHash*)o)->nodes);
         break;
     }
 
@@ -53,19 +52,20 @@ static void freeelem(naPool* p, naObj* o)
 
 // Grabs a free object.  Returns 0 if none is available (i.e., it's
 // time to collect)
-naObj* naGC_get(naPool* p)
+struct naObj* naGC_get(struct naPool* p)
 {
     if(p->nfree == 0) return 0;
     return p->free[p->nfree--];
 }
 
 // Marks all pool contents as unreferenced
-void naGC_clearpool(naPool* p)
+void naGC_clearpool(struct naPool* p)
 {
-    for(i=0; i<nblocks; i++) {
-        Block* b = p->blocks + i;
+    int i, elem;
+    for(i=0; i<p->nblocks; i++) {
+        struct Block* b = p->blocks + i;
         for(elem=0; elem < b->size; elem++)
-            ((naObj*)(b->block + elem * p->elemsz))->mark = 0;
+            ((struct naObj*)(b->block + elem * p->elemsz))->mark = 0;
     }
 }
 
@@ -73,29 +73,25 @@ void naGC_clearpool(naPool* p)
 // objects reachable from it.  Clumsy: uses C stack recursion, which
 // is slower than it need be and may cause problems on some platforms
 // due to the very large stack depths that result.
-void naGC_mark(naObj* o)
+void naGC_mark(naRef r)
 {
     int i;
 
-    if(o->mark == 1)
+    if(IS_NUM(r))
         return;
 
-    o->mark = 1;
-    switch(o->type) {
-    case T_SUB:
-        naGC_mark(ref);
+    if(r.ref.ptr.obj->mark == 1)
+        return;
+
+    r.ref.ptr.obj->mark = 1;
+    switch(r.ref.ptr.obj->type) {
+    case TYPE_NAVEC:
+        for(i=0; i<=r.ref.ptr.vec->size; i++)
+            naGC_mark(r.ref.ptr.vec->array[i]);
         break;
-    case T_CAT:
-        naGC_mark(ref0);
-        naGC_mark(ref1);
-        break;
-    case T_VECTOR:
-        for(i=v->start; i<=v->end; i++)
-            naGC_mark(v->array[i]);
-        break;
-    case T_HASH:
-        for(i=0; i<h->table; i++) {
-            HashNode* hn = h->table[i];
+    case TYPE_NAHASH:
+        for(i=0; i < (1<<r.ref.ptr.hash->lgalloced); i++) {
+            struct HashNode* hn = r.ref.ptr.hash->table[i];
             while(hn) {
                 naGC_mark(hn->key);
                 naGC_mark(hn->val);
@@ -103,42 +99,38 @@ void naGC_mark(naObj* o)
             }
         }
         break;
-    case T_CODE:
-        for(i=0; i<c->nrefs; i++)
-            naGC_mark(c->refs[i]);
-        break;
-    case T_FUNC:
-        naGC_mark(f->namespace);
-        naGC_mark(f->code);
-        break;
     }
 }
 
 // Collects all the unreachable objects into a free list, and
 // allocates more space if needed.
-void naGC_reap(naPool* p)
+void naGC_reap(struct naPool* p)
 {
-    int i, total = 0;
+    int i, elem, total = 0;
     p->nfree = 0;
-    for(i=0; i<nblocks; i++) {
-        Block* b = p->blocks + i;
+    for(i=0; i<p->nblocks; i++) {
+        struct Block* b = p->blocks + i;
         total += b->size;
         for(elem=0; elem < b->size; elem++) {
-            naObj* o = (naObj*)(b->block + elem * p->elemsz);
+            struct naObj* o = (struct naObj*)(b->block + elem * p->elemsz);
             if(o->mark == 0)
                 freeelem(p, o);
+
+            // And clear the mark for the next time
+            o->mark = 0;
         }
     }
 
     // Allocate more if necessary
     if(2*total < 3*p->nfree) {
         char* buf;
+        struct Block* newblocks;
 
         int need = ((3*p->nfree)>>1) - total;
         if(need < MIN_BLOCK_SIZE)
             need = MIN_BLOCK_SIZE;
 
-        Block* newblocks = ALLOC((p->nblocks+1) * sizeof(Block));
+        newblocks = ALLOC((p->nblocks+1) * sizeof(struct Block));
         for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
         buf = ALLOC(need * p->elemsz);
         p->blocks[p->nblocks].size = need;
@@ -146,7 +138,7 @@ void naGC_reap(naPool* p)
         p->nblocks++;
 
         for(i=0; i<need; i++)
-            appendfree(p, (naObj*)(buf + i*p->elemsz));
+            appendfree(p, (struct naObj*)(buf + i*p->elemsz));
     }
 }
 

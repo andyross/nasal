@@ -1,11 +1,5 @@
 #include "nasl.h"
 
-struct HashNode {
-    naRef key;
-    naRef val;
-    struct HashNode* next;
-};
-
 static void realloc(naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
