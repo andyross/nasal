@@ -46,6 +46,8 @@ struct Globals {
 
     naRef save;
 
+    struct ThreadState* threads;
+
     struct Context* freeContexts;
     struct Context* allContexts;
 };

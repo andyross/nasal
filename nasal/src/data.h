@@ -32,7 +32,8 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 // implementing objects to pack in 16 bits worth of data "for free".
 #define GC_HEADER \
     unsigned char mark; \
-    unsigned char type
+    unsigned char type; \
+    unsigned char lock;
 
 struct naObj {
     GC_HEADER;
