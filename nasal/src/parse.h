@@ -3,7 +3,7 @@
 
 #include <setjmp.h>
 
-#include "nasl.h"
+#include "nasal.h"
 #include "data.h"
 #include "code.h"
 
@@ -31,7 +31,7 @@ struct Token {
 };
 
 struct Parser {
-    // Handle to the NaSL interpreter
+    // Handle to the Nasal interpreter
     struct Context* context;
 
     char* err;

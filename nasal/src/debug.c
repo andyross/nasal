@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "nasl.h"
+#include "nasal.h"
 #include "parse.h"
 #include "code.h"
 

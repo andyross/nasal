@@ -1,4 +1,4 @@
-#include "nasl.h"
+#include "nasal.h"
 #include "data.h"
 
 #define MIN_BLOCK_SIZE 256

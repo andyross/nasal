@@ -1,13 +1,13 @@
 <html>
 <head>
-<title>Nasl - Not another scripting language</title>
+<title>Nasal - Not another scripting language</title>
 <style>
   code, pre { color: #004000; }
 </style>
 </head>
 <body>
 
-<h1>Nasl: Not another scripting language!</h1>
+<h1>Nasal: Not another scripting language!</h1>
 
 <h2>Executive summary:</h2>
 <ul>
@@ -21,13 +21,13 @@
 
 <h2>Design Philosophy</h2>
 
-Performance is not a design goal.  Nasl isn't especially slow.  Early
+Performance is not a design goal.  Nasal isn't especially slow.  Early
 benchmarks of the garbage collector showed it as faster than perl's
 reference counter, and its number crunching performance is on par with
 python.  But in all cases, simplicity, transparency and a sane feature
 set are preferred over speed.
 <p>
-World domination is not a design goal.  Nasl is designed for use as an
+World domination is not a design goal.  Nasal is designed for use as an
 extension language in an larger project.  The problem with many
 otherwise excellent languages in this environment is that they are
 huge.  Perl and python are great, but enormous.  Even their "core"
@@ -44,41 +44,41 @@ their intended usage, they make for tedious and unproductive
 development environments.  Except for the select few to whom they
 appeal, these languages aren't "fun."
 <p>
-The real goal with Nasl is to have a language that supports most
+The real goal with Nasal is to have a language that supports most
 "normal" programming idioms (objects, functions, arrays, hashes) while
 avoiding the bloat that comes from "platform" scripting languages like
 perl, python and php.
 <h2>Notable Characteristics</h2>
-Like perl, python and javascript, nasl uses vectors (expandable
+Like perl, python and javascript, nasal uses vectors (expandable
 arrays) and hash tables as its native data format.  This is a
 well-understood idiom, and it works very well.  I felt no need to rock
 the boat here.
 <p>
-Like perl, and unlike everything else, nasl combines numbers and
+Like perl, and unlike everything else, nasal combines numbers and
 strings into a single "scalar" datatype.  No conversion needs to
 happen in user code, which simplifies common string handling tasks.
 <p>
-Like perl, but unlike python, hash keys must by scalars in nasl.
+Like perl, but unlike python, hash keys must by scalars in nasal.
 Python supports a "tuple" constant type that can be used as well, but
-there is no equivalent in nasl (you can't use vectors as keys because
+there is no equivalent in nasal (you can't use vectors as keys because
 they might change after the insertion).
 <p>
-Like perl and python, nasl uses a # character to indicate and
+Like perl and python, nasal uses a # character to indicate and
 end-of-line comment.  There is no multiline begin/end comment syntax
 as in Javascript.
 <p>
-Like perl, nasl functions do not have named parameters.  They get
+Like perl, nasal functions do not have named parameters.  They get
 their arguments in a vector named "arg", and can extract them however
-they like.  Unlike perl, Nasl takes advantage of this feature to do
+they like.  Unlike perl, Nasal takes advantage of this feature to do
 away with function "declaration" entirly; see below.
 <p>
 Like python, there is no hidden local object scope in a function call.
 The object on which a method was called is available to a function as
 a local variable named "me" (python calls this "self" by convention,
-but because nasl has no declared function arguments, there is no
+but because nasal has no declared function arguments, there is no
 opportunity to change it).
 <p>
-Like perl, "objects" in nasl are simply hash tables.  Looking an item
+Like perl, "objects" in nasal are simply hash tables.  Looking an item
 up by name in a hash table and extracting a symbol for an object are
 just different syntax for the same operation (but read on for an
 important exception):
@@ -94,7 +94,7 @@ other a method invocation on the object "a"):
      <code> a["b"](arg1, arg2) </code> isn't the same as:
      <code> a.b(arg1, arg2) </code>
 <p>
-Like javascript, nasl lacks a specific "class" syntax for OOP
+Like javascript, nasal lacks a specific "class" syntax for OOP
 programming.  Instead, classes are simply objects.  Each object
 supports a "parents" member array; symbol lookup on the object at
 runtime bounces to the parents (and the parents' parents) if the
@@ -102,7 +102,7 @@ symbol is not found in the hash.  The parents field is just like any
 other object field, you can set it however you like and even change it
 at runtime if you are feeling especially perverse.
 <p>
-Like lisp, javascript and perl, nasl supports lexical closures.  This
+Like lisp, javascript and perl, nasal supports lexical closures.  This
 means that the local symbol namespace available to your function when
 it is assigned remain constant over time.  If you don't know what this
 means, you don't need to care.  It is this feature that allows
@@ -120,12 +120,12 @@ myfunction = func { arg[0] + 1 }
 myfunction(1); # returns 2
 </pre>
 <p>
-Nasl has a straightforward, readable syntax which is closest to
+Nasal has a straightforward, readable syntax which is closest to
 javascript among other scripting languages.  Although unlike
 javascript, it includes has a hash lookup syntax along the lines of
 python (that is, you can do both a.b and a["b"]).
 <p>
-Unlike python, nasl has a grammar which is not whitespace-sensitive.
+Unlike python, nasal has a grammar which is not whitespace-sensitive.
 This doesn't make python hard to write, and it arguably makes it
 easier to read.  But it is different from the way the rest of the
 world works, and makes python distinctly unsuitable for "inline"
@@ -133,7 +133,7 @@ environments (consider PHP, Javascript, ASP or in-configuration-file
 scripts) where it needs to live as a plain old string inside of
 another program's code or data file.
 <p>
-Nasl garbage collects runtime storage, so the programmer need not
+Nasal garbage collects runtime storage, so the programmer need not
 worry about manual allocation, or even circular references.  The
 current implementation is a simple mark/sweep collector, which should
 be acceptable for most applications.  Future enhancements will include
@@ -142,7 +142,7 @@ collector can be instructred to return after a certain maximum delay,
 and be restarted later.  Fancy items like generational collectors fail
 the "small and simple" criteria and are not likely to be included.
 <p>
-Like python, nasl supports exception handling as a first-class
+Like python, nasal supports exception handling as a first-class
 language feature, with built-in runtime-inspectable stack trace.
 Rather like perl, however, there is no special "try" syntax for
 exception handling, nor inheritance-based catching semantics.
@@ -152,15 +152,15 @@ list, which is returned from the closest enclosing try() invocation.
 Elaborate exception handling isn't really appropriate for embedded
 scripting languages.  [NOTE: this isn't finished yet]
 <p>
-Nasl tries to be stricter than perl.  Operations like converting a
+Nasal tries to be stricter than perl.  Operations like converting a
 non-numeric string value to a number, reading or writing past the end
 of an array or operating on a nil reference, which are generally legal
-in perl, throw exceptions in nasl.  Perl sometimes bends over
+in perl, throw exceptions in nasal.  Perl sometimes bends over
 backwards to do something "reasonable" with your instructions
-(e.g. what's the boolean truth value of a hash reference?); nasl
+(e.g. what's the boolean truth value of a hash reference?); nasal
 doesn't try ("error: non-scalar used in boolean context at line 92")
 <p>
-Nasl is very small, very simple, written in ANSI C, and generally an
+Nasal is very small, very simple, written in ANSI C, and generally an
 excellent choice for embedded applications.  It uses a simple and
 transparent syntax interpretable by a simple "bracket matching and
 operator precedence" parser.  It does not depend on any third party
@@ -169,15 +169,15 @@ third party tools like (f)lex and yacc/bison.  It builds simply and
 easily, supports a reasonably simple extension API and cohabitates
 well with other code.
 <p>
-Nasl makes no use of the processor stack when running recursive code.
+Nasal makes no use of the processor stack when running recursive code.
 This is important for embedded languages as it provides the ability to
-"exit early" from a Nasl context.  An outside application may have
-realtime constraints, and Nasl can be instructed to run for only a
+"exit early" from a Nasal context.  An outside application may have
+realtime constraints, and Nasal can be instructed to run for only a
 certain number of "cycles" before returning.  Later calls will
 automatically pick up the interpreter state where it left off.
 <p>
-Nasl's provides "minimal threadsafety".  Multithreaded operations on
-NaSL objects are safe in the sense that they cannot crash or corrupt
+Nasal's provides "minimal threadsafety".  Multithreaded operations on
+Nasal objects are safe in the sense that they cannot crash or corrupt
 the interpreter.  They are not guaranteed to be atomic.  In
 particular, poorly synchronized insertions into containers can "drop"
 objects into oblivion (which is OK from an interpreter stability

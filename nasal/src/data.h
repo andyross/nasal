@@ -1,17 +1,17 @@
 #ifndef _DATA_H
 #define _DATA_H
 
-#include "nasl.h"
+#include "nasal.h"
 
 // Notes: A CODE object is a compiled set of bytecode instructions.
 // What actually gets executed at runtime is a bound FUNC object,
 // which combines the raw code with a pointer to a CLOSURE chain of
 // namespaces.
 enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC, T_CCODE,
-       NUM_NASL_TYPES }; // V. important that this come last!
+       NUM_NASAL_TYPES }; // V. important that this come last!
 
-#define IS_REF(r) ((r).ref.reftag == NASL_REFTAG)
-#define IS_NUM(r) ((r).ref.reftag != NASL_REFTAG)
+#define IS_REF(r) ((r).ref.reftag == NASAL_REFTAG)
+#define IS_NUM(r) ((r).ref.reftag != NASAL_REFTAG)
 #define IS_NIL(r) (IS_REF((r)) && (r).ref.ptr.obj == 0)
 #define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_STR)
 #define IS_VEC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_VEC)

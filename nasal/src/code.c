@@ -1,4 +1,4 @@
-#include "nasl.h"
+#include "nasal.h"
 #include "code.h"
 
 // FIXME: need to store a list of all contexts
@@ -43,7 +43,6 @@ static double numify(struct Context* ctx, naRef o)
     return 0;
 }
 
-
 static naRef stringify(struct Context* ctx, naRef r)
 {
     if(IS_STR(r)) return r;
@@ -86,7 +85,7 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 static void initContext(struct Context* c)
 {
     int i;
-    for(i=0; i<NUM_NASL_TYPES; i++)
+    for(i=0; i<NUM_NASAL_TYPES; i++)
         naGC_init(&(c->pools[i]), i);
 
     c->fTop = c->opTop = c->markTop = 0;
@@ -137,7 +136,7 @@ void naGarbageCollect()
     naGC_mark(c->parentsRef);
 
     // Finally collect all the freed objects
-    for(i=0; i<NUM_NASL_TYPES; i++)
+    for(i=0; i<NUM_NASAL_TYPES; i++)
         naGC_reap(&(c->pools[i]));
 }
 

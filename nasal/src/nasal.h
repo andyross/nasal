@@ -1,11 +1,11 @@
-#ifndef _NASL_H
-#define _NASL_H
+#ifndef _NASAL_H
+#define _NASAL_H
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// This is a nasl "reference".  They are always copied by value, and
-// contain either a pointer to a garbage-collectable nasl object
+// This is a nasal "reference".  They are always copied by value, and
+// contain either a pointer to a garbage-collectable nasal object
 // (string, vector, hash) or a floating point number.  Keeping the
 // number here is an optimization to prevent the generation of
 // zillions of tiny "number" object that have to be collected.  Note
@@ -15,7 +15,7 @@ extern "C" {
 // appear as a reference, and vice versa).  Swap the structure order
 // on 32 bit big-endian systems.  On 64 bit sytems of either
 // endianness, reftag and the double won't be coincident anyway.
-#define NASL_REFTAG 0x7ff56789 // == 2,146,789,257 decimal
+#define NASAL_REFTAG 0x7ff56789 // == 2,146,789,257 decimal
 typedef union {
     double num;
     struct {
@@ -39,7 +39,7 @@ typedef struct Context* naContext;
 // The function signature for an extension function:
 typedef naRef (*naCFunction)(naContext ctx, naRef args);
 
-// All Nasl code runs under the watch of a naContext:
+// All Nasal code runs under the watch of a naContext:
 naContext naNewContext();
 
 // Parse a buffer in memory into a code object.
@@ -54,7 +54,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals);
 // a code object as returned from naParseCode).
 naRef naMethod(naContext ctx, naRef func, naRef object);
 
-// Returns a hash containing functions from the Nasl standard library
+// Returns a hash containing functions from the Nasal standard library
 // Useful for passing as a namespace to an initial function call
 naRef naStdLib(naContext c);
 
@@ -114,4 +114,4 @@ void naHash_keys(naRef dst, naRef hash);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-#endif // _NASL_H
+#endif // _NASAL_H

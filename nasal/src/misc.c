@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "nasl.h"
+#include "nasal.h"
 #include "code.h"
 
 void naFree(void* m) { free(m); }
@@ -12,7 +12,7 @@ void naBZero(void* m, int n) { memset(m, 0, n); }
 naRef naObj(int type, struct naObj* o)
 {
     naRef r;
-    r.ref.reftag = NASL_REFTAG;
+    r.ref.reftag = NASAL_REFTAG;
     r.ref.ptr.obj = o;
     o->type = type;
     return r;
@@ -107,7 +107,7 @@ naRef naNewClosure(struct Context* c, naRef namespace, naRef next)
 naRef naNil()
 {
     naRef r;
-    r.ref.reftag = NASL_REFTAG;
+    r.ref.reftag = NASAL_REFTAG;
     r.ref.ptr.obj = 0;
     return r;
 }

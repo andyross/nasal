@@ -1,4 +1,4 @@
-#include "nasl.h"
+#include "nasal.h"
 
 // No need to include <string.h> just for this:
 static int strlen(char* s)
@@ -49,6 +49,11 @@ static naRef intf(naContext c, naRef args)
     naRef n = naNumValue(naVec_get(args, 0));
     if(!naIsNil(n)) n.num = (int)n.num;
     return n;
+}
+
+static naRef num(naContext c, naRef args)
+{
+    return naNumValue(naVec_get(args, 0));
 }
 
 static naRef streq(naContext c, naRef args)
@@ -114,6 +119,7 @@ struct func funcs[] = {
     { "append", append }, 
     { "pop", pop }, 
     { "int", intf },
+    { "num", num },
     { "streq", streq },
     { "substr", substr },
     { "contains", contains },

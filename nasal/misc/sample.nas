@@ -44,7 +44,7 @@ hash1["name"] == "Andy";
 # Typical little function.  Arguments are passed in the arg array, not
 # unlike perl.  Note that this is just an assignment of an (anonymous)
 # function argument to the local "dist" variable.  There is no
-# function declaration syntax in Nasl.
+# function declaration syntax in Nasal.
 #
 sqrt = dummyFunc;
 dist = func {
@@ -57,7 +57,7 @@ dist = func {
 dist(0,0,1,1); # == sqrt(2)
 
 #
-# Nasl has no "statements", which means that any expression can appear
+# Nasal has no "statements", which means that any expression can appear
 # in any context.  This means that you can use an if/else clause to do
 # what the ?: does in C.  The last semicolon in a code block is
 # optional, to make this prettier.
@@ -65,13 +65,13 @@ dist(0,0,1,1); # == sqrt(2)
 abs = func { if(arg[0] < 0) { -arg[0] } else { arg[0] } }
 
 #
-# Nasl supports a "nil" value for use as a null pointer equivalent.
+# Nasal supports a "nil" value for use as a null pointer equivalent.
 # It can be tested for equality, matching only other nils.
 #
 listNode = { data : ["what", "ever"], next : nil };
 
 #
-# Nasl's binary boolean operators are "and" and "or", unlike C.
+# Nasal's binary boolean operators are "and" and "or", unlike C.
 # unary not is still "!" however.  They short-circuit like you expect
 #
 toggle = 0;
@@ -164,7 +164,7 @@ vecfind = func{ return invert(arg[0])[arg[1]]; }
 
 #
 # Joins its arguments with the empty string and returns a scalar.
-# Note use of "~" operator to do string concatenation (Nasl's only
+# Note use of "~" operator to do string concatenation (Nasal's only
 # funny syntax).
 #
 join = func { 
@@ -189,6 +189,46 @@ for(OUTER; i=0; i<100; i = i+1) {
     }
 }
 
+##
+## A rockin' metaprogramming hack.  Generates and returns a deep copy
+## of the object in valid Nasal syntax.  A warning to those who might
+## want to use this: it ignores function objects (which cannot be
+## inspected from Nasal) and replaces them with nil references.  It
+## also makes no attempt to escape special characters in strings, which
+## can break re-parsing in strange (and possibly insecure!) ways.
+##
+dump = func {
+    o = arg[0];
+    result = "";
+    if(typeof(o) == "scalar") {
+        n = num(o);
+        if(n == nil) { result = result ~ '"' ~ o ~ '"'; }
+        else { result = result ~ o; }
+    } elsif(typeof(o) == "vector") {
+        result = result ~ "[ ";
+        if(size(o) > 0) { result = result ~ dump(o[0]); }
+        for(i=1; i<size(o); i=i+1) {
+            result = result ~ ", " ~ dump(o[i]);
+        }
+        result = result ~ " ]";
+    } elsif(typeof(o) == "hash") {
+        ks = keys(o);
+        result = result ~ "{ ";
+        if(size(o) > 0) {
+            k = ks[0];
+            result = result ~ k ~ ":" ~ dump(o[k]);
+        }
+        for(i=1; i<size(o); i=i+1) {
+            k = ks[i];
+            result = result ~ ", " ~ k ~ " : " ~ dump(o[k]);
+        }
+        result = result ~ " }";
+    } else {
+        result = result ~ "nil";
+    }
+    return result;
+}
+
 #
 # Functional programming A: All function expressions are inherently
 # anonymous lambdas and can be used and evaluated mid-expression:
@@ -205,7 +245,7 @@ a = (func{ arg[0] + 1 })(232);  # "a" now equals 233
 #
 # Functional programming B.  All expressions have a value, the last
 # expression in a code block is the return value of that code block.
-# There are no "statements" in Nasl, although some expressions
+# There are no "statements" in Nasal, although some expressions
 # (assignment, duh) have side effects.  e.g. The "if" expression works
 # both for code flow and as the ?: expression in C/C++.
 #

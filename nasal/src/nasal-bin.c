@@ -5,9 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "nasl.h"
+#include "nasal.h"
 
-// A Nasl extension function (prints its argument list to stdout)
+// A Nasal extension function (prints its argument list to stdout)
 static naRef print(naContext c, naRef args)
 {
     int i, n;
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
     int parseError = 0;
 
     if(argc < 2) {
-        fprintf(stderr, "nasl: must specify a script to run\n");
+        fprintf(stderr, "nasal: must specify a script to run\n");
         exit(1);
     }
 
@@ -39,13 +39,13 @@ int main(int argc, char** argv)
     // guess.  Does the C library provide a way to do this at all?
     f = fopen(argv[1], "r");
     if(!f) {
-        fprintf(stderr, "nasl: could not open input file: %s\n", argv[1]);
+        fprintf(stderr, "nasal: could not open input file: %s\n", argv[1]);
         exit(1);
     }
     stat(argv[1], &fdat);
     buf = malloc(fdat.st_size);
     if(fread(buf, 1, fdat.st_size, f) != fdat.st_size) {
-        fprintf(stderr, "nasl: error in fread()\n");
+        fprintf(stderr, "nasal: error in fread()\n");
         exit(1);
     }
     

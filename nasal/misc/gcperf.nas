@@ -26,9 +26,9 @@ for(j=0; j<10; j=j+1) {
 
 ## As an interesting comparison, here is an essentially identical
 ## script written in perl.  On my machine, it is almost twice as slow
-## as the Nasl variant.  Presumably, the difference is in perl's
+## as the Nasal variant.  Presumably, the difference is in perl's
 ## reference counter overhead.  In tests of pure (non-allocating)
-## interpretation speed, perl typically beats Nasl's bytecode
+## interpretation speed, perl typically beats Nasal's bytecode
 ## interpreter by 50% or so.
 
 # for(my $j=0; $j<10; $j++) {

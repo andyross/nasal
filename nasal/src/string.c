@@ -1,7 +1,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "nasl.h"
+#include "nasal.h"
 #include "data.h"
 
 // The maximum number of significant (decimal!) figures in an IEEE

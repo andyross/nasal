@@ -1,6 +1,6 @@
-;; nasl-mode.el
+;; nasal-mode.el
 ;;
-;; A major mode for writing Nasl code.
+;; A major mode for writing Nasal code.
 ;; Copyright (C) 2003 Andrew Ross
 ;;
 ;; Based very closely on awk-mode.el as shipped with GNU Emacs 21.2
@@ -10,41 +10,41 @@
 ;; directory (/usr/share/emacs/site-lisp on most linux distributions)
 ;; and add a line:
 ;;
-;; (require 'nasl-mode)
+;; (require 'nasal-mode)
 ;;
 ;; ...to your .emacs file.  All files with a .nas extension should
-;; then be associated with nasl mode automatically.  I am *not* an
+;; then be associated with nasal mode automatically.  I am *not* an
 ;; elisp hacker, though, so YMMV.
 ;;
 
-(defvar nasl-mode-syntax-table nil "Syntax table in use in Nasl-mode buffers.")
-(if nasl-mode-syntax-table ()
-  (setq nasl-mode-syntax-table (make-syntax-table))
+(defvar nasal-mode-syntax-table nil "Syntax table in use in Nasal-mode buffers.")
+(if nasal-mode-syntax-table ()
+  (setq nasal-mode-syntax-table (make-syntax-table))
   ; Operator characters are "punctuation"
-  (modify-syntax-entry ?!  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?*  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?+  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?-  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?/  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?~  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?:  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?.  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?,  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?\; "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?=  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?<  "."  nasl-mode-syntax-table)
-  (modify-syntax-entry ?>  "."  nasl-mode-syntax-table)
+  (modify-syntax-entry ?!  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?*  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?+  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?-  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?/  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?~  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?:  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?.  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?,  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?\; "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?=  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?<  "."  nasal-mode-syntax-table)
+  (modify-syntax-entry ?>  "."  nasal-mode-syntax-table)
   ; Underscores are allowed as "symbol constituent"
-  (modify-syntax-entry ?_  "_"  nasl-mode-syntax-table)
+  (modify-syntax-entry ?_  "_"  nasal-mode-syntax-table)
   ; Backslash escapes; pound sign starts comments that newlines end.
-  (modify-syntax-entry ?\\ "\\" nasl-mode-syntax-table)
-  (modify-syntax-entry ?\# "<"  nasl-mode-syntax-table)
-  (modify-syntax-entry ?\n ">"  nasl-mode-syntax-table)
+  (modify-syntax-entry ?\\ "\\" nasal-mode-syntax-table)
+  (modify-syntax-entry ?\# "<"  nasal-mode-syntax-table)
+  (modify-syntax-entry ?\n ">"  nasal-mode-syntax-table)
   ; Square brackets act as parenthesis
-  (modify-syntax-entry ?\[ "(]"  nasl-mode-syntax-table)
-  (modify-syntax-entry ?]  ")"  nasl-mode-syntax-table))
+  (modify-syntax-entry ?\[ "(]"  nasal-mode-syntax-table)
+  (modify-syntax-entry ?]  ")"  nasal-mode-syntax-table))
 
-(defconst nasl-font-lock-keywords
+(defconst nasal-font-lock-keywords
   (eval-when-compile
     (list
      (cons (regexp-opt '("parents" "me" "arg") 'words)
@@ -57,21 +57,21 @@
 			 "contains" "typeof") 'words)
 	   1 'font-lock-builtin-face)
      ))
-  "Nasl-specific syntax to be hilighted.")
+  "Nasal-specific syntax to be hilighted.")
 
-(define-derived-mode nasl-mode c-mode "Nasl"
-  "Major mode for editing Nasl code.
-This is a C mode variant customized for Nasl's syntax.  It shares most of
-C mode's features.  Turning on Nasl mode runs `nasl-mode-hook'."
+(define-derived-mode nasal-mode c-mode "Nasal"
+  "Major mode for editing Nasal code.
+This is a C mode variant customized for Nasal's syntax.  It shares most of
+C mode's features.  Turning on Nasal mode runs `nasal-mode-hook'."
   (set (make-local-variable 'paragraph-start) (concat "$\\|" page-delimiter))
   (set (make-local-variable 'paragraph-separate) paragraph-start)
   (set (make-local-variable 'comment-start) "# ")
   (set (make-local-variable 'comment-end) "")
   (set (make-local-variable 'comment-start-skip) "#+ *")
-  (setq font-lock-defaults '(nasl-font-lock-keywords nil nil ((?_ . "w")))))
+  (setq font-lock-defaults '(nasal-font-lock-keywords nil nil ((?_ . "w")))))
 
-(provide 'nasl-mode)
+(provide 'nasal-mode)
 
 ;; Set us up to load by default for .nas files
-(setq auto-mode-alist (append '(("\\.nas$" . nasl-mode))
+(setq auto-mode-alist (append '(("\\.nas$" . nasal-mode))
 			      auto-mode-alist))

@@ -28,7 +28,7 @@ for(rep=0; rep<REPS; rep=rep+1) {
     }
 }
 
-## An identical perl script.  The Nasl code runs about 1.5x slower on
+## An identical perl script.  The Nasal code runs about 1.5x slower on
 ## my machine.
 
 # my $REPS = 10;

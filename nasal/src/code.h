@@ -2,7 +2,7 @@
 #define _CODE_H
 
 #include <setjmp.h>
-#include "nasl.h"
+#include "nasal.h"
 #include "data.h"
 
 #define MAX_STACK_DEPTH 1024
@@ -30,7 +30,7 @@ struct Frame {
 
 struct Context {
     // Garbage collecting allocators:
-    struct naPool pools[NUM_NASL_TYPES];
+    struct naPool pools[NUM_NASAL_TYPES];
 
     // Stack(s)
     struct Frame fStack[MAX_RECURSION];
