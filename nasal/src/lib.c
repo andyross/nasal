@@ -117,6 +117,27 @@ static naRef substr(naContext c, naRef me, int argc, naRef* args)
     return naStr_substr(naNewString(c), src, start, len);
 }
 
+static naRef f_strc(naContext c, naRef me, int argc, naRef* args)
+{
+    int idx;
+    struct naStr* str = args[0].ref.ptr.str;
+    naRef idr = argc > 1 ? naNumValue(args[1]) : naNum(0);
+    if(argc < 2 || IS_NIL(idr) || !IS_STR(args[0]))
+        naRuntimeError(c, "bad arguments to strc");
+    idx = (int)naNumValue(idr).num;
+    if(idx > str->len) naRuntimeError(c, "strc index out of bounds");
+    return naNum(str->data[idx]);
+}
+
+static naRef f_chr(naContext c, naRef me, int argc, naRef* args)
+{
+    char chr[1];
+    naRef cr = argc ? naNumValue(args[0]) : naNil();
+    if(IS_NIL(cr)) naRuntimeError(c, "chr argument not string");
+    chr[0] = (char)cr.num;
+    return naStr_fromdata(naNewString(c), chr, 1);
+}
+
 static naRef contains(naContext c, naRef me, int argc, naRef* args)
 {
     naRef hash = argc > 0 ? args[0] : naNil();
@@ -300,6 +321,8 @@ static struct func funcs[] = {
     { "num", num },
     { "streq", streq },
     { "substr", substr },
+    { "strc", f_strc },
+    { "chr", f_chr },
     { "contains", contains },
     { "typeof", typeOf },
     { "compile", f_compile },
