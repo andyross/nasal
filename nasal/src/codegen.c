@@ -41,13 +41,16 @@ static int newConstant(struct Parser* p, naRef c)
 
 static naRef getConstant(struct Parser* p, int idx)
 {
-    return naHash_get(p->consts, naNum(idx));
+    naRef c;
+    naHash_get(p->consts, naNum(idx), &c);
+    return c;
 }
 
 // Interns a scalar (!) constant and returns its index
 static int internConstant(struct Parser* p, naRef c)
 {
-    naRef r = naHash_get(p->interned, c);
+    naRef r;
+    naHash_get(p->interned, c, &r);
     if(!IS_NIL(r)) {
         return (int)r.num;
     } else {

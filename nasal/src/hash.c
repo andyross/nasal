@@ -80,19 +80,18 @@ void naHash_init(naRef hash)
     h->table = 0;
 }
 
-naRef naHash_get(naRef hash, naRef key)
+int naHash_get(naRef hash, naRef key, naRef* out)
 {
     struct naHash* h = hash.ref.ptr.hash;
     struct HashNode* n;
     if(!IS_SCALAR(key)) ERR("Hash lookup by non-scalar illegal");
     n = find(h, key);
     if(n) {
-        return n->val;
+        *out = n->val;
+        return 1;
     } else {
-        naRef nil;
-        nil.ref.reftag = NASL_REFTAG;
-        nil.ref.ptr.obj = 0;
-        return nil;
+        *out = naNil();
+        return 0;
     }
 }
 

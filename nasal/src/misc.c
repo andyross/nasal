@@ -19,14 +19,6 @@ int naTrue(naRef r)
     return 0;
 }
 
-naRef naContainerGet(naRef box, naRef key)
-{
-    if(IS_HASH(box)) return naHash_get(box, key);
-    if(IS_VEC(box) && IS_NUM(key))
-        return naVec_get(box, (int)key.num);
-    return naNil();
-}
-
 naRef naNew(struct Context* c, int type)
 {
     struct naObj* o;

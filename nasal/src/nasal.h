@@ -123,8 +123,6 @@ struct Context* naNewContext();
 void naGarbageCollect();
 naRef naParseCode(struct Context* c, char* buf, int len);
 
-naRef naContainerGet(naRef box, naRef key);
-
 // Allocators/generators:
 naRef naObj(int type, struct naObj* o);
 naRef naNew(struct Context* c, int type);
@@ -162,7 +160,7 @@ int naHash_size(naRef h);
 void naHash_keys(naRef dst, naRef hash);
 void naHash_delete(naRef hash, naRef key);
 void naHash_set(naRef hash, naRef key, naRef val);
-naRef naHash_get(naRef hash, naRef key);
+int naHash_get(naRef hash, naRef key, naRef* out);
 void naHash_init(naRef hash);
 void naHash_gcclean(struct naHash* s);
 

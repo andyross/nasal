@@ -93,32 +93,35 @@ void printStackDEBUG(struct Context* ctx)
     printf("\n");
 }
 
+static int checkVec(naRef vec, naRef idx)
+{
+    int i;
+    if(!IS_NUM(idx)) ERR("non-numeric vector index"); // FIXME: "1"
+    i = (int)idx.num;
+    if(i < 0 || i >= vec.ref.ptr.vec->size)
+        ERR("vector index out of bounds");
+    return i;
+}
 
 static naRef containerGet(naRef box, naRef key)
 {
     naRef result = naNil();
-    if(IS_HASH(box))
-        result = naHash_get(box, key);
-    else if(IS_VEC(box)) {
-        if(!IS_NUM(key)) ERR("non-numeric index into vector");
-        result = naVec_get(box, (int)key.num);
+    if(IS_HASH(box)) {
+        if(!naHash_get(box, key, &result))
+            ERR("undefined value in container");
+    } else if(IS_VEC(box)) {
+        result = naVec_get(box, checkVec(box, key));
     } else {
         ERR("extract from non-container");
     }
-    if(IS_NIL(result)) ERR("undefined value in container");
     return result;
 }
 
 static void containerSet(naRef box, naRef key, naRef val)
 {
-    if(IS_HASH(box)) naHash_set(box, key, val);
-    else if(IS_VEC(box)) {
-        if(!IS_NUM(key)) ERR("non-numeric index into vector");
-        if((int)key.num >= box.ref.ptr.vec->size)
-            ERR("vector insert out of bounds");
-        naVec_set(box, (int)key.num, val);
-    } else
-        ERR("insert into non-container");
+    if     (IS_HASH(box)) naHash_set(box, key, val);
+    else if(IS_VEC(box))  naVec_set(box, checkVec(box, key), val);
+    else                  ERR("insert into non-container");
 }
 
 static void initContext(struct Context* c)
@@ -275,9 +278,10 @@ static naRef bindFunction(struct Context* ctx, naRef code, naRef locals)
 static naRef getLocal(struct Frame* f, naRef sym)
 {
     // Locals first, then the function closure
-    naRef result = naHash_get(f->locals, sym);
-    if(IS_NIL(result)) result = naHash_get(f->namespace, sym);
-    if(IS_NIL(result)) ERR("undefined symbol");
+    naRef result;
+    if(!naHash_get(f->locals, sym, &result))
+        if(!naHash_get(f->namespace, sym, &result))
+            ERR("undefined symbol");
     return result;
 }
 
@@ -285,10 +289,12 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
 {
     // Put it in locals, unless it isn't defined there already *and*
     // exists in the closure.
-    naRef hash = f->locals;
-    if(IS_NIL(naHash_get(f->locals, sym))
-       && !IS_NIL(naHash_get(f->namespace, sym)))
+    naRef dummy, hash = f->locals;
+    if((naHash_get(f->locals,    sym, &dummy) == 0) &&
+       (naHash_get(f->namespace, sym, &dummy) == 1))
+    {
         hash = f->namespace;
+    }
     naHash_set(hash, sym, val);
     return val;
 }
@@ -412,8 +418,8 @@ static void run1(struct Context* ctx)
     case OP_MEMBER:
         a = POP(ctx); b = POP(ctx);
         if(!IS_HASH(b)) ERR("non-objects have no members");
-        c = naHash_get(b, a);
-        if(IS_NIL(c)) ERR("no such member");
+        if(naHash_get(b, a, &c) == 0)
+            ERR("no such member");
         PUSH(ctx, c);
         break;
     case OP_SETMEMBER:
