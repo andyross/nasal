@@ -9,6 +9,14 @@
 
 #define HASH_MAGIC 2654435769u
 
+#define INSERT(hh, hkey, hval, hcol) do {                  \
+        unsigned int cc = (hcol);                          \
+        struct HashNode* hnn = &(hh)->nodes[(hh)->size++]; \
+        hnn->key = (hkey); hnn->val = (hval);              \
+        hnn->next = (hh)->table[cc];                       \
+        (hh)->table[cc] = hnn;                             \
+    } while(0)
+
 // Computes a hash code for a given scalar
 static unsigned int hashcode(naRef r)
 {
@@ -55,19 +63,11 @@ static struct HashRec* realloc(struct naHash* hash)
     h->nodes = (struct HashNode*)(((char*)h)
                                   + sizeof(struct HashRec)
                                   + cols * sizeof(struct HashNode*));
-    if(h0) {
-        int i;
-        for(i=0; i<(1<<h0->lgalloced); i++) {
-            struct HashNode* hn = h0->table[i];
-            while(hn) {
-                int col = hashcolumn(h, hn->key);
-                struct HashNode* nhn = &h->nodes[h->size++];
-                nhn->key = hn->key;
-                nhn->val = hn->val;
-                nhn->next = h->table[col];
-                h->table[col] = nhn;
-                hn = hn->next;
-            }
+    for(lga=0; h0 != 0 && lga<(1<<h0->lgalloced); lga++) {
+        struct HashNode* hn = h0->table[lga];
+        while(hn) {
+            INSERT(h, hn->key, hn->val, hashcolumn(h, hn->key));
+            hn = hn->next;
         }
     }
     naGC_swapfree((void**)&hash->rec, h);
@@ -171,37 +171,22 @@ void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
 {
     int col;
     struct HashRec* h = hash->rec;
-    struct HashNode* n;
     if(!h || h->size >= 1<<h->lgalloced)
         h = realloc(hash);
     col = (HASH_MAGIC * sym->ref.ptr.str->hashcode) >> (32 - h->lgalloced);
-    n = h->nodes + h->size++;
-    n->key = *sym;
-    n->val = *val;
-    n->next = h->table[col];
-    h->table[col] = n;
+    INSERT(h, *sym, *val, col);
 }
 
 void naHash_set(naRef hash, naRef key, naRef val)
 {
     struct HashRec* h;
     struct HashNode* n;
-    unsigned int col;
-
     if(!IS_HASH(hash)) return;
-    if((n = find(hash.ref.ptr.hash, key))) {
-        n->val = val;
-        return;
-    }
+    if((n = find(hash.ref.ptr.hash, key))) { n->val = val; return; }
     h = hash.ref.ptr.hash->rec;
     while(!h || h->size >= 1<<h->lgalloced)
         h = realloc(hash.ref.ptr.hash);
-    col = hashcolumn(h, key);
-    n = &h->nodes[h->size++];
-    n->key = key;
-    n->val = val;
-    n->next = h->table[col];
-    h->table[col] = n;
+    INSERT(h, key, val, hashcolumn(h, key));
 }
 
 void naHash_delete(naRef hash, naRef key)
@@ -226,8 +211,8 @@ void naHash_delete(naRef hash, naRef key)
 
 void naHash_keys(naRef dst, naRef hash)
 {
-    struct HashRec* h = hash.ref.ptr.hash->rec;
     int i;
+    struct HashRec* h = hash.ref.ptr.hash->rec;
     if(!IS_HASH(hash) || !h) return;
     for(i=0; i<(1<<h->lgalloced); i++) {
         struct HashNode* hn = h->table[i];
