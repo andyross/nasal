@@ -199,9 +199,15 @@ static int tonum(unsigned char* s, int len, double* result)
         i += fraclen;
     }
 
+    // Nothing so far?  Then the parse failed.
+    if(i == 0) return 0;
+
     // Read the exponent, if any
-    if(i < len && (s[i] == 'e' || s[i] == 'E'))
+    if(i < len && (s[i] == 'e' || s[i] == 'E')) {
+        int i0 = i+1;
         i = readsigned(s, len, i+1, &exp);
+        if(i == i0) return 0; // Must have a number after the "e"
+    }
     
     // compute the result
     *result = sgn * (val + frac * decpow(-fraclen)) * decpow(exp);
