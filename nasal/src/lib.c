@@ -65,6 +65,7 @@ static naRef subvec(naContext c, naRef args)
         return naNil();
     if(len == 0 || len > naVec_size(v) - start) len = naVec_size(v) - start;
     result = naNewVector(c);
+    naVec_setsize(result, len);
     for(i=0; i<len; i++)
         naVec_set(result, i, naVec_get(v, start + i));
     return result;
