@@ -115,8 +115,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         else          genBinOp(OP_INDEX, p, t);
         break;
     case TOK_LCURL:
-        if(BINARY(t)) genHash(p, t);
-        else          genBinOp(OP_INDEX, p, t);
+        genHash(p, t);
         break;
     case TOK_ASSIGN:
         genLValue(p, LEFT(t));
@@ -143,7 +142,7 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_OR:    genBinOp(OP_OR,     p, t); break;
     case TOK_MUL:   genBinOp(OP_MUL,    p, t); break;
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
-    case TOK_MINUS: genBinOp(OP_MINUS,  p, t); break;
+    case TOK_MINUS: genBinOp(OP_MINUS,  p, t); break; // FIXME: prefix negate!
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;
     case TOK_CAT:   genBinOp(OP_CAT,    p, t); break;
     case TOK_DOT:   genBinOp(OP_MEMBER, p, t); break;
@@ -153,10 +152,8 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_NEQ:   genBinOp(OP_NEQ,    p, t); break;
     case TOK_GT:    genBinOp(OP_GT,     p, t); break;
     case TOK_GTE:   genBinOp(OP_GTE,    p, t); break;
-
-    case TOK_COLON: case TOK_COMMA:
-    case TOK_SEMI:  case TOK_ELSIF: case TOK_ELSE:
-        *(int*)0=0; // FIXME: need real error here
+    default:
+        naParseError(p, "parse error", t->line);
     };
 }
 

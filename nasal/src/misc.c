@@ -10,6 +10,23 @@ void* ALLOC(int n) { return malloc(n); }
 void ERR(char* msg) { fprintf(stderr, "%s\n", msg); *(int*)0=0; }
 void BZERO(void* m, int n) { bzero(m, n); }
 
+int naTrue(naRef r)
+{
+    if(IS_NIL(r)) return 0;
+    if(IS_NUM(r)) return r.num != 0;
+    if(IS_STR(r)) return 1;
+    ERR("non-scalar used in boolean context");
+    return 0;
+}
+
+naRef naContainerGet(naRef box, naRef key)
+{
+    if(IS_HASH(box)) return naHash_get(box, key);
+    if(IS_VEC(box) && IS_NUM(key))
+        return naVec_get(box, (int)key.num);
+    return naNil();
+}
+
 naRef naNew(struct Context* c, int type)
 {
     struct naObj* o;

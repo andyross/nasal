@@ -108,20 +108,6 @@ void dumpTokenList(struct Token* t, int prefix)
     }
 }
 
-void printRefDEBUG(naRef r)
-{
-    if(IS_NUM(r)) {
-        printf("%f\n", r.num);
-    } else if(IS_NIL(r)) {
-        printf("<nil>\n");
-    } else {
-        int j;
-        for(j=0; j<r.ref.ptr.str->len; j++)
-            printf("%c", r.ref.ptr.str->data[j]);
-        printf("\n");
-    }
-}
-
 int main(int argc, char** argv)
 {
     int i;
