@@ -3,14 +3,15 @@
 
 #include "nasl.h"
 
-#define MAX_STACK_SIZE 1024
+#define MAX_STACK_DEPTH 1024
 #define MAX_RECURSION 128
 
-enum {
+enum {    
     OP_AND, OP_OR, OP_NOT, OP_MUL, OP_PLUS, OP_MINUS, OP_DIV,
     OP_CAT, OP_LT, OP_LTE, OP_EQ, OP_NEQ, OP_GT, OP_GTE,
     OP_RETURN, OP_ASSIGN, OP_DUP, OP_PUSHCONST, OP_PUSHNIL,
-    OP_INDEX, OP_MEMBER, OP_POP, OP_SYMBOL, OP_NEG
+    OP_INSERT, OP_EXTRACT, OP_MEMBER, OP_SETMEMBER, OP_POP,
+    OP_LOCAL, OP_SETLOCAL, OP_NEG
 };
 
 struct Frame {
@@ -26,11 +27,9 @@ struct Context {
 
     struct Frame fStack[MAX_RECURSION];
     int fTop;
-    int fDepth;
 
-    naRef opStack[MAX_STACK_SIZE];
+    naRef opStack[MAX_STACK_DEPTH];
     int opTop;
-    int opDepth;
 
     int done;
 };

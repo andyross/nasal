@@ -67,9 +67,25 @@ static void genConstant(struct Parser* p, struct Token* t)
     emit(p, idx & 0xff);
 }
 
-static void genLValue(struct Parser* p, struct Token* t)
+static int genLValue(struct Parser* p, struct Token* t)
 {
-    *(int*)0=0;
+    if(t->type == TOK_LPAR) {
+        return genLValue(p, LEFT(t)); // Handle stuff like "(a) = 1"
+    } else if(t->type == TOK_SYMBOL) {
+        genConstant(p, t);
+        return OP_SETLOCAL;
+    } else if(t->type == TOK_DOT && RIGHT(t) && RIGHT(t)->type == TOK_SYMBOL) {
+        genExpr(p, LEFT(t));
+        genConstant(p, RIGHT(t));
+        return OP_SETMEMBER;
+    } else if(t->type == TOK_LBRA) {
+        genExpr(p, LEFT(t));
+        genExpr(p, RIGHT(t));
+        return OP_INSERT;
+    } else {
+        naParseError(p, "bad lvalue", t->line);
+        return -1;
+    }
 }
 
 static void genLambda(struct Parser* p, struct Token* t)
@@ -94,6 +110,8 @@ static void genFuncall(struct Parser* p, struct Token* t)
 
 static void genExpr(struct Parser* p, struct Token* t)
 {
+    int i;
+
     switch(t->type) {
     case TOK_IF: break;
     case TOK_FOR: break;
@@ -112,15 +130,15 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_LBRA:
         if(BINARY(t)) genList(p, t);
-        else          genBinOp(OP_INDEX, p, t);
+        else          genBinOp(OP_EXTRACT, p, t);
         break;
     case TOK_LCURL:
         genHash(p, t);
         break;
     case TOK_ASSIGN:
-        genLValue(p, LEFT(t));
+        i = genLValue(p, LEFT(t));
         genExpr(p, RIGHT(t));
-        emit(p, OP_ASSIGN);
+        emit(p, i); // use the op appropriate to the lvalue
         break;
     case TOK_RETURN:
         genExpr(p, LEFT(t));
@@ -132,7 +150,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_SYMBOL:
         genConstant(p, t);
-        emit(p, OP_SYMBOL);
+        emit(p, OP_LOCAL);
         break;
     case TOK_LITERAL:
         genConstant(p, t);
@@ -185,7 +203,7 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     struct naCode* code;
 
     p->codeAlloced = 1024; // Start fairly big, this is a cheap allocation
-    p->byteCode = naParseAlloc(p, p->nBytes);
+    p->byteCode = naParseAlloc(p, p->codeAlloced);
     p->nBytes = 0;
 
     p->constHash = naNewHash(p->context);

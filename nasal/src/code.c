@@ -28,13 +28,41 @@ char* opStringDEBUG(int op)
     case OP_DUP: return "DUP";
     case OP_PUSHCONST: return "PUSHCONST";
     case OP_PUSHNIL: return "PUSHNIL";
-    case OP_INDEX: return "INDEX";
+    case OP_INSERT: return "INSERT";
+    case OP_EXTRACT: return "EXTRACT";
     case OP_MEMBER: return "MEMBER";
+    case OP_SETMEMBER: return "SETMEMBER";
     case OP_POP: return "POP";
-    case OP_SYMBOL: return "SYMBOL";
+    case OP_LOCAL: return "LOCAL";
+    case OP_SETLOCAL: return "SETLOCAL";
     case OP_NEG: return "NEG";
     }
     return "<bad opcode>";
+}
+
+static naRef containerGet(naRef box, naRef key)
+{
+    naRef result = naNil();
+    if(IS_HASH(box))
+        result = naHash_get(box, key);
+    else if(IS_VEC(box)) {
+        if(!IS_NUM(key)) ERR("non-numeric index into vector");
+        result = naVec_get(box, (int)key.num);
+    } else {
+        ERR("extract from non-container");
+    }
+    if(IS_NIL(result)) ERR("undefined value in container");
+    return result;
+}
+
+static void containerSet(naRef box, naRef key, naRef val)
+{
+    if(IS_HASH(box)) naHash_set(box, key, val);
+    if(IS_VEC(box)) {
+        if(!IS_NUM(key)) ERR("non-numeric index into vector");
+        naVec_set(box, (int)key.num, val);
+    }
+    ERR("insert into non-container");
 }
 
 static void initContext(struct Context* c)
@@ -46,7 +74,7 @@ static void initContext(struct Context* c)
     c->fTop = c->opTop = 0;
 
     BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame));
-    BZERO(c->opStack, MAX_STACK_SIZE * sizeof(naRef));
+    BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 }
 
 struct Context* naNewContext()
@@ -136,7 +164,7 @@ static naRef evalBinaryNumeric(int op, naRef ra, naRef rb)
     return naNil();
 }
 
-static naRef getSymbol(struct Frame* f, naRef sym)
+static naRef getLocal(struct Frame* f, naRef sym)
 {
     // Locals first, then the function closure
     naRef result = naHash_get(f->locals, sym);
@@ -145,8 +173,21 @@ static naRef getSymbol(struct Frame* f, naRef sym)
     return result;
 }
 
+static naRef setLocal(struct Frame* f, naRef sym, naRef val)
+{
+    // Put it in locals, unless it isn't defined there already *and*
+    // exists in the closure.
+    naRef hash = f->locals;
+    if(IS_NIL(naHash_get(f->locals, sym))
+       && !IS_NIL(naHash_get(f->namespace, sym)))
+        hash = f->namespace;
+    naHash_set(hash, sym, val);
+    return val;
+}
+
 static inline void PUSH(struct Context* ctx, naRef r)
 {
+    if(ctx->opTop >= MAX_STACK_DEPTH) ERR("stack overflow");
     ctx->opStack[ctx->opTop++] = r;
 }
 
@@ -183,6 +224,16 @@ static void run1(struct Context* ctx)
         a = POP(ctx); b = POP(ctx);
         PUSH(ctx, evalAndOr(op, a, b));
         break;
+    case OP_CAT:
+        a = stringify(POP(ctx)); b = stringify(POP(ctx));
+        c = naNewString(ctx);
+        naStr_concat(c, b, a);
+        PUSH(ctx, c);
+        break;
+    case OP_NEG:
+        a = POP(ctx);
+        PUSH(ctx, naNum(-numify(a)));
+        break;
     case OP_NOT:
         a = POP(ctx);
         PUSH(ctx, naNum(naTrue(a) ? 0 : 1));
@@ -194,6 +245,14 @@ static void run1(struct Context* ctx)
     case OP_PUSHNIL:
         PUSH(ctx, naNil());
         break;
+    case OP_LOCAL:
+        a = getLocal(f, POP(ctx));
+        PUSH(ctx, a);
+        break;
+    case OP_SETLOCAL:
+        a = POP(ctx); b = POP(ctx);
+        PUSH(ctx, setLocal(f, b, a));
+        break;
     case OP_MEMBER:
         a = POP(ctx); b = POP(ctx);
         if(!IS_HASH(b)) ERR("non-objects have no members");
@@ -201,19 +260,20 @@ static void run1(struct Context* ctx)
         if(IS_NIL(c)) ERR("no such member");
         PUSH(ctx, c);
         break;
-    case OP_CAT:
-        a = stringify(POP(ctx)); b = stringify(POP(ctx));
-        c = naNewString(ctx);
-        naStr_concat(c, b, a);
+    case OP_SETMEMBER:
+        c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: hash, key, val
+        if(!IS_HASH(c)) ERR("non-objects have no members");
+        naHash_set(a, b, c);
         PUSH(ctx, c);
         break;
-    case OP_SYMBOL:
-        a = getSymbol(f, POP(ctx));
-        PUSH(ctx, a);
+    case OP_INSERT:
+        c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: box, key, val
+        containerSet(a, b, c);
+        PUSH(ctx, c);
         break;
-    case OP_NEG:
-        a = POP(ctx);
-        PUSH(ctx, naNum(-numify(a)));
+    case OP_EXTRACT:
+        b = POP(ctx); a = POP(ctx); // a,b: box, key
+        PUSH(ctx, containerGet(a, b));
         break;
     }
 
