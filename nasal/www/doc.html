@@ -39,10 +39,10 @@ their intended usage, they make for tedious and unproductuve
 development environments.  Except for the select few to whome they
 appeal, these languages aren't "fun".
 <p>
-The goal with Nasl is to have a language that supports most "normal"
-programming idioms (objects, functions, arrays, hashes) while avoiding
-the bloat that comes from "platform" scripting languages like perl,
-python and php.
+The real goal with Nasl is to have a language that supports most
+"normal" programming idioms (objects, functions, arrays, hashes) while
+avoiding the bloat that comes from "platform" scripting languages like
+perl, python and php.
 <h2>Notable Characteristics</h2>
 Like perl, python and javascript, nasl uses vectors (expandable
 arrays) and hash tables as its native data format.  This is a
@@ -159,7 +159,10 @@ Nasl is very small, very simple, written in ANSI C, and generally an
 excellent choice for embedded applications.  It uses a simple and
 transparent syntax interpretable by a simple "bracket matching and
 operator precedence" parser.  It does not depend on any third party
-libraries other than the standard C library.
+libraries other than the standard C library.  It does not depend on
+third party tools like (f)lex and yacc/bison.  It builds simply and
+easily, supports a reasonably simple extension API and cohabitates
+well with other code.
 <p>
 Nasl makes no use of the processor stack when running recursive code.
 This is important for embedded languages as it provides the ability to
