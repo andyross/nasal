@@ -1,5 +1,11 @@
 #include <math.h>
+#include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
+
+#ifdef _MSC_VER // sigh...
+#define vsnprintf _vsnprintf
+#endif
 
 #include "nasal.h"
 #include "code.h"
@@ -188,6 +194,106 @@ static naRef f_die(naContext c, naRef me, naRef args)
     return naNil(); // never executes
 }
 
+// Wrapper around vsnprintf, iteratively increasing the buffer size
+// until it fits.  Returned buffer should be freed by the caller.
+char* dosprintf(char* f, ...)
+{
+    char* buf;
+    va_list va;
+    int len = 16;
+    while(1) {
+        buf = naAlloc(len);
+        va_start(va, f);
+        if(vsnprintf(buf, len, f, va) < len) {
+            va_end(va);
+            return buf;
+        }
+        va_end(va);
+        naFree(buf);
+        len *= 2;
+    }
+}
+
+// Inspects a printf format string f, and finds the next "%..." format
+// specifier.  Stores the start of the specifier in out, the length in
+// len, and the type in type.  Returns a pointer to the remainder of
+// the format string, or 0 if no format string was found.  Recognizes
+// all of ANSI C's syntax except for the "length modifier" feature.
+// Note: this does not validate the format character returned in
+// "type". That is the caller's job.
+static char* nextFormat(naContext ctx, char* f, char** out, int* len, char* type)
+{
+    // Skip to the start of the format string
+    while(*f && *f != '%') f++;
+    if(!*f) return 0;
+    *out = f++;
+
+    while(*f && (*f=='-' || *f=='+' || *f==' ' || *f=='0' || *f=='#')) f++;
+
+    // Test for duplicate flags.  This is pure pedantry and could
+    // be removed on all known platforms, but just to be safe...
+    {   char *p1, *p2;
+        for(p1 = *out + 1; p1 < f; p1++)
+            for(p2 = p1+1; p2 < f; p2++)
+                if(*p1 == *p2)
+                    naRuntimeError(ctx, "duplicate flag in format string"); }
+
+    while(*f && *f >= '0' && *f <= '9') f++;
+    if(*f && *f == '.') f++;
+    while(*f && *f >= '0' && *f <= '9') f++;
+    if(!*f) naRuntimeError(ctx, "invalid format string");
+
+    *type = *f++;
+    *len = f - *out;
+    return f;
+}
+
+#define NEWSTR(s, l) naStr_fromdata(naNewString(ctx), s, l)
+#define ERR(m) naRuntimeError(ctx, m)
+#define APPEND(r) result = naStr_concat(naNewString(ctx), result, r)
+static naRef f_sprintf(naContext ctx, naRef me, naRef args)
+{
+    char t, nultmp, *fstr, *next, *fout, *s;
+    int flen, argn=1;
+    naRef format, arg, result = naNewString(ctx);
+
+    if(naVec_size(args) < 1) ERR("not enough arguments to sprintf");
+    format = naStringValue(ctx, naVec_get(args, 0));
+    if(naIsNil(format)) ERR("bad format string in sprintf");
+    s = naStr_data(format);
+                               
+    while((next = nextFormat(ctx, s, &fstr, &flen, &t))) {
+        APPEND(NEWSTR(s, fstr-s)); // stuff before the format string
+        if(argn >= naVec_size(args)) ERR("not enough arguments to sprintf");
+        arg = naVec_get(args, argn++);
+        nultmp = fstr[flen]; // sneaky nul termination...
+        fstr[flen] = 0;
+        if(t == 's') {
+            arg = naStringValue(ctx, arg);
+            if(naIsNil(arg)) fout = dosprintf(fstr, "nil");
+            else             fout = dosprintf(fstr, naStr_data(arg));
+        } else {
+            arg = naNumValue(arg);
+            if(naIsNil(arg))
+                fout = dosprintf(fstr, "nil");
+            else if(t=='d' || t=='i' || t=='c')
+                fout = dosprintf(fstr, (int)naNumValue(arg).num);
+            else if(t=='o' || t=='u' || t=='x' || t=='X')
+                fout = dosprintf(fstr, (unsigned int)naNumValue(arg).num);
+            else if(t=='e' || t=='E' || t=='f' || t=='F' || t=='g' || t=='G')
+                fout = dosprintf(fstr, naNumValue(arg).num);
+            else
+                ERR("invalid sprintf format type");
+        }
+        fstr[flen] = nultmp;
+        APPEND(NEWSTR(fout, strlen(fout)));
+        naFree(fout);
+        s = next;
+    }
+    APPEND(NEWSTR(s, strlen(s)));
+    return result;
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -206,6 +312,7 @@ static struct func funcs[] = {
     { "compile", f_compile },
     { "call", f_call },
     { "die", f_die },
+    { "sprintf", f_sprintf },
 };
 
 naRef naStdLib(naContext c)
