@@ -57,13 +57,13 @@ void printRefDEBUG(naRef r)
     int i;
     if(IS_NUM(r)) {
         printf("%f\n", r.num);
+    } else if(IS_NIL(r)) {
+        printf("<nil>\n");
     } else if(IS_STR(r)) {
         printf("\"");
         for(i=0; i<r.ref.ptr.str->len; i++)
             printf("%c", r.ref.ptr.str->data[i]);
         printf("\"\n");
-    } else if(IS_NIL(r)) {
-        printf("<nil>\n");
     } else if(IS_VEC(r)) {
         printf("<vec>\n");
     } else if(IS_HASH(r)) {

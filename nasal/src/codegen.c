@@ -108,7 +108,8 @@ static void genLambda(struct Parser* p, struct Token* t)
     naRef          interned    = p->interned;
     int            nConsts     = p->nConsts;
 
-    if(LEFT(t)->type != TOK_LCURL) ERR("bad function definition");
+    if(LEFT(t)->type != TOK_LCURL)
+        naParseError(p, "bad function definition", t->line);
     naRef codeObj = naCodeGen(p, LEFT(LEFT(t)));
 
     p->byteCode    = byteCode;
@@ -140,7 +141,9 @@ static void genHashElem(struct Parser* p, struct Token* t)
 {
     if(t->type != TOK_COLON)
         naParseError(p, "bad hash/object initializer", t->line);
-    genExpr(p, LEFT(t));
+    if(LEFT(t)->type == TOK_SYMBOL) genScalarConstant(p, LEFT(t));
+    else if(LEFT(t)->type == TOK_LITERAL) genExpr(p, LEFT(t));
+    else naParseError(p, "bad hash/object initializer", t->line);
     genExpr(p, RIGHT(t));
     emit(p, OP_HAPPEND);
 }
@@ -150,7 +153,7 @@ static void genHash(struct Parser* p, struct Token* t)
     if(t->type == TOK_COMMA) {
         genHashElem(p, LEFT(t));
         genHash(p, RIGHT(t));
-    } else {
+    } else if(t->type != TOK_EMPTY) {
         genHashElem(p, t);
     }
 }
@@ -170,6 +173,13 @@ static void genFuncall(struct Parser* p, struct Token* t)
     emit(p, OP_NEWVEC);
     genList(p, RIGHT(t));
     emit(p, op);
+}
+
+static void emitJumpTo(struct Parser* p, int addr)
+{
+    emit(p, OP_JMP);
+    emit(p, addr >> 8);
+    emit(p, addr & 0xff);
 }
 
 // Emit a jump operation, and return the location of the address in
@@ -197,12 +207,12 @@ static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
     genExpr(p, tif->children); // the test
     emit(p, OP_NOT);
     jumpNext = emitJump(p, OP_JIF);
-    genExpr(p, tif->children->next->children); // the body
+    genExprList(p, tif->children->next->children); // the body
     jumpEnd = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpNext);
     if(telse) {
         if(telse->type == TOK_ELSIF) genIf(p, telse, telse->next);
-        else genExpr(p, telse->children->children);
+        else genExprList(p, telse->children->children);
     }
     fixJumpTarget(p, jumpEnd);
 }
@@ -212,17 +222,81 @@ static void genIfElse(struct Parser* p, struct Token* t)
     genIf(p, t, t->children->next->next);
 }
 
+static int countSemis(struct Token* t)
+{
+    if(!t || t->type != TOK_SEMI) return 0;
+    return 1 + countSemis(RIGHT(t));
+}
+
+static void genForWhile(struct Parser* p, struct Token* init,
+                        struct Token* test, struct Token* update,
+                        struct Token* body)
+{
+    int loopTop, jumpEnd, continueSpot;
+
+    if(init) { genExpr(p, init); emit(p, OP_POP); }
+
+    loopTop = p->nBytes;
+    genExpr(p, test);
+    emit(p, OP_NOT);
+    jumpEnd = emitJump(p, OP_JIF);
+
+    genExprList(p, body);
+    emit(p, OP_POP);
+
+    continueSpot = p->nBytes;
+
+    if(update) { genExpr(p, update); emit(p, OP_POP); }
+
+    emitJumpTo(p, loopTop);
+
+    fixJumpTarget(p, jumpEnd);
+    emit(p, OP_PUSHNIL); // loops have nil as their expression value
+}
+
+static void genWhile(struct Parser* p, struct Token* t)
+{
+    int semis = countSemis(LEFT(t));
+    struct Token *test=LEFT(t), *body;
+    if(semis == 1) test = RIGHT(LEFT(t)); // Handle label here
+    else if(semis != 0)
+        naParseError(p, "too many semicolons in while test", t->line);
+    body = LEFT(RIGHT(t));
+    genForWhile(p, 0, test, 0, body);
+}
+
+static void genFor(struct Parser* p, struct Token* t)
+{
+    struct Token *h, *init, *test, *body, *update;
+    h = LEFT(t)->children;
+    int semis = countSemis(h);
+    if(semis == 3) test=RIGHT(h); // Handle label
+    else if(semis != 2)
+        naParseError(p, "wrong number of terms in for header", t->line);
+
+    // Parse tree hell :)
+    init = LEFT(h);
+    test = LEFT(RIGHT(h));
+    update = RIGHT(RIGHT(h));
+    body = RIGHT(t)->children;
+    genForWhile(p, init, test, update, body);
+}
+
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
-    if(t == 0) ERR("empty expression");
+    if(t == 0) naParseError(p, "empty expression", t->line);
     switch(t->type) {
     case TOK_IF:
         genIfElse(p, t);
         break;
-    case TOK_FOR: break;
+    case TOK_WHILE:
+        genWhile(p, t);
+        break;
+    case TOK_FOR:
+        genFor(p, t);
+        break;
     case TOK_FOREACH: break;
-    case TOK_WHILE: break;
     case TOK_BREAK: break;
     case TOK_CONTINUE: break;
 
