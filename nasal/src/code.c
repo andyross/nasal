@@ -100,8 +100,6 @@ static void initContext(struct Context* c)
         c->fStack[i].args = naNil();
 
     c->globals = globals;
-    c->nextAll = globals->allContexts;
-    globals->allContexts = c;
 }
 
 void initGlobals()
@@ -135,8 +133,13 @@ struct Context* naNewContext()
         initGlobals();
 
     struct Context* c = globals->freeContexts;
-    if(!c) c = (struct Context*)naAlloc(sizeof(struct Context));
-    else   globals->freeContexts = c->nextFree;
+    if(!c) {
+        c = (struct Context*)naAlloc(sizeof(struct Context));
+        c->nextAll = globals->allContexts;
+        globals->allContexts = c;
+    } else {
+        globals->freeContexts = c->nextFree;
+    }
     c->nextFree = 0;
     initContext(c);
     return c;
