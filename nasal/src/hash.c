@@ -28,8 +28,8 @@ static void realloc(naRef hash)
     h->nodes = naAlloc(sz * (sizeof(struct HashNode) + sizeof(void*)));
     h->table = (struct HashNode**)(((char*)h->nodes) + sz*sizeof(struct HashNode));
     naBZero(h->table, sz * sizeof(void*));
-    h->nextnode = 0;
     h->size = 0;
+    h->dels = 0;
 
     // Re-insert everything from scratch
     for(i=0; i<oldcols; i++) {
@@ -116,6 +116,7 @@ void naHash_init(naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
     h->size = 0;
+    h->dels = 0;
     h->lgalloced = 0;
     h->table = 0;
     h->nodes = 0;
@@ -186,12 +187,11 @@ void naHash_newsym(struct naHash* h, naRef* sym, naRef* val)
         realloc(hash);
     }
     col = (HASH_MAGIC * sym->ref.ptr.str->hashcode) >> (32 - h->lgalloced);
-    n = h->nodes + h->nextnode++;
+    n = h->nodes + h->size++;
     n->key = *sym;
     n->val = *val;
     n->next = h->table[col];
     h->table[col] = n;
-    h->size++;
 }
 
 void naHash_set(naRef hash, naRef key, naRef val)
@@ -212,19 +212,13 @@ void naHash_set(naRef hash, naRef key, naRef val)
         realloc(hash);
 
     col = hashcolumn(h, key);
-    n = h->nodes + h->nextnode++;
+    n = h->nodes + h->size++;
     n->key = key;
     n->val = val;
     n->next = h->table[col];
     h->table[col] = n;
-    h->size++;
 }
 
-// FIXME: this implementation does a realloc() after each delete, and
-// is therefore needlessly O(N).  (The reason is that this avoids the
-// need to keep a free list around for the much more common case of
-// adding a new value.  Modifying an existing value is O(1), of
-// course.)
 void naHash_delete(naRef hash, naRef key)
 {
     struct naHash* h = hash.ref.ptr.hash;
@@ -238,7 +232,7 @@ void naHash_delete(naRef hash, naRef key)
             if(last == 0) h->table[col] = hn->next;
             else last->next = hn->next;
             h->size--;
-            realloc(hash);
+            h->dels++;
             return;
         }
         last = hn;
@@ -263,7 +257,7 @@ void naHash_keys(naRef dst, naRef hash)
 int naHash_size(naRef h)
 {
     if(!IS_HASH(h)) return 0;
-    return h.ref.ptr.hash->size;
+    return h.ref.ptr.hash->size - h.ref.ptr.hash->dels;
 }
 
 void naHash_gcclean(struct naHash* h)
@@ -271,7 +265,7 @@ void naHash_gcclean(struct naHash* h)
     naFree(h->nodes);
     h->nodes = 0;
     h->size = 0;
+    h->dels = 0;
     h->lgalloced = 0;
     h->table = 0;
-    h->nextnode = 0;
 }

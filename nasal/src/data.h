@@ -62,10 +62,10 @@ struct HashNode {
 struct naHash {
     GC_HEADER;
     int size;
+    int dels;
     int lgalloced;
     struct HashNode* nodes;
     struct HashNode** table;
-    int nextnode;
 };
 
 struct naCode {
