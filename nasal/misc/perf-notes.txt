@@ -124,3 +124,8 @@ INDEED!  Simply moving the contents of run1() into the body of run()
 eliminates a ton of needless pointer indirections and gets us down to
 5.13s, or another 15%.  We're now just 33% slower than perl on
 objperf.
+
+Revisiting the "store hash codes in strings" issue, after all the
+other optimizations, worked GREAT!  We are now down to 4.5s, for
+another 15% speed increase.  This was apparently always a good idea,
+it was just drowned in the overhead uncovered by other optimizations.

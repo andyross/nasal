@@ -52,12 +52,15 @@ static unsigned int hashcode(naRef r)
         // 2*sizeof(int).
         unsigned int* p = (unsigned int*)&(r.num);
         return p[0] ^ p[1];
+    } else if(r.ref.ptr.str->hashcode) {
+        return r.ref.ptr.str->hashcode;
     } else {
         // This is Daniel Bernstein's djb2 hash function that I found
         // on the web somewhere.  It appears to work pretty well.
         unsigned int i, hash = 5831;
         for(i=0; i<r.ref.ptr.str->len; i++)
             hash = (hash * 33) ^ r.ref.ptr.str->data[i];
+        r.ref.ptr.str->hashcode = hash;
         return hash;
     }
 }

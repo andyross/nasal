@@ -40,6 +40,7 @@ struct naStr {
     GC_HEADER;
     int len;
     unsigned char* data;
+    unsigned int hashcode;
 };
 
 struct naVec {

@@ -9,9 +9,9 @@
 #define DIGITS 16
 
 // The minimum size we'll allocate for a string.  Since a string
-// structure is already 12 bytes, and each naRef that points to it is
+// structure is already 16 bytes, and each naRef that points to it is
 // 8, there isn't much point in being stingy.
-#define MINLEN 16
+#define MINLEN 12
 
 static int tonum(unsigned char* s, int len, double* result);
 static int fromnum(double val, unsigned char* s);

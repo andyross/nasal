@@ -59,6 +59,7 @@ naRef naNewString(struct Context* c)
     naRef s = naNew(c, T_STR);
     s.ref.ptr.str->len = 0;
     s.ref.ptr.str->data = 0;
+    s.ref.ptr.str->hashcode = 0;
     return s;
 }
 
