@@ -166,6 +166,7 @@ void naGC_mark(naRef r)
         }
         break;
     case T_CODE:
+        naGC_mark(r.ref.ptr.code->srcFile);
         for(i=0; i<r.ref.ptr.code->nConstants; i++)
             naGC_mark(r.ref.ptr.code->constants[i]);
         break;
