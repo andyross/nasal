@@ -5,6 +5,17 @@
 ;;
 ;; Based very closely on awk-mode.el as shipped with GNU Emacs 21.2
 ;; Copyright (C) 1988,94,96,2000  Free Software Foundation, Inc.
+;;
+;; It should be sufficient to drop this into your Emacs site-lisp
+;; directory (/usr/share/emacs/site-lisp on most linux distributions)
+;; and add a line:
+;;
+;; (require 'nasl-mode)
+;;
+;; ...to your .emacs file.  All files with a .nas extension should
+;; then be associated with nasl mode automatically.  I am *not* an
+;; elisp hacker, though, so YMMV.
+;;
 
 (defvar nasl-mode-syntax-table nil "Syntax table in use in Nasl-mode buffers.")
 (if nasl-mode-syntax-table ()
@@ -46,7 +57,7 @@
 			 "contains" "typeof") 'words)
 	   1 'font-lock-builtin-face)
      ))
-  "Nasl-specific syntax to hilight.")
+  "Nasl-specific syntax to be hilighted.")
 
 (define-derived-mode nasl-mode c-mode "Nasl"
   "Major mode for editing Nasl code.
@@ -60,3 +71,7 @@ C mode's features.  Turning on Nasl mode runs `nasl-mode-hook'."
   (setq font-lock-defaults '(nasl-font-lock-keywords nil nil ((?_ . "w")))))
 
 (provide 'nasl-mode)
+
+;; Set us up to load by default for .nas files
+(setq auto-mode-alist (append '(("\\.nas$" . nasl-mode))
+			      auto-mode-alist))
