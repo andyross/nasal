@@ -287,19 +287,6 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
     return arg;
 }
 
-// Grab the *next* frame's arguments list, empty it, and push it on
-// the stack.
-void handleNextArgs(struct Context* ctx)
-{
-    struct Frame* f;
-    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "recursion too deep");
-    f = &(ctx->fStack[ctx->fTop]);
-    if(IS_NIL(f->args))
-        f->args = naNewVector(ctx);
-    f->args.ref.ptr.vec->size = 0;
-    PUSH(ctx, f->args);
-}
-
 // OP_EACH works like a vector get, except that it leaves the vector
 // and index on the stack, increments the index after use, and pops
 // the arguments and pushes a nil if the index is beyond the end.
@@ -477,9 +464,6 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
         ctx->opTop = ctx->markStack[--ctx->markTop];
-        break;
-    case OP_NEXTARGS:
-        handleNextArgs(ctx);
         break;
     default:
         ERR(ctx, "BUG: bad opcode");
