@@ -5,12 +5,12 @@
 // contain *either* a pointer to a garbage-collectable nasl object
 // (string, vector, hash) *or* a floating point number.  Keeping the
 // number here is an optimization to prevent the generation of
-// zillions of tiny "number" object that have to be collected.
-// Note sneaky hack: on little endian systems, placing reftag after
-// ptr and putting 1's in the top 13 bits makes the double value a
-// NaN, and thus unmistakable.  Swap the byte order *and* the
-// structure order on big-endian systems.  On 64 bit sytems, reftag
-// and the double won't be coincident anyway.
+// zillions of tiny "number" object that have to be collected.  Note
+// sneaky hack: on little endian systems, placing reftag after ptr and
+// putting 1's in the top 13 bits makes the double value a NaN, and
+// thus unmistakable.  Swap the structure order on 32 bit big-endian
+// systems.  On 64 bit sytems of either endianness, reftag and the
+// double won't be coincident anyway.
 #define NASL_REFTAG 0x7ff56789
 typedef union {
     double num;
