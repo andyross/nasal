@@ -1,4 +1,14 @@
+#include <stdio.h> // DEBUG
+#include <stdlib.h> // DEBUG
+
 #include "parse.h"
+
+// FIXME
+static void error(char* msg, int line)
+{
+    printf("Error: %s at line %d\n", msg, line);
+    exit(1);
+}
 
 void naParseInit(struct Parser* p)
 {
@@ -61,3 +71,71 @@ void* naParseAlloc(struct Parser* p, int bytes)
     return (void*)result;
 }
 
+// Follows the token list from start (which must be a left brace of
+// some type), placing all tokens found into start's child list until
+// it reaches the matching close brace.
+static void collectBrace(struct Token* start)
+{
+    struct Token* t;
+    int closer = -1;
+    if(start->type == TOK_LPAR)  closer = TOK_RPAR;
+    if(start->type == TOK_LBRA)  closer = TOK_RBRA;
+    if(start->type == TOK_LCURL) closer = TOK_RCURL;
+
+    t = start->next;
+    while(t) {
+        switch(t->type) {
+        case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
+            collectBrace(t);
+            break;
+        case TOK_RPAR: case TOK_RBRA: case TOK_RCURL:
+            if(t->type != closer)
+                error("mismatched closing brace", t->line);
+
+            // Drop this node on the floor, stitch up the list and return
+            start->next = t->next;
+            if(t->next) t->next->prev = start;
+            if(t->prev) t->prev->next = 0;
+            return;
+        }
+
+        // Snip t out of the existing list, and append it to start's
+        // children.
+        if(t->prev) t->prev->next = t->next;
+        if(t->next) t->next->prev = t->prev;
+        t->next = 0;
+        t->prev = start->lastChild;
+        if(start->lastChild) start->lastChild->next = t;
+        start->lastChild = t;
+
+        t = t->next;
+    }
+
+    error("unterminated brace", start->line);
+}
+
+// Recursively find the contents of all matching brace pairs in the
+// token list and turn them into children of the left token.  The
+// right token disappears.
+static void braceMatch(struct Token* start)
+{
+    struct Token* t = start->next;
+    while(t) {
+        switch(t->type) {
+        case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
+            collectBrace(t);
+            break;
+        case TOK_RPAR: case TOK_RBRA: case TOK_RCURL:
+            if(start->type != TOK_LBRA)
+                error("stray closing brace", t->line);
+            break;
+        }
+        t = t->next;
+    }
+}
+
+void naParse(struct Parser* p)
+{
+    naLex(p);
+    braceMatch(p->tree);
+}

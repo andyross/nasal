@@ -1,3 +1,4 @@
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -48,10 +49,10 @@ char* tokString(int tok)
     return 0;
 }
 
-void printToken(struct Token* t)
+void printToken(struct Token* t, char* prefix)
 {
     int i;
-    printf("line %d %s ", t->line, tokString(t->type));
+    printf("%sline %d %s ", prefix, t->line, tokString(t->type));
     if(t->type == TOK_LITERAL || t->type == TOK_SYMBOL) {
         if(t->str) {
             printf("\"");
@@ -64,6 +65,22 @@ void printToken(struct Token* t)
     printf("\n");
 }
 
+void dumpTokenList(struct Token* t, int prefix)
+{
+    char prefstr[128];
+    int i;
+
+    prefstr[0] = 0;
+    for(i=0; i<prefix; i++)
+        strcat(prefstr, ". ");
+
+    while(t) {
+        printToken(t, prefstr);
+        dumpTokenList(t->children, prefix+1);
+        t = t->next;
+    }
+}
+
 int main(int argc, char** argv)
 {
     int i;
@@ -71,7 +88,6 @@ int main(int argc, char** argv)
     struct stat fdat;
     char* buf;
     struct Parser p;
-    struct Token* t;
 
     for(i=1; i<argc; i++) {
         stat(argv[i], &fdat);
@@ -84,18 +100,9 @@ int main(int argc, char** argv)
         p.buf = buf;
         p.len = fdat.st_size;
 
-        naLex(&p);
+        naParse(&p);
 
-        t = p.tree;
-        while(t) {
-            printToken(t);
-
-            if(t != p.tree)
-                if(t->prev->next != t)
-                    *(int*)0=0;
-
-            t = t->next;
-        }
+        dumpTokenList(p.tree, 0);
 
         naParseDestroy(&p);
     }

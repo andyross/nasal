@@ -21,6 +21,7 @@ struct Token {
     struct Token* next;
     struct Token* prev;
     struct Token* children;
+    struct Token* lastChild;
 };
 
 struct Parser {
@@ -53,5 +54,6 @@ void* naParseAlloc(struct Parser* p, int bytes);
 void naParseDestroy(struct Parser* p);
 
 void naLex(struct Parser* p);
+void naParse(struct Parser* p);
 
 #endif // _PARSE_H

@@ -121,6 +121,7 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->next = 0;
     tok->prev = p->tail;
     tok->children = 0;
+    tok->lastChild = 0;
 
     if(p->tree == 0) p->tree = tok;
     if(p->tail) p->tail->next = tok;
