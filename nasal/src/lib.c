@@ -325,6 +325,22 @@ static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int i;
+    naRef func, idx;
+    struct naFunc* f;
+    func = argc > 0 ? args[0] : naNil();
+    idx = argc > 1 ? naNumValue(args[1]) : naNil();
+    if(!IS_FUNC(func) || IS_NIL(idx))
+        naRuntimeError(ctx, "bad arguments to closure()");
+    i = (int)idx.num;
+    f = func.ref.ptr.func;
+    while(i > 0 && f) { i--; f = f->next.ref.ptr.func; }
+    if(!f) return naNil();
+    return f->namespace;
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -347,6 +363,7 @@ static struct func funcs[] = {
     { "die", f_die },
     { "sprintf", f_sprintf },
     { "caller", f_caller },
+    { "closure", f_closure },
 };
 
 naRef naStdLib(naContext c)
