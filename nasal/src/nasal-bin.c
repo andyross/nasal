@@ -48,6 +48,22 @@ char* tokString(int tok)
     return 0;
 }
 
+void printToken(struct Token* t)
+{
+    int i;
+    printf("line %d %s ", t->line, tokString(t->type));
+    if(t->type == TOK_LITERAL || t->type == TOK_SYMBOL) {
+        if(t->str) {
+            printf("\"");
+            for(i=0; i<t->strlen; i++) printf("%c", t->str[i]);
+            printf("\" (len: %d)", t->strlen);
+        } else {
+            printf("%f ", t->num);
+        }
+    }
+    printf("\n");
+}
+
 int main(int argc, char** argv)
 {
     int i;
@@ -72,18 +88,11 @@ int main(int argc, char** argv)
 
         t = p.tree;
         while(t) {
-            int i;
-            printf("line %d %s ", t->line, tokString(t->type));
-            if(t->type == TOK_LITERAL || t->type == TOK_SYMBOL) {
-                if(t->str) {
-                    printf("\"");
-                    for(i=0; i<t->strlen; i++) printf("%c", t->str[i]);
-                    printf("\" (len: %d)", t->strlen);
-                } else {
-                    printf("%f ", t->num);
-                }
-            }
-            printf("\n");
+            printToken(t);
+
+            if(t != p.tree)
+                if(t->prev->next != t)
+                    *(int*)0=0;
 
             t = t->next;
         }
