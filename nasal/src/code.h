@@ -63,7 +63,6 @@ struct Context {
     int opTop;
     int markStack[MAX_MARK_DEPTH];
     int markTop;
-    int done;
 
     // Error handling
     jmp_buf jumpHandle;

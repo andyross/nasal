@@ -95,7 +95,32 @@ Pre-optimization objperf.nas: 8.622s; post 8.325 (3.6%).  Using an
 immediate index argument to OP_LOCAL instead of a prior OP_PUSHCONST:
 7.12s (14%).  Doing the same for OP_MEMBER gets to 6.38s (+10%).  So
 the total looks to be a 25% speedup.  Not huge, but not bad.  And it
-adds comparatively little code.
+adds comparatively little code. [Measuring later, more rigorously,
+showed only a 15% speedup.]
 
 Eliminating OP_LINE instructions seemed to get 0.85% speedup in the
 tests above.
+
+Commenting out the stack underflow checks (which are really debugging
+code) gets to 6.01s, or another 6%.
+
+I tried adding an array of 4 naRef objects to the naVec struct as a
+"base" array of minimal size (the idea being to speed up function
+calls by preventing the allocation of the argument lists from hitting
+the heap every time), but that reduced (!) performance by 14%,
+presumably due to cache effects.  Hitting the heap isn't so bad when
+all that data was used just last call.  Leaving all the buffers in
+place means leaving them all on the heap, too.
+
+For compile-time vector and hash generation, instead of pushing each
+element on the stack and doing OP_xAPPEND for each one, use an
+immediate argument for the operator and slurp them all up at once.
+This will be especially good for multi-argument function calls.
+
+In addition to reducing the number of runtime operators, try
+simplifying code.c:run1().  Every cycle in this function adds up.
+...
+INDEED!  Simply moving the contents of run1() into the body of run()
+eliminates a ton of needless pointer indirections and gets us down to
+5.13s, or another 15%.  We're now just 33% slower than perl on
+objperf.
