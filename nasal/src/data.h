@@ -109,7 +109,7 @@ naRef naNewCode(naContext c);
 naRef naNewClosure(naContext c, naRef namespace, naRef next);
 
 int naStr_equal(naRef s1, naRef s2);
-void naStr_fromnum(naRef dest, double num);
+naRef naStr_fromnum(naRef dest, double num);
 int naStr_numeric(naRef str);
 int naStr_parsenum(char* str, int len, double* result);
 int naStr_tonum(naRef str, double* out);

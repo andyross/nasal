@@ -46,13 +46,8 @@ static double numify(struct Context* ctx, naRef o)
 
 static naRef stringify(struct Context* ctx, naRef r)
 {
-    naRef result;
     if(IS_STR(r)) return r;
-    if(IS_NUM(r)) {
-        result = naNewString(ctx);
-        naStr_fromnum(result, r.num);
-        return result;
-    }
+    if(IS_NUM(r)) return naStr_fromnum(naNewString(ctx), r.num);
     ERR(ctx, "non-scalar in string context");
     return naNil();
 }
@@ -123,6 +118,7 @@ void naGarbageCollect()
         struct Frame* f = &(c->fStack[i]);
         naGC_mark(f->func);
         naGC_mark(f->locals);
+        naGC_mark(f->args);
     }
     for(i=0; i <= c->opTop-1; i++)
         naGC_mark(c->opStack[i]);
@@ -131,6 +127,10 @@ void naGarbageCollect()
 
     for(i=0; i<NUM_NASL_TYPES; i++)
         naGC_reap(&(c->pools[i]));
+
+    naGC_mark(c->meRef);
+    naGC_mark(c->argRef);
+    naGC_mark(c->parentsRef);
 }
 
 void setupFuncall(struct Context* ctx, naRef func, naRef args)
@@ -227,31 +227,6 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
     return val;
 }
 
-static void PUSH(struct Context* ctx, naRef r)
-{
-    if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow");
-    ctx->opStack[ctx->opTop++] = r;
-}
-
-static naRef POP(struct Context* ctx)
-{
-    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
-    return ctx->opStack[--ctx->opTop];
-}
-
-static naRef TOP(struct Context* ctx)
-{
-    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
-    return ctx->opStack[ctx->opTop-1];
-}
-
-static int ARG16(unsigned char* byteCode, struct Frame* f)
-{
-    int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
-    f->ip += 2;
-    return arg;
-}
-
 // OP_EACH works like a vector get, except that it leaves the vector
 // and index on the stack, increments the index after use, and pops
 // the arguments and pushes a nil if the index is beyond the end.
@@ -283,6 +258,31 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
                 return 1;
     }
     return 0;
+}
+
+static void PUSH(struct Context* ctx, naRef r)
+{
+    if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow");
+    ctx->opStack[ctx->opTop++] = r;
+}
+
+static naRef POP(struct Context* ctx)
+{
+    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
+    return ctx->opStack[--ctx->opTop];
+}
+
+static naRef TOP(struct Context* ctx)
+{
+    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
+    return ctx->opStack[ctx->opTop-1];
+}
+
+static int ARG16(unsigned char* byteCode, struct Frame* f)
+{
+    int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
+    f->ip += 2;
+    return arg;
 }
 
 static void run1(struct Context* ctx, struct Frame* f, naRef code)

@@ -49,7 +49,10 @@ naRef naNew(struct Context* c, int type)
 
 naRef naNewString(struct Context* c)
 {
-    return naNew(c, T_STR);
+    naRef s = naNew(c, T_STR);
+    s.ref.ptr.str->len = 0;
+    s.ref.ptr.str->data = 0;
+    return s;
 }
 
 naRef naNewVector(struct Context* c)

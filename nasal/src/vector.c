@@ -15,6 +15,7 @@ static void realloc(struct naVec* v)
 void naVec_init(naRef vec)
 {
     struct naVec* v = vec.ref.ptr.vec;
+    v->array = 0;
     v->size = 0;
     v->alloced = 0;
 }

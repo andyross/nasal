@@ -65,13 +65,14 @@ int naStr_equal(naRef s1, naRef s2)
     return 0;
 }
 
-void naStr_fromnum(naRef dest, double num)
+naRef naStr_fromnum(naRef dest, double num)
 {
     struct naStr* dst = dest.ref.ptr.str;
     unsigned char buf[DIGITS+8];
     dst->len = fromnum(num, buf);
     dst->data = naAlloc(dst->len);
     memcpy(dst->data, buf, dst->len);
+    return dest;
 }
 
 int naStr_parsenum(char* str, int len, double* result)

@@ -79,6 +79,7 @@ void naHash_init(naRef hash)
     h->size = 0;
     h->lgalloced = 0;
     h->table = 0;
+    h->nodes = 0;
 }
 
 int naHash_get(naRef hash, naRef key, naRef* out)
