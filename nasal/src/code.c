@@ -150,9 +150,6 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     f->bp = ctx->opTop;
     f->line = 0;
 
-    // These two *must* be in the same order.  Think about what
-    // happens if we enter the GC for locals, but args is still on the
-    // C stack!
     f->args = args;
     if(IS_CCODE(func.ref.ptr.func->code)) {
         f->locals = naNil();
@@ -504,12 +501,8 @@ char* naGetError(struct Context* ctx)
     return ctx->error;
 }
 
-naRef naCall(struct Context* ctx, naRef code, naRef namespace)
+static naRef run(naContext ctx)
 {
-    naRef func = naNewFunc(ctx, code);
-    func.ref.ptr.func->closure = naNewClosure(ctx, namespace, naNil());
-    setupFuncall(ctx, func, naNewVector(ctx));
-    
     // Return early if an error occurred.  It will be visible to the
     // caller via naGetError().
     if(setjmp(ctx->jumpHandle))
@@ -521,12 +514,31 @@ naRef naCall(struct Context* ctx, naRef code, naRef namespace)
         naRef code = f->func.ref.ptr.func->code;
         if(IS_CCODE(code)) nativeCall(ctx, f, code);
         else               run1(ctx, f, code);
-
+        
         ctx->temps.ref.ptr.vec->size = 0; // Reset the temporaries
-        DBG(printStackDEBUG(ctx);)
+        // DBG(printStackDEBUG(ctx);)
     }
-    DBG(printStackDEBUG(ctx);)
-
+    // DBG(printStackDEBUG(ctx);)
     return ctx->opStack[ctx->opTop-1];
+}
+
+naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
+{
+    if(IS_NIL(args))
+        args = naNewVector(ctx);
+    if(IS_NIL(locals))
+        locals = naNewHash(ctx);
+    if(!IS_FUNC(func)) {
+        // Generate a noop closure for bare code objects
+        naRef code = func;
+        func = naNewFunc(ctx, code);
+        func.ref.ptr.func->closure = naNewClosure(ctx, locals, naNil());
+    }
+    if(!IS_NIL(obj))
+        naHash_set(locals, ctx->meRef, obj);
+    setupFuncall(ctx, func, args);
+    ctx->fStack[ctx->fTop-1].locals = locals;
+
+    return run(ctx);
 }
 

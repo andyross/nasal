@@ -76,7 +76,7 @@ int main(int argc, char** argv)
                          naNewCCode(ctx, print)));
 
     // Run it.  Do something with the result if you like.
-    result = naCall(ctx, code, namespace);
+    result = naCall(ctx, code, naNil(), naNil(), namespace);
 
     // Did it fail? (FIXME: replace with stack trace)
     if(naGetError(ctx)) {

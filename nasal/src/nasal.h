@@ -45,8 +45,14 @@ naContext naNewContext();
 // Parse a buffer in memory into a code object.
 naRef naParseCode(naContext c, char* buf, int len, int* errLine);
 
-// Call a code object inside of the specified namespace
-naRef naCall(naContext ctx, naRef code, naRef namespc);
+// Call a code or function object with the specifed arguments "on" the
+// specified object and using the specified hash for the local
+// variables.  Any of args, obj or locals may be nil.
+naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals);
+
+// Call a method on an object (NOTE: func is a function binding, *not*
+// a code object as returned from naParseCode).
+naRef naMethod(naContext ctx, naRef func, naRef object);
 
 // Returns a hash containing functions from the Nasl standard library
 // Useful for passing as a namespace to an initial function call
