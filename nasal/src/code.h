@@ -5,6 +5,7 @@
 
 #define MAX_STACK_DEPTH 1024
 #define MAX_RECURSION 128
+#define MAX_MARK_DEPTH 32
 
 enum {    
     OP_AND, OP_OR, OP_NOT, OP_MUL, OP_PLUS, OP_MINUS, OP_DIV, OP_NEG,
@@ -13,7 +14,7 @@ enum {
     OP_PUSHCONST, OP_PUSHONE, OP_PUSHZERO, OP_PUSHNIL, OP_POP,
     OP_DUP, OP_XCHG, OP_INSERT, OP_EXTRACT, OP_MEMBER, OP_SETMEMBER,
     OP_LOCAL, OP_SETLOCAL, OP_NEWVEC, OP_VAPPEND, OP_NEWHASH, OP_HAPPEND,
-    OP_LINE
+    OP_LINE, OP_MARK, OP_UNMARK, OP_BREAK
 };
 
 struct Frame {
@@ -30,6 +31,8 @@ struct Context {
     int fTop;
     naRef opStack[MAX_STACK_DEPTH];
     int opTop;
+    int markStack[MAX_MARK_DEPTH];
+    int markTop;
     int done;
     naRef meRef;
     naRef argRef;

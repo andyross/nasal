@@ -50,6 +50,9 @@ char* opStringDEBUG(int op)
     case OP_NEWHASH: return "NEWHASH";
     case OP_HAPPEND: return "HAPPEND";
     case OP_LINE: return "LINE";
+    case OP_MARK: return "MARK";
+    case OP_UNMARK: return "UNMARK";
+    case OP_BREAK: return "BREAK";
     }
     return "<bad opcode>";
 }

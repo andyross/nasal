@@ -48,7 +48,7 @@ static void initContext(struct Context* c)
     for(i=0; i<NUM_NASL_TYPES; i++)
         naGC_init(&(c->pools[i]), naTypeSize(i));
 
-    c->fTop = c->opTop = 0;
+    c->fTop = c->opTop = c->markTop = 0;
 
     BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
@@ -115,6 +115,7 @@ static double numify(naRef o)
 {
     double n;
     if(IS_NUM(o)) return o.num;
+    else if(IS_NIL(o)) ERR("nil used in numeric context");
     else if(!IS_STR(o)) ERR("non-scalar in numeric context");
     else if(naStr_tonum(o, &n)) return n;
     else ERR("non-numeric string in numeric context");
@@ -386,17 +387,22 @@ static void run1(struct Context* ctx)
         break;
     case OP_JMP:
         f->ip = ARG16(cd->byteCode, f);
+        printf("   [Jump to: %d]\n", f->ip);
         break;
     case OP_JIFNIL:
         arg = ARG16(cd->byteCode, f);
         a = POP(ctx);
-        if(IS_NIL(a))
+        if(IS_NIL(a)) {
             f->ip = arg;
+            printf("   [Jump to: %d]\n", f->ip);
+        }
         break;
     case OP_JIFNOT:
         arg = ARG16(cd->byteCode, f);
-        if(!naTrue(POP(ctx)))
+        if(!naTrue(POP(ctx))) {
             f->ip = arg;
+            printf("   [Jump to: %d]\n", f->ip);
+        }
         break;
     case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
@@ -421,6 +427,17 @@ static void run1(struct Context* ctx)
         break;
     case OP_EACH:
         PUSH(ctx, evalEach(ctx));
+        break;
+    case OP_MARK: // save stack state (e.g. "setjmp")
+        ctx->markStack[ctx->markTop++] = ctx->opTop;
+        break;
+    case OP_UNMARK: // pop stack state set by mark
+        if(ctx->markTop < 1) *(int*)0=0; // DEBUG
+        ctx->markTop--;
+        break;
+    case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
+        if(ctx->markTop < 1) *(int*)0=0; // DEBUG
+        ctx->opTop = ctx->markStack[--ctx->markTop];
         break;
     default:
         ERR("bad opcode");

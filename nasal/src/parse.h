@@ -53,12 +53,25 @@ struct Parser {
     // Computed line number table for the lexer
     int* lines;
     int  nLines;
-    int lastLine; // used in code generation
+
+    struct CodeGenerator* cg;
+};
+
+struct CodeGenerator {
+    int lastLine;
 
     // Accumulated byte code array
     unsigned char* byteCode;
     int nBytes;
     int codeAlloced;
+
+    // Stack of "loop" frames for break/continue statements
+    struct {
+        int breakIP;
+        int contIP;
+        struct Token* label;
+    } loops[MAX_MARK_DEPTH];
+    int loopTop;
 
     // Dynamic storage for constants, to be compiled into a static table
     naRef consts;   // index -> naRef
