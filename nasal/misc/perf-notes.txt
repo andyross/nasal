@@ -1,0 +1,40 @@
+I tried caching the hashcode in the naStr object, to avoid the
+recomputation each time a symbol lookup is made.  The objperf.nas
+benchmark reported a speed up of 13.59s vs. 13.78s without
+optimization, and 6.71s vs. 7.06s with full optimization.  Or about 5%
+for 5 lines of code.  Probably not worth it.
+
+I thought the depth-first behavior of the closure objects would be an
+issue, but it really isn't.  Getting and setting local variables does
+not require traversing the closure list.  Access to variables in outer
+scopes is generally less common, for obvious reasons.  Traversing the
+whole list when setting a local variable for the first time occurs
+only once.  It is hard to find a real-world use case for code that
+wants to iterate repeatedly over variables in an outer scope, and/or
+sets many local variables without doing significant later computation
+with them.
+
+Combining naFunc and naClosure made sense, and was a good optimization
+both for code size and runtime speed.
+
+Examining objperf some more: The inner loop contains 14 simple
+statements, each of which (in C code) might be expected to take two
+instructions (maybe 1.5 cycles on a modern processor).  Measured on my
+1.8GHz Athlon64, each of these statements takes just about 200 clock
+cycles.  So on the whole the Nasal code is running maybe 130x slower
+than the equivalent C code.  Or (very) roughly at the speed the
+equivalent C code would exhibit when executed on a 33MHz i486.
+
+Consider tail recursion.  The separate call and operand stacks should
+make this easy...
+
+Allocating behaviors.  The following syntax constructions require
+allocation of garbage collected objects:
+ + Creation of new strings with the "~" operator or substr() function
+ + Creating new hashes with the {} construction
+ + Creating new vectors with the [] construction
+ + Binding a function.  Any use of the func keyword allocates an
+   naFunc object for the binding.
+ + All function calls allocate a hash for the namespace, and an arg
+   vector.  Strictly, the call() function does not allocate the arg
+   vector itself...

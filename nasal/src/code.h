@@ -5,7 +5,7 @@
 #include "nasal.h"
 #include "data.h"
 
-#define MAX_STACK_DEPTH 32
+#define MAX_STACK_DEPTH 512
 #define MAX_RECURSION 128
 #define MAX_MARK_DEPTH 16
 

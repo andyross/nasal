@@ -191,6 +191,8 @@ static void setupFuncall(struct Context* ctx, naRef obj, naRef func,
         ERR(ctx, "function/method call invoked on uncallable object");
     }
 
+    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
+
     struct Frame* f;
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
@@ -491,7 +493,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
-        naVec_append(ctx->globals->temps, a);
+        naVec_append(ctx->globals->temps, a); // FIXME: is this needed?
         setupFuncall(ctx, a, b, c, naNil());
         naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->globals->meRef, a);
         break;
