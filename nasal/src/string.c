@@ -8,6 +8,11 @@
 // double.
 #define DIGITS 16
 
+// The minimum size we'll allocate for a string.  Since a string
+// structure is already 12 bytes, and each naRef that points to it is
+// 8, there isn't much point in being stingy.
+#define MINLEN 16
+
 static int tonum(unsigned char* s, int len, double* result);
 static int fromnum(double val, unsigned char* s);
 
@@ -30,14 +35,23 @@ naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
     return dst;
 }
 
+static void setlen(struct naStr* s, int sz)
+{
+    int currSz = s->len < MINLEN ? MINLEN : s->len;
+    int waste = currSz - sz; // how much extra if we don't reallocate?
+    if(s->data == 0 || waste < 0 || waste > MINLEN) {
+        naFree(s->data);
+        s->data = naAlloc(s->len < MINLEN ? MINLEN : s->len);
+    }
+    s->len = sz;
+}
+
 naRef naStr_concat(naRef dest, naRef s1, naRef s2)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* a = s1.ref.ptr.str;
     struct naStr* b = s2.ref.ptr.str;
-    naFree(dst->data);
-    dst->len = a->len + b->len;
-    dst->data = naAlloc(dst->len);
+    setlen(dst, a->len + b->len);
     memcpy(dst->data, a->data, a->len);
     memcpy(dst->data + a->len, b->data, b->len);
     return dest;
@@ -47,10 +61,8 @@ naRef naStr_substr(naRef dest, naRef str, int start, int len)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* s = str.ref.ptr.str;
-    naFree(dst->data);
     if(start + len > s->len) { dst->len = 0; dst->data = 0; return naNil(); }
-    dst->len = len;
-    dst->data = naAlloc(dst->len);
+    setlen(dst, len);
     memcpy(dst->data, s->data + start, len);
     return dest;
 }
@@ -69,8 +81,7 @@ naRef naStr_fromnum(naRef dest, double num)
 {
     struct naStr* dst = dest.ref.ptr.str;
     unsigned char buf[DIGITS+8];
-    dst->len = fromnum(num, buf);
-    dst->data = naAlloc(dst->len);
+    setlen(dst, fromnum(num, buf));
     memcpy(dst->data, buf, dst->len);
     return dest;
 }
@@ -93,9 +104,11 @@ int naStr_numeric(naRef str)
 
 void naStr_gcclean(struct naStr* str)
 {
-    naFree(str->data);
+    if(str->len > MINLEN) {
+        naFree(str->data);
+        str->data = 0;
+    }
     str->len = 0;
-    str->data = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////
