@@ -22,10 +22,11 @@ int naTrue(naRef r)
 naRef naNew(struct Context* c, int type)
 {
     struct naObj* o;
-    if((o = naGC_get(&(c->pools[type]))) == 0)
+    if((o = naGC_get(&(c->pools[type]))) == 0) {
         naGarbageCollect();
-    if((o = naGC_get(&(c->pools[type]))) == 0)
-        ERR("out of memory");
+        if((o = naGC_get(&(c->pools[type]))) == 0)
+            ERR("out of memory");
+    }
     return naObj(type, o);
 }
 
