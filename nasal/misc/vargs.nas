@@ -16,3 +16,10 @@ vargs = func(a, b, rest...) {
 }
 
 vargs(1, 2, 3, 4, 5, 6, 7);
+
+tst5 = func(a, b=123, c...)
+{
+    print("a = ", a, " b = ", b, " size(c) = ", size(c), "\n");
+}
+
+tst5(1, 2);

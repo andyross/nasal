@@ -233,12 +233,20 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     for(i=0; i<c->nArgs; i++)
         naHash_set(f->locals, c->constants[c->argSyms[i]],
                    ctx->opStack[ctx->opTop - nargs + i]);
-    if(c->nArgs == 0 || nargs > c->nArgs) {
+    for(i=0; i<c->nOptArgs; i++) {
+        naRef val = c->constants[c->optArgVals[i]];
+        if(i + c->nArgs < nargs)
+            val = ctx->opStack[ctx->opTop - nargs + c->nArgs + i];
+        naHash_set(f->locals, c->constants[c->optArgSyms[i]], val);
+    }
+    if((c->nArgs == 0 && c->nOptArgs == 0) || !IS_NIL(c->restArgSym)
+       || nargs > c->nArgs + c->nOptArgs)
+    {
         args = naNewVector(ctx);
-        naVec_setsize(args, nargs - c->nArgs);
-        for(i=0; i<(nargs-c->nArgs); i++)
+        naVec_setsize(args, nargs - c->nArgs - c->nOptArgs);
+        for(i=0; i<(nargs - c->nArgs - c->nOptArgs); i++)
             args.ref.ptr.vec->array[i] =
-                ctx->opStack[ctx->opTop - nargs + c->nArgs + i];
+                ctx->opStack[ctx->opTop - nargs + c->nArgs + c->nOptArgs + i];
         naHash_set(f->locals, c->restArgSym, args);
     }
 

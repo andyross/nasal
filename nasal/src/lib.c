@@ -253,7 +253,7 @@ static char* nextFormat(naContext ctx, char* f, char** out, int* len, char* type
 #define APPEND(r) result = naStr_concat(naNewString(ctx), result, r)
 static naRef f_sprintf(naContext ctx, naRef me, naRef args)
 {
-    char t, nultmp, *fstr, *next, *fout, *s;
+    char t, nultmp, *fstr, *next, *fout=0, *s;
     int flen, argn=1;
     naRef format, arg, result = naNewString(ctx);
 

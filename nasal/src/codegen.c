@@ -176,7 +176,16 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
         sym = naStr_fromdata(naNewString(p->context),
                              LEFT(t)->str, LEFT(t)->strlen);
         c->restArgSym = naInternSymbol(sym);
+    } else if(t->type == TOK_ASSIGN) {
+        if(LEFT(t)->type != TOK_SYMBOL)
+            naParseError(p, "bad function argument expression", t->line);
+        if(RIGHT(t)->type != TOK_LITERAL && RIGHT(t)->type != TOK_NIL)
+            naParseError(p, "default argument not scalar constant", t->line);
+        c->optArgSyms[c->nOptArgs] = findConstantIndex(p, LEFT(t));
+        c->optArgVals[c->nOptArgs++] = findConstantIndex(p, RIGHT(t));
     } else if(t->type == TOK_SYMBOL) {
+        if(c->nOptArgs)
+            naParseError(p, "optional arguments must be last", t->line);
         if(c->nArgs >= MAX_FUNARGS)
             naParseError(p, "too many named function arguments", t->line);
         c->argSyms[c->nArgs++] = findConstantIndex(p, t);
@@ -649,11 +658,13 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
     code = codeObj.ref.ptr.code;
 
     // Parse the argument list, if any
-    code->nArgs = 0;
     code->restArgSym = globals->argRef;
-    code->argSyms = 0;
+    code->nArgs = code->nOptArgs = 0;
+    code->argSyms = code->optArgSyms = code->optArgVals = 0;
     if(arglist) {
-        code->argSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        code->argSyms    = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        code->optArgSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        code->optArgVals = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
         genArgList(p, code, arglist);
         if(code->nArgs) {
             int i, *nsyms;
@@ -661,6 +672,15 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
             for(i=0; i<code->nArgs; i++) nsyms[i] = code->argSyms[i];
             code->argSyms = nsyms;
         } else code->argSyms = 0;
+        if(code->nOptArgs) {
+            int i, *nsyms, *nvals;
+            nsyms = naAlloc(sizeof(int) * code->nOptArgs);
+            nvals = naAlloc(sizeof(int) * code->nOptArgs);
+            for(i=0; i<code->nOptArgs; i++) nsyms[i] = code->optArgSyms[i];
+            for(i=0; i<code->nOptArgs; i++) nvals[i] = code->optArgVals[i];
+            code->optArgSyms = nsyms;
+            code->optArgVals = nvals;
+        } else code->optArgSyms = code->optArgVals = 0;
     }
 
     code->nBytes = cg.nBytes;

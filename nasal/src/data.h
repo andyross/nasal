@@ -77,11 +77,9 @@ struct naCode {
     naRef restArgSym; // The "..." vector name, defaults to "arg"
     int nArgs;
     int* argSyms; // indices into constants
-#if 0
     int nOptArgs;
     int* optArgSyms;
-    naRef* optArgVals;
-#endif
+    int* optArgVals;
     unsigned short* lineIps; // pairs of {ip, line}
     int nLines;
 };
