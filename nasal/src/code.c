@@ -184,47 +184,54 @@ static void PUSH(struct Context* ctx, naRef r)
     ctx->opStack[ctx->opTop++] = r;
 }
 
-static void nativeCall(struct Context* ctx, naRef ccode, naRef args, naRef obj)
+static naRef nativeCall(struct Context* ctx, naRef ccode, naRef args, naRef obj)
 {
     naCFunction fptr = IS_CCODE(ccode) ? ccode.ref.ptr.ccode->fptr : 0;
-    naRef result = (*fptr)(ctx, obj, args);
-    PUSH(ctx, result);
+    return (*fptr)(ctx, obj, args);
 }
 
-static struct Frame* setupFuncall(struct Context* ctx, naRef obj, naRef func,
-                                  naRef args, naRef locals)
+struct Frame* setupFuncall(struct Context* ctx, int nargs, int isMethod)
 {
+    int i;
+    naRef args, func;
+    struct Frame* f;
+    
+    DBG(printf("setupFuncall(nargs:%d, isMethod:%d)\n", nargs, isMethod);)
+        
+    func = ctx->opStack[ctx->opTop - nargs - 1];
     if(!IS_FUNC(func))
         ERR(ctx, "function/method call invoked on uncallable object");
+
+    args = naNewVector(ctx);
+    naVec_setsize(args, nargs);
+    for(i=0; i<nargs; i++)
+        args.ref.ptr.vec->array[i] = ctx->opStack[ctx->opTop - nargs + i];
 
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one.
     if(IS_CCODE(func.ref.ptr.func->code)) {
-        nativeCall(ctx, func.ref.ptr.func->code, args, obj);
+        naRef obj = isMethod ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
+        naRef result = nativeCall(ctx, func.ref.ptr.func->code, args, obj);
+        ctx->opTop -= nargs + 1 + isMethod;
+        PUSH(ctx, result);
         return &(ctx->fStack[ctx->fTop-1]);
     }
 
     if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
 
-    // Protect from the collector, as these are no longer on the stack
-    // and we're about to call naNew*() functions.  The func and
-    // locals references get saved by putting them into the Frame.
-    naVec_append(globals->temps, obj);
-    naVec_append(globals->temps, args);
-
-    struct Frame* f;
     f = &(ctx->fStack[ctx->fTop++]);
-    f->func = func;
+    f->locals = naNewHash(ctx);
+    f->func = ctx->opStack[ctx->opTop - nargs - 1];
     f->ip = 0;
-    f->bp = ctx->opTop;
-    f->locals = locals;
+    f->bp = ctx->opTop - (nargs + 1 + isMethod);
 
-    // Set up the "arg" and "me" locals
-    if(IS_NIL(f->locals)) f->locals = naNewHash(ctx);
-    naHash_set(f->locals, ctx->globals->argRef, args);
-    if(!IS_NIL(obj)) naHash_set(f->locals, ctx->globals->meRef, obj);
+    naHash_set(f->locals, globals->argRef, args);
+    if(isMethod)
+        naHash_set(f->locals, globals->meRef,
+                   ctx->opStack[ctx->opTop - nargs - 2]);
 
-    DBG(printf("Entering frame %d\n", ctx->fTop-1);)
+    ctx->opTop = f->bp; // Pop the stack last, to avoid GC lossage
+    DBG(printf("Entering frame %d with %d args\n", ctx->fTop-1, nargs);)
     return f;
 }
 
@@ -333,7 +340,7 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
     if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
     if(naHash_get(obj, fld, result)) {
         return 1;
-    } else if(naHash_get(obj, ctx->globals->parentsRef, &p)) {
+    } else if(naHash_get(obj, globals->parentsRef, &p)) {
         int i;
         if(!IS_VEC(p)) ERR(ctx, "parents field not vector");
         for(i=0; i<p.ref.ptr.vec->size; i++)
@@ -512,13 +519,15 @@ static naRef run(struct Context* ctx)
             }
             break;
         case OP_FCALL:
-            b = POP(); a = POP(); // a,b = func, args
-            f = setupFuncall(ctx, naNil(), a, b, naNil());
+            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 0);
+            // b = POP(); a = POP(); // a,b = func, args
+            // f = setupFuncall(ctx, naNil(), a, b, naNil());
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_MCALL:
-            c = POP(); b = POP(); a = POP(); // a,b,c = obj, func, args
-            f = setupFuncall(ctx, a, b, c, naNil());
+            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 1);
+            // c = POP(); b = POP(); a = POP(); // a,b,c = obj, func, args
+            // f = setupFuncall(ctx, a, b, c, naNil());
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_RETURN:
@@ -546,7 +555,7 @@ static naRef run(struct Context* ctx)
         DBG(printStackDEBUG(ctx);)
     }
     // Return what's left on the top of the stack
-    return ctx->opStack[--ctx->opTop];
+    return ctx->opStack[ctx->opTop-1];
 }
 #undef POP
 #undef TOP
@@ -614,22 +623,27 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
     // C-space arguments.
-    naVec_append(ctx->globals->temps, func);
-    naVec_append(ctx->globals->temps, args);
-    naVec_append(ctx->globals->temps, obj);
-    naVec_append(ctx->globals->temps, locals);
+    naVec_append(globals->temps, func);
+    naVec_append(globals->temps, args);
+    naVec_append(globals->temps, obj);
+    naVec_append(globals->temps, locals);
 
-    if(IS_NIL(args))
-        args = naNewVector(ctx);
-    if(!IS_FUNC(func)) {
-        // Generate a noop closure for bare code objects
-        func = naNewFunc(ctx, func);
-    }
+    if(IS_NIL(locals))
+        locals = naNewHash(ctx);
+    if(!IS_FUNC(func))
+        func = naNewFunc(ctx, func); // bind bare code objects
+
+    if(!IS_NIL(args))
+        naHash_set(locals, globals->argRef, args);
     if(!IS_NIL(obj))
-        naHash_set(locals, ctx->globals->meRef, obj);
+        naHash_set(locals, globals->meRef, obj);
 
-    ctx->fTop = ctx->opTop = ctx->markTop = 0;
-    setupFuncall(ctx, obj, func, args, locals);
+    ctx->opTop = ctx->markTop = 0;
+    ctx->fTop = 1;
+    ctx->fStack[0].func = func;
+    ctx->fStack[0].locals = locals;
+    ctx->fStack[0].ip = 0;
+    ctx->fStack[0].bp = ctx->opTop;
 
     // Return early if an error occurred.  It will be visible to the
     // caller via naGetError().

@@ -141,17 +141,18 @@ static void genLambda(struct Parser* p, struct Token* t)
     emitImmediate(p, OP_PUSHCONST, idx);
 }
 
-static void genList(struct Parser* p, struct Token* t)
+static int genList(struct Parser* p, struct Token* t, int doAppend)
 {
     if(t->type == TOK_COMMA) {
         genExpr(p, LEFT(t));
-        emit(p, OP_VAPPEND);
-        genList(p, RIGHT(t));
+        if(doAppend) emit(p, OP_VAPPEND);
+        return 1 + genList(p, RIGHT(t), doAppend);
     } else if(t->type == TOK_EMPTY) {
-        return;
+        return 0;
     } else {
         genExpr(p, t);
-        emit(p, OP_VAPPEND);
+        if(doAppend) emit(p, OP_VAPPEND);
+        return 1;
     }
 }
 
@@ -181,6 +182,7 @@ static void genHash(struct Parser* p, struct Token* t)
 static void genFuncall(struct Parser* p, struct Token* t)
 {
     int op = OP_FCALL;
+    int nargs = 0;
     if(LEFT(t)->type == TOK_DOT) {
         genExpr(p, LEFT(LEFT(t)));
         emit(p, OP_DUP);
@@ -189,9 +191,8 @@ static void genFuncall(struct Parser* p, struct Token* t)
     } else {
         genExpr(p, LEFT(t));
     }
-    emit(p, OP_NEWVEC);
-    if(RIGHT(t)) genList(p, RIGHT(t));
-    emit(p, op);
+    if(RIGHT(t)) nargs = genList(p, RIGHT(t), 0);
+    emitImmediate(p, op, nargs);
 }
 
 static void pushLoop(struct Parser* p, struct Token* label)
@@ -460,7 +461,7 @@ static void genExpr(struct Parser* p, struct Token* t)
             genBinOp(OP_EXTRACT, p, t); // a[i]
         } else {
             emit(p, OP_NEWVEC);
-            genList(p, LEFT(t));
+            genList(p, LEFT(t), 1);
         }
         break;
     case TOK_LCURL:

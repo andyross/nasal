@@ -84,14 +84,16 @@ static unsigned int hashcolumn(struct naHash* h, naRef key)
 // the column computation.
 int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out)
 {
-    int col = (HASH_MAGIC * sym->hashcode) >> (32 - h->lgalloced);
-    struct HashNode* hn = h->table[col];
-    while(hn) {
-        if(hn->key.ref.ptr.str == sym) {
-            *out = hn->val;
-            return 1;
+    if(h->table) {
+        int col = (HASH_MAGIC * sym->hashcode) >> (32 - h->lgalloced);
+        struct HashNode* hn = h->table[col];
+        while(hn) {
+            if(hn->key.ref.ptr.str == sym) {
+                *out = hn->val;
+                return 1;
+            }
+            hn = hn->next;
         }
-        hn = hn->next;
     }
     return 0;
 }
