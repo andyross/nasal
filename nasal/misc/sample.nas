@@ -45,11 +45,19 @@ hash1["name"] == "Andy";
 #
 dist = func {
     x1 = arg[0]; y1 = arg[1];
-    x2 = arg[2]; y2 = arg[2];
+    x2 = arg[2]; y2 = arg[3];
     dx = x2-x1;
     dy = y2-y1;
     return sqrt(dx*dx + dy*dy);
 };
+
+#
+# Nasl has no "statements", which means that any expression can appear
+# in any context.  This means that you can use an if/else clause to do
+# what the ?: does in C.  The last semicolon in a code block is
+# optional, to make this prettier.
+#
+abs = func { if(a<0) { -arg[0] } else { arg[0] } };
 
 #
 # Looping constructs are mostly C-like.  The differences are foreach,
