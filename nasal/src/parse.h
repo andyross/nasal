@@ -1,6 +1,8 @@
 #ifndef _PARSE_H
 #define _PARSE_H
 
+#include <setjmp.h>
+
 #include "nasl.h"
 #include "code.h"
 
@@ -30,6 +32,10 @@ struct Token {
 struct Parser {
     // Handle to the NaSL interpreter
     struct Context* context;
+
+    char* err;
+    int errLine;
+    jmp_buf jumpHandle;
 
     // The parse tree ubernode
     struct Token tree;
@@ -62,7 +68,7 @@ struct Parser {
     int nConsts;
 };
 
-void naParseError(char* msg);
+void naParseError(struct Parser* p, char* msg, int line);
 void naParseInit(struct Parser* p);
 void* naParseAlloc(struct Parser* p, int bytes);
 void naParseDestroy(struct Parser* p);

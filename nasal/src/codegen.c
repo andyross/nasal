@@ -53,7 +53,7 @@ static void genConstant(struct Parser* p, struct Token* t)
 
     // Static limit
     if(p->nConsts > 0x10000)
-        naParseError("Too many constants in code block");
+        naParseError(p, "Too many constants in code block", 0);
     
     // Emit the code
     emit(p, OP_PUSHCONST);

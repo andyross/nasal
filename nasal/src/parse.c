@@ -1,3 +1,5 @@
+#include <setjmp.h>
+
 #include <stdio.h> // DEBUG
 #include <stdlib.h> // DEBUG
 
@@ -31,21 +33,17 @@ struct precedence {
 };
 #define PRECEDENCE_LEVELS (sizeof(PRECEDENCE)/sizeof(struct precedence))
 
-// ERROR HANDLING IS A MESS. FIX IT.
-void naParseError(char* msg)
+void naParseError(struct Parser* p, char* msg, int line)
 {
-    printf(msg);
-    exit(1);
+    p->err = msg;
+    p->errLine = line;
+    longjmp(p->jumpHandle, 1);
 }
-static void error(char* msg, int line)
+
+// A "generic" (too obfuscated to describe) parser error
+static void oops(struct Parser* p, struct Token* t)
 {
-    char buf[128];
-    sprintf(buf, "Error: %s at line %d\n", msg, line);
-    naParseError(buf);
-}
-static void oops(struct Token* t)
-{
-    error("parse error", t->line);
+    naParseError(p, "parse error", t->line);
 }
 
 void naParseInit(struct Parser* p)
@@ -139,7 +137,7 @@ static void addNewChild(struct Token* p, struct Token* c)
 // Follows the token list from start (which must be a left brace of
 // some type), placing all tokens found into start's child list until
 // it reaches the matching close brace.
-static void collectBrace(struct Token* start)
+static void collectBrace(struct Parser* p, struct Token* start)
 {
     struct Token* t;
     int closer = -1;
@@ -152,11 +150,11 @@ static void collectBrace(struct Token* start)
         struct Token* next;
         switch(t->type) {
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
-            collectBrace(t);
+            collectBrace(p, t);
             break;
         case TOK_RPAR: case TOK_RBRA: case TOK_RCURL:
             if(t->type != closer)
-                error("mismatched closing brace", t->line);
+                naParseError(p, "mismatched closing brace", t->line);
 
             // Drop this node on the floor, stitch up the list and return
             if(start->parent->lastChild == t)
@@ -171,23 +169,23 @@ static void collectBrace(struct Token* start)
         addNewChild(start, t);
         t = next;
     }
-    error("unterminated brace", start->line);
+    naParseError(p, "unterminated brace", start->line);
 }
 
 // Recursively find the contents of all matching brace pairs in the
 // token list and turn them into children of the left token.  The
 // right token disappears.
-static void braceMatch(struct Token* start)
+static void braceMatch(struct Parser* p, struct Token* start)
 {
     struct Token* t = start;
     while(t) {
         switch(t->type) {
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
-            collectBrace(t);
+            collectBrace(p, t);
             break;
         case TOK_RPAR: case TOK_RBRA: case TOK_RCURL:
             if(start->type != TOK_LBRA)
-                error("stray closing brace", t->line);
+                naParseError(p, "stray closing brace", t->line);
             break;
         }
         t = t->next;
@@ -196,7 +194,7 @@ static void braceMatch(struct Token* start)
 
 // Fixes up parenting for obvious parsing situations, like code blocks
 // being the child of a func keyword, etc...
-static void fixBlockStructure(struct Token* start)
+static void fixBlockStructure(struct Parser* p, struct Token* start)
 {
     struct Token *t, *c;
     t = start;
@@ -204,26 +202,26 @@ static void fixBlockStructure(struct Token* start)
         switch(t->type) {
         case TOK_ELSE: case TOK_FUNC:
             // These guys precede a single curly block
-            if(!t->next || t->next->type != TOK_LCURL) oops(t);
+            if(!t->next || t->next->type != TOK_LCURL) oops(p, t);
             c = t->next;
             addNewChild(t, c);
-            fixBlockStructure(c);
+            fixBlockStructure(p, c);
             break;
         case TOK_FOR: case TOK_FOREACH: case TOK_WHILE:
         case TOK_IF: case TOK_ELSIF:
             // Expect a paren and then a curly
-            if(!t->next || t->next->type != TOK_LPAR) oops(t);
+            if(!t->next || t->next->type != TOK_LPAR) oops(p, t);
             c = t->next;
             addNewChild(t, c);
-            fixBlockStructure(c);
+            fixBlockStructure(p, c);
 
-            if(!t->next || t->next->type != TOK_LCURL) oops(t);
+            if(!t->next || t->next->type != TOK_LCURL) oops(p, t);
             c = t->next;
             addNewChild(t, c);
-            fixBlockStructure(c);
+            fixBlockStructure(p, c);
             break;
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
-            fixBlockStructure(t->children);
+            fixBlockStructure(p, t->children);
             break;
         }
         t = t->next;
@@ -275,7 +273,7 @@ static struct Token* parsePrecedence(struct Parser* p,
 
     // This is an error.  No "siblings" are allowed at the bottom level.
     if(level >= PRECEDENCE_LEVELS && start != end)
-        oops(start);
+        oops(p, start);
 
     // Synthesize an empty token if necessary
     if(end == 0 && start == 0)
@@ -392,6 +390,14 @@ naRef naParseCode(struct Context* c, char* buf, int len)
     struct Token* t;
     struct Parser p;
 
+    if(setjmp(p.jumpHandle)) {
+        // An error occurred, do something sane (not this)
+        printf("Error: %s", p.err);
+        if(p.errLine) printf(" at line %d", p.errLine);
+        printf("\n");
+        exit(1); // FIXME, all of this.
+    }
+
     naParseInit(&p);
     p.context = c;
     p.buf = buf;
@@ -399,8 +405,8 @@ naRef naParseCode(struct Context* c, char* buf, int len)
 
     // Lexify, match brace structure, fixup if/for/etc...
     naLex(&p);
-    braceMatch(p.tree.children);
-    fixBlockStructure(p.tree.children);
+    braceMatch(&p, p.tree.children);
+    fixBlockStructure(&p, p.tree.children);
 
     // Recursively run the precedence parser, and fixup the treetop
     t = parsePrecedence(&p, p.tree.children, p.tree.lastChild, 0);
