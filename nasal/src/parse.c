@@ -163,14 +163,17 @@ static void fixBlockStructure(struct Token* start)
         case TOK_ELSE: case TOK_FUNC:
             // These guys precede a single curly block
             if(!t->next || t->next->type != TOK_LCURL) oops(t);
+            fixBlockStructure(t->next);
             addNewChild(t, t->next);
             break;
         case TOK_FOR: case TOK_FOREACH: case TOK_WHILE:
         case TOK_IF: case TOK_ELSIF:
             // Expect a paren and then a curly
             if(!t->next || t->next->type != TOK_LPAR) oops(t);
+            fixBlockStructure(t->next);
             addNewChild(t, t->next);
             if(!t->next || t->next->type != TOK_LCURL) oops(t);
+            fixBlockStructure(t->next);
             addNewChild(t, t->next);
             break;
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:

@@ -47,7 +47,7 @@ struct Lexeme {
 static int* findLines(struct Parser* p)
 {
     char* buf = p->buf;
-    int sz = p->len/10;
+    int sz = p->len/10 + 16;
     int* lines = naParseAlloc(p, (sizeof(int) * sz));
     int i, j, n=0;
 
