@@ -21,6 +21,7 @@ enum {
 struct Frame {
     naRef func; // naFunc object
     naRef locals; // local per-call namespace
+    naRef args; // vector of arguments
     int ip; // instruction pointer into code
     int bp; // opStack pointer to start of frame
     int line; // current line number

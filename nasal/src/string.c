@@ -227,8 +227,8 @@ static int fromnum(double val, unsigned char* s)
     unsigned char* ptr = s;
     int exp, digs, i=0;
 
-    // Identically zero is a special case
-    if(val == 0.0) { *ptr++ = '0'; *ptr++ = 0; return 1; }
+    // Exactly an integer is a special case
+    if(val == (int)val) return decprint(val, s);
 
     // Handle negatives
     if(val < 0) { *ptr++ = '-'; val = -val; }

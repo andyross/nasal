@@ -144,6 +144,7 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     f->bp = ctx->opTop;
     f->line = 0;
     f->locals = naNewHash(ctx);
+    f->args = args;
     naHash_set(f->locals, ctx->argRef, args);
 }
 
@@ -283,11 +284,9 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
     return 0;
 }
 
-static void run1(struct Context* ctx)
+static void run1(struct Context* ctx, struct Frame* f, naRef code)
 {
     naRef a, b, c;
-    struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
-    naRef code = f->func.ref.ptr.func->code;
     struct naCode* cd = code.ref.ptr.code;
     int op, arg;
 
@@ -418,19 +417,16 @@ static void run1(struct Context* ctx)
     case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
         setupFuncall(ctx, a, b);
-        f = &(ctx->fStack[ctx->fTop-1]); // fixup local variable
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
         setupFuncall(ctx, b, c);
-        f = &(ctx->fStack[ctx->fTop-1]); // as above
-        naHash_set(f->locals, ctx->meRef, a);
+        naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->meRef, a);
         break;
     case OP_RETURN:
         a = POP(ctx);
         ctx->opTop = f->bp; // restore the correct stack frame!
         ctx->fTop--;
-        f = &(ctx->fStack[ctx->fTop-1]); // ditto
         PUSH(ctx, a);
         break;
     case OP_LINE:
@@ -456,9 +452,18 @@ static void run1(struct Context* ctx)
         ctx->done = 1;
 }
 
+static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
+{
+    naCFunction fptr = ccode.ref.ptr.ccode->fptr;
+    naRef result = (*fptr)(ctx, f->args);
+    ctx->fTop--;
+    PUSH(ctx, result);
+}
+
 void naRun(struct Context* ctx, naRef code)
 {
-    naRef func = naNewFunc(ctx, code, naNil());
+    naRef lib = naStdLib(ctx);
+    naRef func = naNewFunc(ctx, code, naNewClosure(ctx, lib, naNil()));
     setupFuncall(ctx, func, naNewVector(ctx));
 
     if(setjmp(ctx->jumpHandle)) {
@@ -468,8 +473,11 @@ void naRun(struct Context* ctx, naRef code)
 
     ctx->done = 0;
     while(!ctx->done) {
-        run1(ctx);
+        struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
+        naRef code = f->func.ref.ptr.func->code;
+        if(IS_CCODE(code)) nativeCall(ctx, f, code);
+        else               run1(ctx, f, code);
         DBG(printStackDEBUG(ctx);)
     }
-    printStackDEBUG(ctx);
+    DBG(printStackDEBUG(ctx);)
 }

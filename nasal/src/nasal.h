@@ -24,6 +24,7 @@ typedef union {
             struct naCode* code;
             struct naFunc* func;
             struct naClosure* closure;
+            struct naCCode* ccode;
         } ptr;
         int reftag;
     } ref;
@@ -41,7 +42,7 @@ typedef union {
 // What actually gets executed at runtime is a bound FUNC object,
 // which combines the raw code with a pointer to a CLOSURE chain of
 // namespaces.
-enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC,
+enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC, T_CCODE,
        NUM_NASL_TYPES }; // V. important that this come last!
 
 #define IS_REF(r) ((r).ref.reftag == NASL_REFTAG)
@@ -53,6 +54,7 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC,
 #define IS_CODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CODE)
 #define IS_FUNC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_FUNC)
 #define IS_CLOSURE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
+#define IS_CCODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CCODE)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
 #define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == T_STR)
 
@@ -118,6 +120,13 @@ struct naPool {
     void**        free;    // pointers to usable elements
 };
 
+typedef struct Context* naContext;
+typedef naRef (*naCFunction)(naContext ctx, naRef args);
+struct naCCode {
+    GC_HEADER;
+    naCFunction fptr;
+};
+
 // FIXME: write these!
 void FREE(void* m);
 void* ALLOC(int n);
@@ -128,23 +137,32 @@ int naEqual(naRef a, naRef b);
 int naTrue(naRef b);
 
 naRef naNil();
+
 int naTypeSize(int type);
 
+naRef naNumValue(naRef n);
+naRef naStringValue(naContext c, naRef n);
+
 // Context-level stuff
-struct Context* naNewContext();
+naContext naNewContext();
 void naGarbageCollect();
-naRef naParseCode(struct Context* c, char* buf, int len);
+naRef naParseCode(naContext c, char* buf, int len);
+
+// Returns a hash containing functions from the Nasl standard library
+// Useful for making a closure for an initial function call
+naRef naStdLib(naContext c);
 
 // Allocators/generators:
 naRef naObj(int type, struct naObj* o);
-naRef naNew(struct Context* c, int type);
+naRef naNew(naContext c, int type);
 naRef naNum(double num);
-naRef naNewString(struct Context* c);
-naRef naNewVector(struct Context* c);
-naRef naNewHash(struct Context* c);
-naRef naNewCode(struct Context* c);
-naRef naNewClosure(struct Context* c, naRef namespace, naRef next);
-naRef naNewFunc(struct Context* c, naRef code, naRef closure);
+naRef naNewString(naContext c);
+naRef naNewVector(naContext c);
+naRef naNewHash(naContext c);
+naRef naNewCode(naContext c);
+naRef naNewClosure(naContext c, naRef namespace, naRef next);
+naRef naNewFunc(naContext c, naRef code, naRef closure);
+naRef naNewCCode(naContext c, naCFunction fptr);
 
 // String utilities:
 void naStr_fromdata(naRef dst, unsigned char* data, int len);

@@ -17,6 +17,26 @@ int naTrue(naRef r)
     return 0;
 }
 
+naRef naNumValue(naRef n)
+{
+    double d;
+    if(IS_NUM(n)) return n;
+    if(IS_STR(n) && naStr_tonum(n, &d))
+        return naNum(d);
+    return naNil();
+}
+
+naRef naStringValue(naContext c, naRef r)
+{
+    if(IS_STR(r)) return r;
+    if(IS_NUM(r)) {
+        naRef s = naNewString(c);
+        naStr_fromnum(s, r.num);
+        return s;
+    }
+    return naNil();
+}
+
 naRef naNew(struct Context* c, int type)
 {
     struct naObj* o;
@@ -49,6 +69,13 @@ naRef naNewHash(struct Context* c)
 naRef naNewCode(struct Context* c)
 {
     return naNew(c, T_CODE);
+}
+
+naRef naNewCCode(struct Context* c, naCFunction fptr)
+{
+    naRef r = naNew(c, T_CCODE);
+    r.ref.ptr.ccode->fptr = fptr;
+    return r;
 }
 
 naRef naNewFunc(struct Context* c, naRef code, naRef closure)
@@ -108,7 +135,7 @@ int naEqual(naRef a, naRef b)
     if(IS_NUM(b)) { nb = b.num; }
     else if(!(IS_STR(b) && naStr_tonum(b, &nb))) { return 0; }
 
-    return na == nb;
+    return na == nb ? 1 : 0;
 }
 
 int naTypeSize(int type)
@@ -120,6 +147,7 @@ int naTypeSize(int type)
     case T_CODE: return sizeof(struct naCode);
     case T_FUNC: return sizeof(struct naFunc);
     case T_CLOSURE: return sizeof(struct naClosure);
+    case T_CCODE: return sizeof(struct naCCode);
     default: *(int*)0=0;
     };
     return 0x7fffffff;
