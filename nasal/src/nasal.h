@@ -67,7 +67,7 @@ naRef naNum(double num);
 naRef naNewString(naContext c);
 naRef naNewVector(naContext c);
 naRef naNewHash(naContext c);
-naRef naNewFunc(naContext c, naRef code, naRef closure); // FIXME: no closure
+naRef naNewFunc(naContext c, naRef code);
 naRef naNewCCode(naContext c, naCFunction fptr);
 
 // Some useful conversion/comparison routines

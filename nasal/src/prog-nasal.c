@@ -73,8 +73,7 @@ int main(int argc, char** argv)
     naHash_set(namespace,
                naStr_fromdata(naNewString(ctx), "print", 5),
                naNewFunc(ctx,
-                         naNewCCode(ctx, print), // CCODE object
-                         naNil())); // function closure (none here)
+                         naNewCCode(ctx, print)));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, namespace);

@@ -185,7 +185,8 @@ static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
 {
     naRef next = f->func.ref.ptr.func->closure;
     naRef closure = naNewClosure(ctx, f->locals, next);
-    naRef result = naNewFunc(ctx, code, closure);
+    naRef result = naNewFunc(ctx, code);
+    result.ref.ptr.func->closure = closure;
     return result;
 }
 
@@ -473,7 +474,8 @@ char* naGetError(struct Context* ctx)
 
 naRef naCall(struct Context* ctx, naRef code, naRef namespace)
 {
-    naRef func = naNewFunc(ctx, code, naNewClosure(ctx, namespace, naNil()));
+    naRef func = naNewFunc(ctx, code);
+    func.ref.ptr.func->closure = naNewClosure(ctx, namespace, naNil());
     setupFuncall(ctx, func, naNewVector(ctx));
     
     // Return early if an error occurred.  It will be visible to the

@@ -131,7 +131,7 @@ naRef naStdLib(naContext c)
         naRef code = naNewCCode(c, funcs[i].func);
         naRef name = naStr_fromdata(naNewString(c),
                                     funcs[i].name, strlen(funcs[i].name));
-        naHash_set(namespace, name, naNewFunc(c, code, naNil()));
+        naHash_set(namespace, name, naNewFunc(c, code));
     }
     return namespace;
 }

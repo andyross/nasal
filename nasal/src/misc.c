@@ -78,11 +78,11 @@ naRef naNewCCode(struct Context* c, naCFunction fptr)
     return r;
 }
 
-naRef naNewFunc(struct Context* c, naRef code, naRef closure)
+naRef naNewFunc(struct Context* c, naRef code)
 {
     naRef func = naNew(c, T_FUNC);
     func.ref.ptr.func->code = code;
-    func.ref.ptr.func->closure = closure;
+    func.ref.ptr.func->closure = naNil();
     return func;
 }
 
