@@ -231,11 +231,23 @@ static int countSemis(struct Token* t)
     return 1 + countSemis(RIGHT(t));
 }
 
+static void genLoop(struct Parser* p, struct Token* body,
+                    struct Token* update, int loopTop, int jumpEnd)
+{
+    int continueSpot;
+    genExprList(p, body);
+    emit(p, OP_POP);
+    continueSpot = p->nBytes;
+    if(update) { genExpr(p, update); emit(p, OP_POP); }
+    emitJumpTo(p, loopTop);
+    fixJumpTarget(p, jumpEnd);
+}
+
 static void genForWhile(struct Parser* p, struct Token* init,
                         struct Token* test, struct Token* update,
                         struct Token* body)
 {
-    int loopTop, jumpEnd, continueSpot;
+    int loopTop, jumpEnd;
 
     if(init) { genExpr(p, init); emit(p, OP_POP); }
 
@@ -244,17 +256,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
     emit(p, OP_NOT);
     jumpEnd = emitJump(p, OP_JIF);
 
-    genExprList(p, body);
-    emit(p, OP_POP);
-
-    continueSpot = p->nBytes;
-
-    if(update) { genExpr(p, update); emit(p, OP_POP); }
-
-    emitJumpTo(p, loopTop);
-
-    fixJumpTarget(p, jumpEnd);
-    emit(p, OP_PUSHNIL); // loops have nil as their expression value
+    genLoop(p, body, update, loopTop, jumpEnd);
 }
 
 static void genWhile(struct Parser* p, struct Token* t)
@@ -273,7 +275,7 @@ static void genFor(struct Parser* p, struct Token* t)
     struct Token *h, *init, *test, *body, *update;
     h = LEFT(t)->children;
     int semis = countSemis(h);
-    if(semis == 3) test=RIGHT(h); // Handle label
+    if(semis == 3) h=RIGHT(h); // Handle label
     else if(semis != 2)
         naParseError(p, "wrong number of terms in for header", t->line);
 
@@ -283,6 +285,31 @@ static void genFor(struct Parser* p, struct Token* t)
     update = RIGHT(RIGHT(h));
     body = RIGHT(t)->children;
     genForWhile(p, init, test, update, body);
+}
+
+static void genForEach(struct Parser* p, struct Token* t)
+{
+    int loopTop, jumpEnd, assignOp;
+    struct Token *h, *elem, *body, *vec;
+    h = LEFT(LEFT(t));
+    int semis = countSemis(h);
+    if(semis == 2) h = RIGHT(h);
+    else if (semis != 1)
+        naParseError(p, "wrong number of terms in foreach header", t->line);
+    elem = LEFT(h);
+    vec = RIGHT(h);
+    body = RIGHT(t)->children;
+
+    genExpr(p, vec);
+    emit(p, OP_PUSHZERO);
+    loopTop = p->nBytes;
+    emit(p, OP_EACH);
+    jumpEnd = emitJump(p, OP_JIFNIL);
+    assignOp = genLValue(p, elem);
+    emit(p, OP_XCHG);
+    emit(p, assignOp);
+
+    genLoop(p, body, 0, loopTop, jumpEnd);
 }
 
 static void genExpr(struct Parser* p, struct Token* t)
@@ -299,7 +326,9 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_FOR:
         genFor(p, t);
         break;
-    case TOK_FOREACH: break;
+    case TOK_FOREACH:
+        genForEach(p, t);
+        break;
     case TOK_BREAK: break;
     case TOK_CONTINUE: break;
 

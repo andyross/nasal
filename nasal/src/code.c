@@ -24,14 +24,19 @@ char* opStringDEBUG(int op)
     case OP_GTE: return "GTE";
     case OP_EQ: return "EQ";
     case OP_NEQ: return "NEQ";
+    case OP_EACH: return "EACH";
     case OP_JMP: return "JMP";
     case OP_JIF: return "JIF";
+    case OP_JIFNIL: return "JIFNIL";
     case OP_FCALL: return "FCALL";
     case OP_MCALL: return "MCALL";
     case OP_RETURN: return "RETURN";
     case OP_PUSHCONST: return "PUSHCONST";
+    case OP_PUSHZERO: return "PUSHZERO";
     case OP_PUSHNIL: return "PUSHNIL";
     case OP_POP: return "POP";
+    case OP_DUP: return "DUP";
+    case OP_XCHG: return "XCHG";
     case OP_INSERT: return "INSERT";
     case OP_EXTRACT: return "EXTRACT";
     case OP_MEMBER: return "MEMBER";
@@ -151,7 +156,7 @@ void naGarbageCollect()
         naGC_mark(f->namespace);
         naGC_mark(f->locals);
     }
-    for(i=0; i <= c->opTop; i++)
+    for(i=0; i <= c->opTop-1; i++)
         naGC_mark(c->opStack[i]);
 
     for(i=0; i<NUM_NASL_TYPES; i++)
@@ -286,25 +291,25 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
     return val;
 }
 
-static inline void PUSH(struct Context* ctx, naRef r)
+static void PUSH(struct Context* ctx, naRef r)
 {
     if(ctx->opTop >= MAX_STACK_DEPTH) ERR("stack overflow");
     ctx->opStack[ctx->opTop++] = r;
 }
 
-static inline naRef POP(struct Context* ctx)
+static naRef POP(struct Context* ctx)
 {
     if(ctx->opTop == 0) ERR("stack underflow");
     return ctx->opStack[--ctx->opTop];
 }
 
-static inline naRef TOP(struct Context* ctx)
+static naRef TOP(struct Context* ctx)
 {
     if(ctx->opTop == 0) ERR("stack underflow");
     return ctx->opStack[ctx->opTop-1];
 }
 
-static inline int ARG16(unsigned char* byteCode, struct Frame* f)
+static int ARG16(unsigned char* byteCode, struct Frame* f)
 {
     int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
     f->ip += 2;
@@ -334,6 +339,10 @@ static void run1(struct Context* ctx)
         break;
     case OP_DUP:
         PUSH(ctx, ctx->opStack[ctx->opTop-1]);
+        break;
+    case OP_XCHG:
+        a = POP(ctx); b = POP(ctx);
+        PUSH(ctx, a); PUSH(ctx, b);
         break;
     case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
@@ -366,6 +375,9 @@ static void run1(struct Context* ctx)
         a = cd->constants[ARG16(cd->byteCode, f)];
         if(IS_CODE(a)) a = bindFunction(ctx, a, f->locals);
         PUSH(ctx, a);
+        break;
+    case OP_PUSHZERO:
+        PUSH(ctx, naNum(0));
         break;
     case OP_PUSHNIL:
         PUSH(ctx, naNil());
@@ -417,6 +429,12 @@ static void run1(struct Context* ctx)
     case OP_JMP:
         f->ip = ARG16(cd->byteCode, f);
         break;
+    case OP_JIFNIL:
+        arg = ARG16(cd->byteCode, f);
+        a = POP(ctx);
+        if(IS_NIL(a))
+            f->ip = arg;
+        break;
     case OP_JIF:
         arg = ARG16(cd->byteCode, f);
         if(naTrue(POP(ctx)))
@@ -443,6 +461,8 @@ static void run1(struct Context* ctx)
     case OP_EACH:
         PUSH(ctx, evalEach(ctx));
         break;
+    default:
+        ERR("bad opcode");
     }
 
     if(ctx->fTop <= 0)
