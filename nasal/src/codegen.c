@@ -379,7 +379,7 @@ static void genLoop(struct Parser* p, struct Token* body,
     emit(p, OP_POP);
     fixJumpTarget(p, cont);
     if(update) { genExpr(p, update); emit(p, OP_POP); }
-    emitImmediate(p, OP_JMP, loopTop);
+    emitImmediate(p, OP_JMPLOOP, loopTop);
     fixJumpTarget(p, jumpEnd);
     popLoop(p);
     emit(p, OP_PUSHNIL); // Leave something on the stack

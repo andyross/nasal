@@ -46,11 +46,15 @@ struct naStr {
     unsigned int hashcode;
 };
 
-struct naVec {
-    GC_HEADER;
+struct VecRec {
     int size;
     int alloced;
-    naRef* array;
+    naRef array[];
+};
+
+struct naVec {
+    GC_HEADER;
+    struct VecRec* rec;
 };
 
 struct HashNode {

@@ -64,7 +64,7 @@ static naRef stringify(struct Context* ctx, naRef r)
 static int checkVec(struct Context* ctx, naRef vec, naRef idx)
 {
     int i = (int)numify(ctx, idx);
-    if(i < 0 || i >= vec.ref.ptr.vec->size)
+    if(i < 0 || i >= vec.ref.ptr.vec->rec->size)
         ERR(ctx, "vector index out of bounds");
     return i;
 }
@@ -99,6 +99,9 @@ static void initContext(struct Context* c)
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 
+    c->dieArg = naNil();
+    c->error = 0;
+
     c->globals = globals;
 }
 
@@ -115,6 +118,7 @@ static void initGlobals()
     // Note we can't use naNewVector() for this; it requires that
     // temps exist first.
     globals->temps = naObj(T_VEC, naGC_get(&(globals->pools[T_VEC])));
+    naVec_init(globals->temps);
 
     // Initialize a single context
     globals->freeContexts = 0;
@@ -239,7 +243,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
         naRef args = naNewVector(ctx);
         naVec_setsize(args, nargs > 0 ? nargs : 0);
         for(i=0; i<nargs; i++)
-            args.ref.ptr.vec->array[i] = *frame++;
+            args.ref.ptr.vec->rec->array[i] = *frame++;
         naHash_newsym(f->locals.ref.ptr.hash, &c->restArgSym, &args);
     }
 
@@ -340,11 +344,14 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
     if(naHash_get(obj, fld, result)) {
         return 1;
     } else if(naHash_get(obj, globals->parentsRef, &p)) {
-        int i;
-        if(!IS_VEC(p)) ERR(ctx, "parents field not vector");
-        for(i=0; i<p.ref.ptr.vec->size; i++)
-            if(getMember(ctx, p.ref.ptr.vec->array[i], fld, result, count))
-                return 1;
+        if(IS_VEC(p)) {
+            int i;
+            struct VecRec* v = p.ref.ptr.vec->rec;
+            for(i=0; i<v->size; i++)
+                if(getMember(ctx, v->array[i], fld, result, count))
+                    return 1;
+        } else
+            ERR(ctx, "parents field not vector");
     }
     return 0;
 }
@@ -363,7 +370,7 @@ static void evalEach(struct Context* ctx)
 {
     int idx = (int)(ctx->opStack[ctx->opTop-1].num);
     naRef vec = ctx->opStack[ctx->opTop-2];
-    if(idx >= vec.ref.ptr.vec->size) {
+    if(idx >= vec.ref.ptr.vec->rec->size) {
         ctx->opTop -= 2; // pop two values
         PUSH(naNil());
         return;
@@ -383,7 +390,7 @@ static naRef run(struct Context* ctx)
 {
     struct Frame* f;
     struct naCode* cd;
-    int* temps = &(globals->temps.ref.ptr.vec->size);
+    int* temps = &(globals->temps.ref.ptr.vec->rec->size); // FIXME: not threadsafe!
     int op, arg;
     naRef a, b, c;
 
@@ -515,8 +522,13 @@ static naRef run(struct Context* ctx)
             b = POP(); a = POP(); // a,b: box, key
             PUSH(containerGet(ctx, a, b));
             break;
+        case OP_JMPLOOP:
+            // Identical to JMP, except for locking
+            naCheckGCLock();
+            f->ip = ARG16(cd->byteCode, f);
+            DBG(printf("   [Jump to: %d]\n", f->ip);)
+            break;
         case OP_JMP:
-            naCheckGCLock(); // only called for jmp, see notes
             f->ip = ARG16(cd->byteCode, f);
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
@@ -683,7 +695,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     if(IS_CCODE(func.ref.ptr.func->code)) {
         naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
         struct naVec* av = args.ref.ptr.vec;
-        result = (*fp)(ctx, obj, av->size, av->array);
+        result = (*fp)(ctx, obj, av->rec->size, av->rec->array);
     } else
         result = run(ctx);
     naModUnlock(ctx);

@@ -167,8 +167,9 @@ void naGC_mark(naRef r)
     r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
     case T_VEC:
-        for(i=0; i<r.ref.ptr.vec->size; i++)
-            naGC_mark(r.ref.ptr.vec->array[i]);
+        if(r.ref.ptr.vec->rec)
+            for(i=0; i<r.ref.ptr.vec->rec->size; i++)
+                naGC_mark(r.ref.ptr.vec->rec->array[i]);
         break;
     case T_HASH:
         if(r.ref.ptr.hash->table == 0)
