@@ -185,6 +185,7 @@ void setupFuncall(struct Context* ctx, naRef closure, naRef args)
     f->namespace = closure.ref.ptr.closure->namespace;
     f->locals = naNewHash(ctx);
     f->ip = 0;
+    f->bp = ctx->opTop;
     f->line = 0;
     naHash_set(f->locals, ctx->argRef, args);
 }
@@ -457,6 +458,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_RETURN:
         a = POP(ctx);
+        ctx->opTop = f->bp; // restore the correct stack frame!
         ctx->fTop--;
         f = &(ctx->fStack[ctx->fTop-1]); // ditto
         PUSH(ctx, a);
