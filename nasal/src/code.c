@@ -38,6 +38,8 @@ char* opStringDEBUG(int op)
     case OP_NEG: return "NEG";
     case OP_NEWVEC: return "NEWVEC";
     case OP_VAPPEND: return "VAPPEND";
+    case OP_NEWHASH: return "NEWHASH";
+    case OP_HAPPEND: return "HAPPEND";
     }
     return "<bad opcode>";
 }
@@ -259,6 +261,13 @@ static void run1(struct Context* ctx)
         b = POP(ctx); a = TOP(ctx);
         naVec_append(a, b);
         break;
+    case OP_NEWHASH:
+        PUSH(ctx, naNewHash(ctx));
+        break;
+    case OP_HAPPEND:
+        c = POP(ctx); b = POP(ctx); a = TOP(ctx); // a,b,c: hash, key, val
+        naHash_set(a, b, c);
+        break;
     case OP_LOCAL:
         a = getLocal(f, POP(ctx));
         PUSH(ctx, a);
@@ -315,16 +324,20 @@ void printRefDEBUG(naRef r)
             printRefDEBUG(r.ref.ptr.vec->array[i]);
         }
         printf("]\n");
+    } else if(IS_HASH(r)) {
+        printf("<hash>\n");
     } else *(int*)0=0;
 }
 
 void printStack(struct Context* ctx)
 {
     int i;
-    printf("Stack:\n");
-    for(i=ctx->opTop-1; i>=0; i--)
+    printf("\n");
+    for(i=ctx->opTop-1; i>=0; i--) {
+        printf("] ");
         printRefDEBUG(ctx->opStack[i]);
-    printf("--\n");
+    }
+    printf("\n");
 }
 
 
@@ -338,6 +351,7 @@ void naRun(struct Context* ctx, naRef code)
     closure.ref.ptr.closure->code = code;
     closure.ref.ptr.closure->namespace = namespace;
 
+#if 0
     { // DEBUG
         int i;
         struct naCode* c = code.ref.ptr.code;
@@ -348,15 +362,13 @@ void naRun(struct Context* ctx, naRef code)
         }
         printf("--\n");
     } // DEBUG
+#endif
 
     setupFuncall(ctx, closure);
 
     ctx->done = 0;
     while(!ctx->done) {
-        printStack(ctx); // DEBUG
         run1(ctx);
+        printStack(ctx); // DEBUG
     }
-
-    printf("DONE:\n"); // DEBUG 
-    printStack(ctx); // DEBUG
 }

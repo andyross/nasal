@@ -31,7 +31,6 @@ static void genBinOp(int op, struct Parser* p, struct Token* t)
     emit(p, op);
 }
 
-void printRefDEBUG(naRef r);
 static void genConstant(struct Parser* p, struct Token* t)
 {
     naRef c, val;
@@ -51,8 +50,6 @@ static void genConstant(struct Parser* p, struct Token* t)
         idx = p->nConsts++;
         val = naNum(idx);
         naHash_set(p->constHash, c, val);
-        printf("CONSTANT %d = ", idx);
-        printRefDEBUG(c);
     } else {
         idx = val.num;
     }
@@ -105,9 +102,23 @@ static void genList(struct Parser* p, struct Token* t)
     }
 }
 
+static void genHashElem(struct Parser* p, struct Token* t)
+{
+    if(t->type != TOK_COLON)
+        naParseError(p, "bad hash/object initializer", t->line);
+    genExpr(p, LEFT(t));
+    genExpr(p, RIGHT(t));
+    emit(p, OP_HAPPEND);
+}
+
 static void genHash(struct Parser* p, struct Token* t)
 {
-    *(int*)0=0;
+    if(t->type == TOK_COMMA) {
+        genHashElem(p, LEFT(t));
+        genHash(p, RIGHT(t));
+    } else {
+        genHashElem(p, t);
+    }
 }
 
 static void genFuncall(struct Parser* p, struct Token* t)
@@ -144,7 +155,8 @@ static void genExpr(struct Parser* p, struct Token* t)
         }
         break;
     case TOK_LCURL:
-        genHash(p, t);
+        emit(p, OP_NEWHASH);
+        genHash(p, LEFT(t));
         break;
     case TOK_ASSIGN:
         i = genLValue(p, LEFT(t));
@@ -177,6 +189,11 @@ static void genExpr(struct Parser* p, struct Token* t)
             emit(p, OP_NEG);
         }
         break;
+    case TOK_DOT:
+        genExpr(p, LEFT(t));
+        genConstant(p, RIGHT(t));
+        emit(p, OP_MEMBER);
+        break;
     case TOK_EMPTY: emit(p, OP_PUSHNIL); break; // *NOT* a noop!
     case TOK_AND:   genBinOp(OP_AND,    p, t); break;
     case TOK_OR:    genBinOp(OP_OR,     p, t); break;
@@ -184,7 +201,6 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;
     case TOK_CAT:   genBinOp(OP_CAT,    p, t); break;
-    case TOK_DOT:   genBinOp(OP_MEMBER, p, t); break;
     case TOK_LT:    genBinOp(OP_LT,     p, t); break;
     case TOK_LTE:   genBinOp(OP_LTE,    p, t); break;
     case TOK_EQ:    genBinOp(OP_EQ,     p, t); break;
