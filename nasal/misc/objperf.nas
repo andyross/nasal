@@ -14,21 +14,21 @@ for(rep=0; rep<REPS; rep=rep+1) {
     print(rep, "...\n");
     for(i=0; i<COUNT; i=i+1) {
         obj = v[i];
-        obj.a = i;
-        obj.b = i;
-        obj.c = i;
-        obj.d = i;
+        obj.fielda = i;
+        obj.fieldb = i;
+        obj.fieldc = i;
+        obj.fieldd = i;
     }
     for(i=0; i<COUNT; i=i+1) {
         obj = v[i];
-        if(obj.a != i) { print("Ack!\n"); return; }
-        if(obj.b != i) { print("Ack!\n"); return; }
-        if(obj.c != i) { print("Ack!\n"); return; }
-        if(obj.d != i) { print("Ack!\n"); return; }
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
     }
 }
 
-## An identical perl script.  The Nasal code runs about 1.5x slower on
+## An identical perl script.  The Nasal code runs about 2x slower on
 ## my machine.
 
 # my $REPS = 10;
@@ -43,16 +43,16 @@ for(rep=0; rep<REPS; rep=rep+1) {
 #     print "$rep...\n";
 #     for(my $i=0; $i<$COUNT; $i++) {
 # 	my $obj = $v[$i];
-# 	$obj->{a} = i;
-# 	$obj->{b} = i;
-# 	$obj->{c} = i;
-# 	$obj->{d} = i;
+# 	$obj->{fielda} = $i;
+# 	$obj->{fieldb} = $i;
+# 	$obj->{fieldc} = $i;
+# 	$obj->{fieldd} = $i;
 #     }
 #     for(my $i=0; $i<$COUNT; $i++) {
 # 	my $obj = $v[$i];
-# 	if($obj->{a} != i) { die "Ack!"; }
-# 	if($obj->{b} != i) { die "Ack!"; }
-# 	if($obj->{c} != i) { die "Ack!"; }
-# 	if($obj->{d} != i) { die "Ack!"; }
+# 	if($obj->{fielda} != $i) { die "Ack!"; }
+# 	if($obj->{fieldb} != $i) { die "Ack!"; }
+# 	if($obj->{fieldc} != $i) { die "Ack!"; }
+# 	if($obj->{fieldd} != $i) { die "Ack!"; }
 #     }
 # }
