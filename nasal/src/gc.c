@@ -56,6 +56,7 @@ void naGC_init(struct naPool* p, int elemsz)
     p->nfree = 0;
     p->freesz = 0;
     p->free = 0;
+    naGC_reap(p);
 }
 
 // Grabs a free object.  Returns 0 if none is available (i.e., it's

@@ -95,9 +95,7 @@ static void initContext(struct Context* c)
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
 
     // Note we can't use naNewVector() for this; it requires that
-    // temps exist first.  Call naGC_get() once first to seed the
-    // array.
-    naGC_reap(&(c->pools[T_VEC]));
+    // temps exist first.
     c->temps = naObj(T_VEC, naGC_get(&(c->pools[T_VEC])));
 
     // Cache pre-calculated "me", "arg" and "parents" scalars
