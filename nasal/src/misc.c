@@ -165,7 +165,7 @@ int naIsNum(naRef r)
 
 int naIsString(naRef r)
 {
-    return IS_STR(r);
+    return (!IS_NIL(r))&&IS_STR(r);
 }
 
 int naIsScalar(naRef r)
@@ -175,17 +175,17 @@ int naIsScalar(naRef r)
 
 int naIsVector(naRef r)
 {
-    return IS_VEC(r);
+    return (!IS_NIL(r))&&IS_VEC(r);
 }
 
 int naIsHash(naRef r)
 {
-    return IS_HASH(r);
+    return (!IS_NIL(r))&&IS_HASH(r);
 }
 
 int naIsFunc(naRef r)
 {
-    return IS_FUNC(r);
+    return (!IS_NIL(r))&&IS_FUNC(r);
 }
 
 int naIsCode(naRef r)

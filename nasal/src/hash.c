@@ -105,7 +105,7 @@ void naHash_cset(naRef hash, char* key, naRef val)
 {
     struct naStr str;
     naRef key2 = tmpStr(&str, key);
-    naHash_set(hash, key2, val);
+    naHash_tryset(hash, key2, val);
 }
 
 int naHash_get(naRef hash, naRef key, naRef* out)
