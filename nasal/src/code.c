@@ -178,11 +178,10 @@ void naGarbageCollect()
         naGC_reap(&(globals->pools[i]));
 }
 
-static void PUSH(struct Context* ctx, naRef r)
-{
-    if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow");
-    ctx->opStack[ctx->opTop++] = r;
-}
+#define PUSH(r) do { \
+    if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow"); \
+    ctx->opStack[ctx->opTop++] = r; \
+    } while(0)
 
 static naRef nativeCall(struct Context* ctx, naRef ccode, naRef args, naRef obj)
 {
@@ -213,7 +212,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int isMethod)
         naRef obj = isMethod ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
         naRef result = nativeCall(ctx, func.ref.ptr.func->code, args, obj);
         ctx->opTop -= nargs + 1 + isMethod;
-        PUSH(ctx, result);
+        PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);
     }
 
@@ -366,11 +365,11 @@ static void evalEach(struct Context* ctx)
     naRef vec = ctx->opStack[ctx->opTop-2];
     if(idx >= vec.ref.ptr.vec->size) {
         ctx->opTop -= 2; // pop two values
-        PUSH(ctx, naNil());
+        PUSH(naNil());
         return;
     }
     ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
-    PUSH(ctx, naVec_get(vec, idx));
+    PUSH(naVec_get(vec, idx));
 }
 
 #define POP() ctx->opStack[--ctx->opTop]
@@ -405,24 +404,24 @@ static naRef run(struct Context* ctx)
             POP();
             break;
         case OP_DUP:
-            PUSH(ctx, ctx->opStack[ctx->opTop-1]);
+            PUSH(ctx->opStack[ctx->opTop-1]);
             break;
         case OP_XCHG:
             a = POP(); b = POP();
-            PUSH(ctx, a); PUSH(ctx, b);
+            PUSH(a); PUSH(b);
             break;
         case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
         case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
             a = POP(); b = POP();
-            PUSH(ctx, evalBinaryNumeric(ctx, op, b, a));
+            PUSH(evalBinaryNumeric(ctx, op, b, a));
             break;
         case OP_EQ: case OP_NEQ:
             a = POP(); b = POP();
-            PUSH(ctx, evalEquality(op, b, a));
+            PUSH(evalEquality(op, b, a));
             break;
         case OP_AND: case OP_OR:
             a = POP(); b = POP();
-            PUSH(ctx, evalAndOr(ctx, op, a, b));
+            PUSH(evalAndOr(ctx, op, a, b));
             break;
         case OP_CAT:
             // stringify can call the GC, so don't take stuff of the stack!
@@ -430,39 +429,39 @@ static naRef run(struct Context* ctx)
             b = stringify(ctx, ctx->opStack[ctx->opTop-2]);
             c = naStr_concat(naNewString(ctx), b, a);
             ctx->opTop -= 2;
-            PUSH(ctx, c);
+            PUSH(c);
             break;
         case OP_NEG:
             a = POP();
-            PUSH(ctx, naNum(-numify(ctx, a)));
+            PUSH(naNum(-numify(ctx, a)));
             break;
         case OP_NOT:
             a = POP();
-            PUSH(ctx, naNum(boolify(ctx, a) ? 0 : 1));
+            PUSH(naNum(boolify(ctx, a) ? 0 : 1));
             break;
         case OP_PUSHCONST:
             a = CONSTARG();
             if(IS_CODE(a)) a = bindFunction(ctx, f, a);
-            PUSH(ctx, a);
+            PUSH(a);
             break;
         case OP_PUSHONE:
-            PUSH(ctx, naNum(1));
+            PUSH(naNum(1));
             break;
         case OP_PUSHZERO:
-            PUSH(ctx, naNum(0));
+            PUSH(naNum(0));
             break;
         case OP_PUSHNIL:
-            PUSH(ctx, naNil());
+            PUSH(naNil());
             break;
         case OP_NEWVEC:
-            PUSH(ctx, naNewVector(ctx));
+            PUSH(naNewVector(ctx));
             break;
         case OP_VAPPEND:
             b = POP(); a = TOP();
             naVec_append(a, b);
             break;
         case OP_NEWHASH:
-            PUSH(ctx, naNewHash(ctx));
+            PUSH(naNewHash(ctx));
             break;
         case OP_HAPPEND:
             c = POP(); b = POP(); a = TOP(); // a,b,c: hash, key, val
@@ -475,28 +474,28 @@ static naRef run(struct Context* ctx)
             break;
         case OP_SETLOCAL:
             a = POP(); b = POP();
-            PUSH(ctx, setLocal(f, b, a));
+            PUSH(setLocal(f, b, a));
             break;
         case OP_MEMBER:
             a = POP();
             if(!getMember(ctx, a, CONSTARG(), &b))
                 ERR(ctx, "no such member");
-            PUSH(ctx, b);
+            PUSH(b);
             break;
         case OP_SETMEMBER:
             c = POP(); b = POP(); a = POP(); // a,b,c: hash, key, val
             if(!IS_HASH(a)) ERR(ctx, "non-objects have no members");
             naHash_set(a, b, c);
-            PUSH(ctx, c);
+            PUSH(c);
             break;
         case OP_INSERT:
             c = POP(); b = POP(); a = POP(); // a,b,c: box, key, val
             containerSet(ctx, a, b, c);
-            PUSH(ctx, c);
+            PUSH(c);
             break;
         case OP_EXTRACT:
             b = POP(); a = POP(); // a,b: box, key
-            PUSH(ctx, containerGet(ctx, a, b));
+            PUSH(containerGet(ctx, a, b));
             break;
         case OP_JMP:
             f->ip = ARG16(cd->byteCode, f);
@@ -520,21 +519,17 @@ static naRef run(struct Context* ctx)
             break;
         case OP_FCALL:
             f = setupFuncall(ctx, ARG16(cd->byteCode, f), 0);
-            // b = POP(); a = POP(); // a,b = func, args
-            // f = setupFuncall(ctx, naNil(), a, b, naNil());
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_MCALL:
             f = setupFuncall(ctx, ARG16(cd->byteCode, f), 1);
-            // c = POP(); b = POP(); a = POP(); // a,b,c = obj, func, args
-            // f = setupFuncall(ctx, a, b, c, naNil());
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_RETURN:
             a = TOP();
             ctx->opTop = f->bp; // restore the correct opstack frame!
             POPFRAME();
-            PUSH(ctx, a);
+            PUSH(a);
             break;
         case OP_EACH:
             evalEach(ctx);
