@@ -1,13 +1,20 @@
-#include <stdio.h> // DEBUG
-#include <stdlib.h> // DEBUG
-
 #include "nasl.h"
 #include "code.h"
 
 // FIXME: need to store a list of all contexts
 struct Context globalContext;
 
+// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
+// Uncomment the DBG macro to print debug stuff (operator/address,
+// stack contents, etc...)
 #define DBG(expr) /* expr */
+#include <stdio.h> // DEBUG
+#include <stdlib.h> // DEBUG
+char* opStringDEBUG(int op);
+void printOpDEBUG(int ip, int op);
+void printRefDEBUG(naRef r);
+void printStackDEBUG(struct Context* ctx);
+// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
 
 #define ERR(c, msg) naRuntimeError((c),(msg))
 void naRuntimeError(struct Context* c, char* msg)
@@ -15,11 +22,6 @@ void naRuntimeError(struct Context* c, char* msg)
     c->error = msg;
     longjmp(c->jumpHandle, 1);
 }
-
-char* opStringDEBUG(int op);
-void printOpDEBUG(int ip, int op);
-void printRefDEBUG(naRef r);
-void printStackDEBUG(struct Context* ctx);
 
 int boolify(struct Context* ctx, naRef r)
 {
@@ -232,13 +234,13 @@ static void PUSH(struct Context* ctx, naRef r)
 
 static naRef POP(struct Context* ctx)
 {
-    if(ctx->opTop == 0) ERR(ctx, "stack underflow");
+    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
     return ctx->opStack[--ctx->opTop];
 }
 
 static naRef TOP(struct Context* ctx)
 {
-    if(ctx->opTop == 0) ERR(ctx, "stack underflow");
+    if(ctx->opTop == 0) ERR(ctx, "BUG: stack underflow");
     return ctx->opStack[ctx->opTop-1];
 }
 
@@ -444,7 +446,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         ctx->opTop = ctx->markStack[--ctx->markTop];
         break;
     default:
-        ERR(ctx, "bad opcode");
+        ERR(ctx, "BUG: bad opcode");
     }
 
     if(ctx->fTop <= 0)
@@ -459,16 +461,25 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
     PUSH(ctx, result);
 }
 
-naRef naRun(struct Context* ctx, naRef code, naRef namespace)
+int naCurrentLine(struct Context* ctx)
+{
+    return ctx->fStack[ctx->fTop-1].line;
+}
+
+char* naGetError(struct Context* ctx)
+{
+    return ctx->error;
+}
+
+naRef naCall(struct Context* ctx, naRef code, naRef namespace)
 {
     naRef func = naNewFunc(ctx, code, naNewClosure(ctx, namespace, naNil()));
     setupFuncall(ctx, func, naNewVector(ctx));
     
-    if(setjmp(ctx->jumpHandle)) {
-        printf("Runtime error: %s at line %d\n", ctx->error,
-               ctx->fStack[ctx->fTop-1].line);
-        exit(1);
-    }
+    // Return early if an error occurred.  It will be visible to the
+    // caller via naGetError().
+    if(setjmp(ctx->jumpHandle))
+        return naNil();
     
     ctx->done = 0;
     while(!ctx->done) {
@@ -476,9 +487,9 @@ naRef naRun(struct Context* ctx, naRef code, naRef namespace)
         naRef code = f->func.ref.ptr.func->code;
         if(IS_CCODE(code)) nativeCall(ctx, f, code);
         else               run1(ctx, f, code);
-        // DBG(printStackDEBUG(ctx);)
+        DBG(printStackDEBUG(ctx);)
     }
-    // DBG(printStackDEBUG(ctx);)
+    DBG(printStackDEBUG(ctx);)
 
     return ctx->opStack[ctx->opTop-1];
 }

@@ -145,9 +145,11 @@ naRef naStringValue(naContext c, naRef n);
 
 // Context-level stuff
 naContext naNewContext();
-naRef naRun(struct Context* ctx, naRef code, naRef namespace);
+naRef naCall(struct Context* ctx, naRef code, naRef namespace);
+int naCurrentLine(struct Context* ctx);
+char* naGetError(struct Context* ctx);
 void naGarbageCollect();
-naRef naParseCode(naContext c, char* buf, int len);
+naRef naParseCode(naContext c, char* buf, int len, int* errLine);
 
 // Returns a hash containing functions from the Nasl standard library
 // Useful for making a closure for an initial function call

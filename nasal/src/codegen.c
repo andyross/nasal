@@ -1,5 +1,3 @@
-#include <stdio.h> // DEBUG
-
 #include "parse.h"
 #include "code.h"
 
@@ -189,7 +187,7 @@ static void pushLoop(struct Parser* p, struct Token* label)
 static void popLoop(struct Parser* p)
 {
     p->cg->loopTop--;
-    if(p->cg->loopTop < 0) *(int*)0=0; // DEBUG
+    if(p->cg->loopTop < 0) naParseError(p, "BUG: loop stack underflow", -1);
     emit(p, OP_UNMARK);
 }
 
@@ -394,7 +392,7 @@ static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
     if(t == 0)
-        naParseError(p, "null subexpression", -1); // FIXME, ugly! No line!
+        naParseError(p, "BUG: null subexpression", -1);
     if(t->line != p->cg->lastLine)
         emitImmediate(p, OP_LINE, t->line);
     p->cg->lastLine = t->line;

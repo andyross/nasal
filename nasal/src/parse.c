@@ -1,8 +1,5 @@
 #include <setjmp.h>
 
-#include <stdio.h> // DEBUG
-#include <stdlib.h> // DEBUG
-
 #include "parse.h"
 
 // Static precedence table, from low (loose binding, do first) to high
@@ -194,7 +191,8 @@ static struct Token* emptyToken(struct Parser* p)
 {
     struct Token* t = naParseAlloc(p, sizeof(struct Token));
     t->type = TOK_EMPTY;
-    t->line = t->strlen = 0;
+    t->line = -1;
+    t->strlen = 0;
     t->num = 0;
     t->str = 0;
     t->next = t->prev = t->children = t->lastChild = 0;
@@ -473,19 +471,18 @@ static void precBlock(struct Parser* p, struct Token* block)
     }
 }
 
-void dumpTokenList(struct Token* t, int prefix); // DEBUG
-naRef naParseCode(struct Context* c, char* buf, int len)
+naRef naParseCode(struct Context* c, char* buf, int len, int* errLine)
 {
     naRef codeObj;
     struct Token* t;
     struct Parser p;
 
+    // Catch parser errors here.
+    *errLine = 0;
     if(setjmp(p.jumpHandle)) {
-        // An error occurred, do something sane (not this)
-        printf("Error: %s", p.err);
-        if(p.errLine) printf(" at line %d", p.errLine);
-        printf("\n");
-        exit(1); // FIXME, all of this.
+        c->error = p.err;
+        *errLine = p.errLine;
+        return naNil();
     }
 
     naParseInit(&p);
@@ -503,8 +500,6 @@ naRef naParseCode(struct Context* c, char* buf, int len)
     t->prev = t->next = 0;
     p.tree.children = t;
     p.tree.lastChild = t;
-
-    // dumpTokenList(&(p.tree), 0);
 
     // Generate code!
     codeObj = naCodeGen(&p, &(p.tree));

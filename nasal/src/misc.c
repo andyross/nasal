@@ -148,7 +148,6 @@ int naTypeSize(int type)
     case T_FUNC: return sizeof(struct naFunc);
     case T_CLOSURE: return sizeof(struct naClosure);
     case T_CCODE: return sizeof(struct naCCode);
-    default: *(int*)0=0;
     };
-    return 0x7fffffff;
+    return 0x7fffffff; // Make sure the answer is nonsense :)
 }
