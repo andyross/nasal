@@ -20,7 +20,7 @@ static void realloc(naRef hash)
     // single chunk, to avoid zillions of tiny node allocations)
     sz = 1<<h->lgalloced;
     h->nodes = naAlloc(sz * (sizeof(struct HashNode) + sizeof(void*)));
-    h->table = ((void*)h->nodes) + sz*sizeof(struct HashNode);
+    h->table = (struct HashNode**)(((char*)h->nodes) + sz*sizeof(struct HashNode));
     naBZero(h->table, sz * sizeof(void*));
     h->nextnode = 0;
     h->size = 0;
