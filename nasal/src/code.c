@@ -462,25 +462,26 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
     PUSH(ctx, result);
 }
 
-void naRun(struct Context* ctx, naRef code)
+naRef naRun(struct Context* ctx, naRef code, naRef namespace)
 {
-    naRef lib = naStdLib(ctx);
-    naRef func = naNewFunc(ctx, code, naNewClosure(ctx, lib, naNil()));
+    naRef func = naNewFunc(ctx, code, naNewClosure(ctx, namespace, naNil()));
     setupFuncall(ctx, func, naNewVector(ctx));
-
+    
     if(setjmp(ctx->jumpHandle)) {
         printf("Runtime error: %s at line %d\n", ctx->error,
                ctx->fStack[ctx->fTop-1].line);
         exit(1);
     }
-
+    
     ctx->done = 0;
     while(!ctx->done) {
         struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
         naRef code = f->func.ref.ptr.func->code;
         if(IS_CCODE(code)) nativeCall(ctx, f, code);
         else               run1(ctx, f, code);
-        DBG(printStackDEBUG(ctx);)
+        // DBG(printStackDEBUG(ctx);)
     }
-    DBG(printStackDEBUG(ctx);)
+    // DBG(printStackDEBUG(ctx);)
+
+    return ctx->opStack[ctx->opTop-1];
 }

@@ -7,6 +7,7 @@
 
 #include "parse.h"
 
+// Bytecode operator to string
 char* opStringDEBUG(int op)
 {
     switch(op) {
@@ -57,11 +58,13 @@ char* opStringDEBUG(int op)
     return "<bad opcode>";
 }
 
+// Print a bytecode operator
 void printOpDEBUG(int ip, int op)
 {
     printf("IP: %d OP: %s\n", ip, opStringDEBUG(op));
 }
 
+// Print a naRef
 void printRefDEBUG(naRef r)
 {
     int i;
@@ -87,6 +90,7 @@ void printRefDEBUG(naRef r)
     } else printf("DEBUG ACK\n");
 }
 
+// Print the operand stack of the specified context
 void printStackDEBUG(struct Context* ctx)
 {
     int i;
@@ -98,6 +102,7 @@ void printStackDEBUG(struct Context* ctx)
     printf("\n");
 }
 
+// Token type to string
 char* tokString(int tok)
 {
     switch(tok) {
@@ -145,12 +150,12 @@ char* tokString(int tok)
     return 0;
 }
 
+// Diagnostic: check all list pointers for sanity
 void ack()
 {
     printf("ACK!");
     exit(1);
 }
-
 void checkList(struct Token* start, struct Token* end)
 {
     struct Token* t = start;
@@ -168,6 +173,7 @@ void checkList(struct Token* start, struct Token* end)
 }
 
 
+// Prints a single parser token to stdout
 void printToken(struct Token* t, char* prefix)
 {
     int i;
@@ -184,6 +190,7 @@ void printToken(struct Token* t, char* prefix)
     printf("\n");
 }
 
+// Prints a parse tree to stdout
 void dumpTokenList(struct Token* t, int prefix)
 {
     char prefstr[128];
@@ -200,26 +207,69 @@ void dumpTokenList(struct Token* t, int prefix)
     }
 }
 
+static naRef print(naContext c, naRef args)
+{
+    int i, n;
+    n = naVec_size(args);
+    for(i=0; i<n; i++) {
+        naRef s = naStringValue(c, naVec_get(args, i));
+        if(IS_NIL(s)) continue;
+        fwrite(naStr_data(s), 1, naStr_len(s), stdout);
+    }
+    return naNil();
+}
+
 int main(int argc, char** argv)
 {
-    int i;
     FILE* f;
     struct stat fdat;
     char* buf;
     struct Context *ctx;
-    naRef code;
+    naRef code, namespace, result, name;
 
-    for(i=1; i<argc; i++) {
-        stat(argv[i], &fdat);
-        buf = malloc(fdat.st_size);
-        f = fopen(argv[i], "r");
-        fread(buf, 1, fdat.st_size, f);
-
-        ctx = naNewContext();
-        code = naParseCode(ctx, buf, fdat.st_size);
-        naRun(ctx, code);
-
-        free(buf);
+    if(argc < 2) {
+        fprintf(stderr, "nasl: must specify a script to run\n");
+        exit(1);
     }
+
+    // Read the contents of the file into a buffer in memory
+    stat(argv[1], &fdat);
+    buf = malloc(fdat.st_size);
+    f = fopen(argv[1], "r");
+    if(!f) {
+        fprintf(stderr, "nasl: could not open input file: %s\n", argv[1]);
+        exit(1);
+    }
+    if(fread(buf, 1, fdat.st_size, f) != fdat.st_size) {
+        fprintf(stderr, "nasl: error in fread()\n");
+        exit(1);
+    }
+    
+    // Create an interpreter context
+    ctx = naNewContext();
+
+    // Parse the code in the buffer
+    code = naParseCode(ctx, buf, fdat.st_size);
+
+    // Make a hash containing the standard library functions.  This
+    // will be the namespace for a new script (more elaborate
+    // environments -- imported libraries, for example -- might be
+    // different).
+    namespace = naStdLib(ctx);
+
+    // Add application-specific functions (in this case, "print") to
+    // the namespace if desired.
+    name = naNewString(ctx);
+    naStr_fromdata(name, "print", 5);
+    naHash_set(namespace,
+               name,
+               naNewFunc(ctx,
+                         naNewCCode(ctx, print), // CCODE object
+                         naNil())); // function closure (none here)
+
+    // Run it
+    result = naRun(ctx, code, namespace);
+    
+    free(buf);
     return 0;
 }

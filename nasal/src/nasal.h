@@ -145,6 +145,7 @@ naRef naStringValue(naContext c, naRef n);
 
 // Context-level stuff
 naContext naNewContext();
+naRef naRun(struct Context* ctx, naRef code, naRef namespace);
 void naGarbageCollect();
 naRef naParseCode(naContext c, char* buf, int len);
 

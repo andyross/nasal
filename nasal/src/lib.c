@@ -1,19 +1,6 @@
 #include <string.h>
-#include <stdio.h>
 
 #include "nasl.h"
-
-static naRef print(naContext c, naRef args)
-{
-    int i, n;
-    n = naVec_size(args);
-    for(i=0; i<n; i++) {
-        naRef s = naStringValue(c, naVec_get(args, i));
-        if(IS_NIL(s)) continue;
-        fwrite(naStr_data(s), 1, naStr_len(s), stdout);
-    }
-    return naNil();
-}
 
 static naRef size(naContext c, naRef args)
 {
@@ -103,9 +90,23 @@ static naRef contains(naContext c, naRef args)
     return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
 }
 
+static naRef typeOf(naContext c, naRef args)
+{
+    naRef r = naVec_get(args, 0);
+    char* t = "unknown";
+    if(IS_NIL(r)) t = "nil";
+    else if(IS_NUM(r)) t = "scalar";
+    else if(IS_STR(r)) t = "scalar";
+    else if(IS_VEC(r)) t = "vector";
+    else if(IS_HASH(r)) t = "hash";
+    else if(IS_FUNC(r)) t = "func";
+    r = naNewString(c);
+    naStr_fromdata(r, t, strlen(t));
+    return r;
+}
+
 struct func { char* name; naCFunction func; };
 struct func funcs[] = {
-    { "print", print },
     { "size", size },
     { "keys", keys }, 
     { "append", append }, 
@@ -114,6 +115,7 @@ struct func funcs[] = {
     { "streq", streq },
     { "substr", substr },
     { "contains", contains },
+    { "typeof", typeOf },
 };
 
 naRef naStdLib(naContext c)
