@@ -1,3 +1,5 @@
+#include <stdio.h> // DEBUG
+
 #include "parse.h"
 #include "code.h"
 
@@ -29,6 +31,7 @@ static void genBinOp(int op, struct Parser* p, struct Token* t)
     emit(p, op);
 }
 
+void printRefDEBUG(naRef r);
 static void genConstant(struct Parser* p, struct Token* t)
 {
     naRef c, val;
@@ -48,6 +51,8 @@ static void genConstant(struct Parser* p, struct Token* t)
         idx = p->nConsts++;
         val = naNum(idx);
         naHash_set(p->constHash, c, val);
+        printf("CONSTANT %d = ", idx);
+        printRefDEBUG(c);
     } else {
         idx = val.num;
     }
@@ -169,7 +174,7 @@ static void genExprList(struct Parser* p, struct Token* t)
 naRef naCodeGen(struct Parser* p, struct Token* t)
 {
     int i;
-    naRef codeObj;
+    naRef codeObj, vec;
     struct naCode* code;
 
     p->codeAlloced = 1024; // Start fairly big, this is a cheap allocation
@@ -190,8 +195,17 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
         code->byteCode[i] = p->byteCode[i];
     code->nConstants = p->nConsts;
     code->constants = ALLOC(code->nConstants * sizeof(naRef));
-    for(i=0; i < code->nConstants; i++)
-        code->constants[i] = naHash_get(p->constHash, naNum(i));
+
+    // Invert the hash.  In C.  Fun.  I wish I could do this part in
+    // Nasl. :)
+    vec = naNewVector(p->context);
+    naHash_keys(vec, p->constHash);
+    for(i=0; i < code->nConstants; i++) {
+        naRef key = naVec_get(vec, i);
+        naRef idx = naHash_get(p->constHash, key);
+        int i = (int)idx.num;
+        code->constants[i] = key;
+    }
 
     return codeObj;
 }

@@ -84,41 +84,89 @@ static naRef binaryNumeric(int op, naRef oa, naRef ob)
     return naNil();
 }
 
-#define ARG0 ctx->opStack[ctx->opTop-1]
-#define ARG1 ctx->opStack[ctx->opTop-2]
-#define REPLACE(n,v) ctx->opTop-=((n)-1);ctx->opStack[ctx->opTop]=(v)
+static inline void PUSH(struct Context* ctx, naRef r)
+{
+    ctx->opStack[ctx->opTop++] = r;
+}
+
+static inline naRef POP(struct Context* ctx)
+{
+    return ctx->opStack[--ctx->opTop];
+}
+
+static inline int ARG16(unsigned char* byteCode, struct Frame* f)
+{
+    int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
+    f->ip += 2;
+    return arg;
+}
+
 void run1(struct Context* ctx)
 {
-    naRef val;
+    naRef a, b;
     struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
-    struct naCode* c = f->code.ref.ptr.code;
-    int op = c->byteCode[f->ip++];
+    struct naCode* cd = f->code.ref.ptr.code;
+    int i, op = cd->byteCode[f->ip++];
 
     switch(op) {
     case OP_PLUS: case OP_MINUS: case OP_MUL: case OP_DIV:
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
-        val = binaryNumeric(op, ARG0, ARG1);
-        REPLACE(2, val);
+        printf("   binop %d\n", op);
+        a = POP(ctx); b = POP(ctx);
+        PUSH(ctx, binaryNumeric(op, a, b));
+        break;
+    case OP_PUSHCONST:
+        i = ARG16(cd->byteCode, f);
+        printf("   pushconst %d\n", i);
+        PUSH(ctx, cd->constants[i]);
+        break;
     }
 
     // Are we done now?
-    if(f->ip >= c->nBytes)
+    if(f->ip >= cd->nBytes)
         ctx->done = 1;
 }
+
+void printRefDEBUG(naRef r);
+void printStack(struct Context* ctx)
+{
+    int i;
+    printf("Stack:\n");
+    for(i=ctx->opTop-1; i>=0; i--)
+        printRefDEBUG(ctx->opStack[i]);
+    printf("--\n");
+}
+
 
 void naRun(struct Context* ctx, naRef code)
 {
     naRef namespace, closure;
 
     namespace = naNewHash(ctx);
-
+    
     closure = naNewClosure(ctx);
     closure.ref.ptr.closure->code = code;
     closure.ref.ptr.closure->namespace = namespace;
 
+    { // DEBUG
+        int i;
+        struct naCode* c = code.ref.ptr.code;
+        printf("Constants:\n");
+        for(i=0; i<c->nConstants; i++) {
+            printf("%d ", i);
+            printRefDEBUG(c->constants[i]);
+        }
+        printf("--\n");
+    } // DEBUG
+
     setupFuncall(ctx, closure);
 
     ctx->done = 0;
-    while(!ctx->done)
+    while(!ctx->done) {
+        printStack(ctx); // DEBUG
         run1(ctx);
+    }
+
+    printf("DONE:\n"); // DEBUG 
+    printStack(ctx); // DEBUG
 }
