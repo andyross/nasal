@@ -17,8 +17,9 @@ static void garbageCollect()
 {
     int i;
     struct Context* c = globals->allContexts;
-
     while(c) {
+        for(i=0; i<NUM_NASAL_TYPES; i++)
+            c->nfree[i] = 0;
         for(i=0; i < c->fTop; i++) {
             naGC_mark(c->fStack[i].func);
             naGC_mark(c->fStack[i].locals);
@@ -31,7 +32,7 @@ static void garbageCollect()
     }
 
     naGC_mark(globals->save);
-
+    naGC_mark(globals->symbols);
     naGC_mark(globals->meRef);
     naGC_mark(globals->argRef);
     naGC_mark(globals->parentsRef);
@@ -39,22 +40,6 @@ static void garbageCollect()
     // Finally collect all the freed objects
     for(i=0; i<NUM_NASAL_TYPES; i++)
         naGC_reap(&(globals->pools[i]));
-}
-
-static void appendfree(struct naPool*p, struct naObj* o)
-{
-    // Need more space?
-    if(p->freesz <= p->nfree) {
-        int i, n = 1+((3*p->nfree)>>1);
-        void** newf = naAlloc(n * sizeof(void*));
-        for(i=0; i<p->nfree; i++)
-            newf[i] = p->free[i];
-        naFree(p->free);
-        p->free = newf;
-        p->freesz = n;
-    }
-
-    p->free[p->nfree++] = o;
 }
 
 static void naCode_gcclean(struct naCode* o)
@@ -73,9 +58,6 @@ static void naGhost_gcclean(struct naGhost* g)
 
 static void freeelem(struct naPool* p, struct naObj* o)
 {
-    // Mark the object as "freed" for debugging purposes
-    o->type = T_GCFREED; // DEBUG
-
     // Free its thread lock, if it has one
     if(o->lock) naFreeLock(o->lock);
     o->lock = 0;
@@ -101,7 +83,8 @@ static void freeelem(struct naPool* p, struct naObj* o)
     }
 
     // And add it to the free list
-    appendfree(p, o);
+    o->type = T_GCFREED; // DEBUG
+    p->free[p->nfree++] = o;
 }
 
 static void newBlock(struct naPool* p, int need)
@@ -110,9 +93,9 @@ static void newBlock(struct naPool* p, int need)
     char* buf;
     struct Block* newblocks;
 
-    if(need < MIN_BLOCK_SIZE)
-        need = MIN_BLOCK_SIZE;
+    if(need < MIN_BLOCK_SIZE) need = MIN_BLOCK_SIZE;
     
+    // FIXME: store blocks in a list. This is just dumb...
     newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
     for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
     naFree(p->blocks);
@@ -123,13 +106,17 @@ static void newBlock(struct naPool* p, int need)
     p->blocks[p->nblocks].block = buf;
     p->nblocks++;
     
-    for(i=0; i<need; i++) {
+    if(need > p->freesz - p->freetop) need = p->freesz - p->freetop;
+    p->nfree = 0;
+    p->free = p->free0 + p->freetop;
+    for(i=0; i < need; i++) {
         struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
         o->mark = 0;
         o->lock = 0;
-        o->type = p->type;
-        appendfree(p, o);
+        o->type = T_GCFREED; // DEBUG
+        p->free[p->nfree++] = o;
     }
+    p->freetop += need;
 }
 
 void naGC_init(struct naPool* p, int type)
@@ -138,9 +125,9 @@ void naGC_init(struct naPool* p, int type)
     p->elemsz = naTypeSize(type);
     p->nblocks = 0;
     p->blocks = 0;
-    p->nfree = 0;
-    p->freesz = 0;
-    p->free = 0;
+
+    p->free0 = p->free = 0;
+    p->nfree = p->freesz = p->freetop = 0;
     naGC_reap(p);
 }
 
@@ -155,16 +142,17 @@ int naGC_size(struct naPool* p)
 struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 {
     struct naObj** result;
-    if(globals->allocCount < 0) {
+    if(globals->allocCount < 0 || (p->nfree == 0 && p->freetop >= p->freesz)) {
         globals->allocCount = 0;
         garbageCollect();
     }
     if(p->nfree == 0)
         newBlock(p, naGC_size(p)/8);
-    *nout = p->nfree < n ? p->nfree : n;
-    p->nfree -= *nout;
-    globals->allocCount -= *nout;
-    result = (struct naObj**)&p->free[p->nfree];
+    n = p->nfree < n ? p->nfree : n;
+    *nout = n;
+    p->nfree -= n;
+    globals->allocCount -= n;
+    result = (struct naObj**)(p->free + p->nfree);
     return result;
 }
 
@@ -219,11 +207,20 @@ void naGC_mark(naRef r)
 // allocates more space if needed.
 void naGC_reap(struct naPool* p)
 {
-    int i, elem, total = 0;
+    int i, elem, freesz, total = 0;
     p->nfree = 0;
+    for(i=0; i<p->nblocks; i++)
+        total += (p->blocks+i)->size;
+    freesz = total < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : total;
+    freesz = 3 * freesz / 2;
+    if(p->freesz < freesz) {
+        naFree(p->free0);
+        p->freesz = freesz;
+        p->free = p->free0 = naAlloc(sizeof(void*) * p->freesz);
+    }
+
     for(i=0; i<p->nblocks; i++) {
         struct Block* b = p->blocks + i;
-        total += b->size;
         for(elem=0; elem < b->size; elem++) {
             struct naObj* o = (struct naObj*)(b->block + elem * p->elemsz);
             if(o->mark == 0)
@@ -244,5 +241,7 @@ void naGC_reap(struct naPool* p)
         if(need > 0)
             newBlock(p, need);
     }
+    p->freetop = p->nfree;
 }
+
 

@@ -58,6 +58,10 @@ struct Context {
     int markStack[MAX_MARK_DEPTH];
     int markTop;
 
+    // Free object lists, cached from the global GC
+    struct naObj** free[NUM_NASAL_TYPES];
+    int nfree[NUM_NASAL_TYPES];
+
     // GC-findable reference point for objects that may live on the
     // processor ("real") stack during execution.  naNew() places them
     // here, and clears the array each instruction

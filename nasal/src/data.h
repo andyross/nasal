@@ -13,6 +13,7 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 #define IS_REF(r) ((r).ref.reftag == NASAL_REFTAG)
 #define IS_NUM(r) ((r).ref.reftag != NASAL_REFTAG)
 #define IS_OBJ(r) (IS_REF((r)) && (r).ref.ptr.obj != 0)
+//#define IS_OBJ(r) (IS_REF((r)) && (r).ref.ptr.obj != 0 && (((r).ref.ptr.obj->type == 123) ? *(int*)0 : 1))
 #define IS_NIL(r) (IS_REF((r)) && (r).ref.ptr.obj == 0)
 #define IS_STR(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_STR)
 #define IS_VEC(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_VEC)
@@ -113,9 +114,11 @@ struct naPool {
     int           elemsz;
     int           nblocks;
     struct Block* blocks;
-    int           nfree;   // number of entries in the free array
-    int           freesz;  // size of the free array
-    void**        free;    // pointers to usable elements
+    void**   free0; // pointer to the alloced buffer
+    int     freesz; // size of the alloced buffer
+    void**    free; // current "free frame"
+    int      nfree; // down-counting index within the free frame
+    int    freetop; // curr. top of the free list
 };
 
 void naFree(void* m);

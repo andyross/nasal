@@ -94,13 +94,14 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 
 static void initContext(struct Context* c)
 {
+    int i;
     c->globals = globals;
     c->fTop = c->opTop = c->markTop = 0;
+    for(i=0; i<NUM_NASAL_TYPES; i++)
+        c->nfree[i] = 0;
 
     // Chicken and egg, can't use naNew because it requires temps to exist
-    int dummy;
-    c->temps = naObj(T_VEC, (naGC_get(&c->globals->pools[T_VEC],
-                                      1, &dummy))[0]);
+    c->temps = naObj(T_VEC, (naGC_get(&c->globals->pools[T_VEC], 1, &i))[0]);
     naVec_init(c->temps);
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
@@ -125,6 +126,7 @@ static void initGlobals()
     globals->freeContexts = 0;
     globals->allContexts = 0;
     struct Context* c = naNewContext();
+    naFreeContext(c);
 
     globals->symbols = naNewHash(c);
     globals->save = naNewVector(c);
