@@ -259,7 +259,6 @@ static void genLoop(struct Parser* p, struct Token* body,
 {
     int cont, jumpOverContinue;
     
-    pushLoop(p, label);
     p->cg->loops[p->cg->loopTop-1].breakIP = jumpEnd-1;
 
     jumpOverContinue = emitJump(p, OP_JMP);
@@ -272,8 +271,8 @@ static void genLoop(struct Parser* p, struct Token* body,
     fixJumpTarget(p, cont);
     if(update) { genExpr(p, update); emit(p, OP_POP); }
     emitImmediate(p, OP_JMP, loopTop);
-    popLoop(p);
     fixJumpTarget(p, jumpEnd);
+    popLoop(p);
     emit(p, OP_PUSHNIL); // Leave something on the stack
 }
 
@@ -283,6 +282,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
 {
     int loopTop, jumpEnd;
     if(init) { genExpr(p, init); emit(p, OP_POP); }
+    pushLoop(p, label);
     loopTop = p->cg->nBytes;
     genExpr(p, test);
     jumpEnd = emitJump(p, OP_JIFNOT);

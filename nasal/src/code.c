@@ -6,6 +6,8 @@
 // FIXME: need to store a list of all contexts
 struct Context globalContext;
 
+#define DBG(expr) /* expr */
+
 char* opStringDEBUG(int op);
 void printOpDEBUG(int ip, int op);
 void printRefDEBUG(naRef r);
@@ -92,21 +94,12 @@ void naGarbageCollect()
 void setupFuncall(struct Context* ctx, naRef func, naRef args)
 {
     struct Frame* f;
-
-    // DEBUG
-    if(!IS_CODE(func.ref.ptr.func->code)) ERR("DEBUG");
-    if(!IS_VEC(args)) ERR("DEBUG");
-    // DEBUG
-
     if(ctx->fTop >= MAX_RECURSION) ERR("recursion too deep");
-
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
     f->ip = 0;
     f->bp = ctx->opTop;
     f->line = 0;
-
-    // Initialize the local namespace with "arg"
     f->locals = naNewHash(ctx);
     naHash_set(f->locals, ctx->argRef, args);
 }
@@ -281,7 +274,7 @@ static void run1(struct Context* ctx)
     int op, arg;
 
     if(f->ip >= cd->nBytes) {
-        printf("Done with frame %d\n", ctx->fTop-1);
+        DBG(printf("Done with frame %d\n", ctx->fTop-1);)
         ctx->fTop--;
         if(ctx->fTop <= 0)
             ctx->done = 1;
@@ -289,7 +282,7 @@ static void run1(struct Context* ctx)
     }
 
     op = cd->byteCode[f->ip++];
-    printOpDEBUG(f->ip-1, op);
+    DBG(printOpDEBUG(f->ip-1, op);)
     switch(op) {
     case OP_POP:
         POP(ctx);
@@ -387,21 +380,21 @@ static void run1(struct Context* ctx)
         break;
     case OP_JMP:
         f->ip = ARG16(cd->byteCode, f);
-        printf("   [Jump to: %d]\n", f->ip);
+        DBG(printf("   [Jump to: %d]\n", f->ip);)
         break;
     case OP_JIFNIL:
         arg = ARG16(cd->byteCode, f);
         a = POP(ctx);
         if(IS_NIL(a)) {
             f->ip = arg;
-            printf("   [Jump to: %d]\n", f->ip);
+            DBG(printf("   [Jump to: %d]\n", f->ip);)
         }
         break;
     case OP_JIFNOT:
         arg = ARG16(cd->byteCode, f);
         if(!naTrue(POP(ctx))) {
             f->ip = arg;
-            printf("   [Jump to: %d]\n", f->ip);
+            DBG(printf("   [Jump to: %d]\n", f->ip);)
         }
         break;
     case OP_FCALL:
@@ -432,11 +425,9 @@ static void run1(struct Context* ctx)
         ctx->markStack[ctx->markTop++] = ctx->opTop;
         break;
     case OP_UNMARK: // pop stack state set by mark
-        if(ctx->markTop < 1) *(int*)0=0; // DEBUG
         ctx->markTop--;
         break;
     case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
-        if(ctx->markTop < 1) *(int*)0=0; // DEBUG
         ctx->opTop = ctx->markStack[--ctx->markTop];
         break;
     default:
@@ -455,7 +446,7 @@ void naRun(struct Context* ctx, naRef code)
     ctx->done = 0;
     while(!ctx->done) {
         run1(ctx);
-        printStackDEBUG(ctx); // DEBUG
+        DBG(printStackDEBUG(ctx);)
     }
-    printf("DONE\n");
+    DBG(printf("DONE\n");)
 }
