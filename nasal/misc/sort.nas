@@ -31,11 +31,9 @@ sort = func {
     _sort(arg[0]);
 }
     
-# Quicksort implementation.  Much faster, and no excess garbage to
+# Quicksort implementation.  Much faster: no excess garbage to
 # collect.  Unstable sort.  Sorts the input array in place.  No space
-# overhead.  BUG: pivot selection is wrong.  Needs to make sure either
-# (1) never to pick an extreme as the pivot or (2) track the pivot as
-# it gets moved around so it can be swapped into the midpoint.
+# overhead.
 qsort = func {
     vec = arg[0];
     lessthan = if(size(arg) > 1) { arg[1] } else { func { arg[0] < arg[1] } };

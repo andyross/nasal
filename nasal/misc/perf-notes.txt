@@ -38,3 +38,55 @@ allocation of garbage collected objects:
  + All function calls allocate a hash for the namespace, and an arg
    vector.  Strictly, the call() function does not allocate the arg
    vector itself...
+
+Maximum speed of a mark/sweep collector: any collection of a large
+data set is obviously going to thrash the CPU cache and be limited by
+main memory bandwidth (corrolary: parallel collection threads on
+different CPUs are not likely to help unless the CPUs have their own
+dedicated memory).  Modern DDR400 memory uses 8 cycles to read 4 64
+bit values into a cache line, and typically comes in dual channel
+configurations (which I *think* are used to make a single 512 bit
+cache line, and not two parallel channels for loading independent
+lines...).  That comes out to 64 byte blocks read at a rate of 50MHz.
+If the in-memory object layout exhibits good locality of reference,
+then that whole cache line will be "used up" before it is spilled out
+to make room for another read and we will be limited by the maximum
+read bandwidth of 64*50 = 3.2 gigabytes per second.  If the objects
+are scattered pessimally, then every 8 byte naRef will require a full
+64 byte read, and the rate drops by a factor of 8 to 400 megabytes per
+second.  Finally, note that the full GC requires two passes over the
+live data; the second pass is done in-order and will definitely be
+able to use the full memory bandwidth.  So a 1 gig set of data would
+take somewhere between 0.6 and 2.8 seconds to collect on a modern
+system.  Multi-cpu systems with parallel memory architectures
+(Opteron) will scale linearly with the number of CPUs.
+
+Fun surprise: changing from the "naive" C stack mark algorithm to the
+"optimized" non-recursive one slowed things down in gcperf.nas by
+about 15%.  It was supposed to use 5x less space for the
+hand-maintained stack, but instead used thousands of times MORE space.
+Why?  The gcperf.nas script creates very "broad" hashes of hashes.  So
+before recursing into the second level, the GC needs to push thousands
+of objects onto the stack; it's maximum size is the maximum reference
+depth times the size of the average object in the reference chain!
+The naive algorithm was "true" depth first, so it used only one entry
+on the stack per object in the chain.  The solution is to keep "state"
+with the mark stack to prevent needlessly pushing many items onto the
+stack at once.
+
+Consider adding an explicit freeObject() interface, so that in
+situations where we know that a reference to an object will not be
+saved it can be added directly to the free lists.  Possibilities would
+include: the local namespace in CODE objects where there are CODE
+constants which would bind to them; the results of ~ operators which
+exist as the left or right side of another binary operator (knowable
+from the parse tree).  Note: you can't collect local arguments without
+doing data flow analysis to make sure they aren't saved off by passing
+the arg vector to a sub function, etc...
+
+Try disabling the LINE opcode and see what it does.
+
+Since strings will always be at least MINLEN (16) bytes long, put that
+buffer in the string object.  This saves memory for short strings, and
+wastes only a little for long ones.  And it avoids the allocation
+overhead involved in creating a string with ~.
