@@ -82,8 +82,8 @@ static int getLine(struct Parser* p, int index)
     int i;
     for(i=0; i<p->nLines; i++)
         if(p->lines[i] > index)
-            return i+1;
-    return p->nLines+1;
+            return (p->firstLine-1) + i+1;
+    return (p->firstLine-1) + p->nLines+1;
 }
 
 static void error(struct Parser* p, char* msg, int index)

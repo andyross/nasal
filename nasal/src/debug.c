@@ -9,6 +9,7 @@
 // Bytecode operator to string
 char* opStringDEBUG(int op)
 {
+    static char buf[256];
     switch(op) {
     case OP_AND: return "AND";
     case OP_OR: return "OR";
@@ -53,8 +54,10 @@ char* opStringDEBUG(int op)
     case OP_MARK: return "MARK";
     case OP_UNMARK: return "UNMARK";
     case OP_BREAK: return "BREAK";
+    case OP_NEXTARGS: return "NEXTARGS";
     }
-    return "<bad opcode>";
+    sprintf(buf, "<bad opcode: %d>\n", op);
+    return buf;
 }
 
 // Print a bytecode operator

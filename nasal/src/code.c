@@ -149,6 +149,8 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     f->bp = ctx->opTop;
     f->line = 0;
 
+    DBG(printf("Entering frame %d\n", ctx->fTop-1);)
+
     if(!IS_REF(func))
         ERR(ctx, "function/method call invoked on uncallable object");
 
@@ -329,7 +331,8 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
     }
 
     op = cd->byteCode[f->ip++];
-    DBG(printOpDEBUG(f->ip-1, op);)
+    DBG(printf("Stack Depth: %d\n", ctx->opTop));
+    DBG(printOpDEBUG(f->ip-1, op));
     switch(op) {
     case OP_POP:
         POP(ctx);
@@ -495,9 +498,21 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
     PUSH(ctx, result);
 }
 
-int naCurrentLine(struct Context* ctx)
+int naStackDepth(struct Context* ctx)
 {
-    return ctx->fStack[ctx->fTop-1].line;
+    return ctx->fTop;
+}
+
+int naGetLine(struct Context* ctx, int frame)
+{
+    return ctx->fStack[ctx->fTop-1-frame].line;
+}
+
+naRef naGetSourceFile(struct Context* ctx, int frame)
+{
+    naRef f = ctx->fStack[ctx->fTop-1-frame].func;
+    f = f.ref.ptr.func->code;
+    return f.ref.ptr.code->srcFile;
 }
 
 char* naGetError(struct Context* ctx)

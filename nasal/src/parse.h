@@ -45,6 +45,10 @@ struct Parser {
     char* buf;
     int   len;
 
+    // Input file parameters (for generating pretty stack dumps)
+    naRef srcFile;
+    int firstLine;
+
     // Chunk allocator.  Throw away after parsing.
     void** chunks;
     int* chunkSizes;

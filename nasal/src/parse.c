@@ -482,7 +482,8 @@ static void precBlock(struct Parser* p, struct Token* block)
     }
 }
 
-naRef naParseCode(struct Context* c, char* buf, int len, int* errLine)
+naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
+                  char* buf, int len, int* errLine)
 {
     naRef codeObj;
     struct Token* t;
@@ -498,6 +499,8 @@ naRef naParseCode(struct Context* c, char* buf, int len, int* errLine)
 
     naParseInit(&p);
     p.context = c;
+    p.srcFile = srcFile;
+    p.firstLine = firstLine;
     p.buf = buf;
     p.len = len;
 

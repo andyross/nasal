@@ -44,6 +44,14 @@ static naRef pop(naContext c, naRef args)
     return naVec_removelast(v);
 }
 
+static naRef delete(naContext c, naRef args)
+{
+    naRef h = naVec_get(args, 0);
+    naRef k = naVec_get(args, 1);
+    if(naIsHash(h)) naHash_delete(h, k);
+    return naNil();
+}
+
 static naRef intf(naContext c, naRef args)
 {
     naRef n = naNumValue(naVec_get(args, 0));
@@ -113,11 +121,12 @@ static naRef typeOf(naContext c, naRef args)
 }
 
 struct func { char* name; naCFunction func; };
-struct func funcs[] = {
+static struct func funcs[] = {
     { "size", size },
     { "keys", keys }, 
     { "append", append }, 
     { "pop", pop }, 
+    { "delete", delete }, 
     { "int", intf },
     { "num", num },
     { "streq", streq },

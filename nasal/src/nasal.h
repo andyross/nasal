@@ -19,7 +19,9 @@ extern "C" {
 typedef union {
     double num;
     struct {
-        // int reftag; // Big-endian systems need this here!
+#ifdef NASAL_BIG_ENDIAN_32_BIT
+        int reftag; // Big-endian systems need this here!
+#endif
         union {
             struct naObj* obj;
             struct naStr* str;
@@ -30,12 +32,14 @@ typedef union {
             struct naClosure* closure;
             struct naCCode* ccode;
         } ptr;
-        int reftag;
+#ifndef NASAL_BIG_ENDIAN_32_BIT
+        int reftag; // Little-endian and 64 bit systems need this here!
+#endif
     } ref;
 } naRef;
 
 typedef struct Context* naContext;
-
+    
 // The function signature for an extension function:
 typedef naRef (*naCFunction)(naContext ctx, naRef args);
 
@@ -43,12 +47,20 @@ typedef naRef (*naCFunction)(naContext ctx, naRef args);
 naContext naNewContext();
 
 // Parse a buffer in memory into a code object.
-naRef naParseCode(naContext c, char* buf, int len, int* errLine);
+naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
+                  char* buf, int len, int* errLine);
 
 // Call a code or function object with the specifed arguments "on" the
 // specified object and using the specified hash for the local
 // variables.  Any of args, obj or locals may be nil.
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals);
+
+// Throw an error from the current call stack.  This function makes a
+// longjmp call to a handler in naCall() and DOES NOT RETURN.  It is
+// intended for use in library code that cannot otherwise report an
+// error via the return value, and MUST be used carefully.  If in
+// doubt, return naNil() as your error condition.
+void naRuntimeError(naContext ctx, char* msg);
 
 // Call a method on an object (NOTE: func is a function binding, *not*
 // a code object as returned from naParseCode).
@@ -58,8 +70,13 @@ naRef naMethod(naContext ctx, naRef func, naRef object);
 // Useful for passing as a namespace to an initial function call
 naRef naStdLib(naContext c);
 
+// Ditto, with math functions
+naRef naMathLib(naContext c);
+
 // Current line number & error message
-int naCurrentLine(naContext ctx);
+int naStackDepth(naContext ctx);
+int naGetLine(naContext ctx, int frame);
+naRef naGetSourceFile(naContext ctx, int frame);
 char* naGetError(naContext ctx);
 
 // Type predicates

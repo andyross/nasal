@@ -70,6 +70,7 @@ struct naCode {
     int nBytes;
     naRef* constants;
     int nConstants;
+    naRef srcFile;
 };
 
 struct naFunc {

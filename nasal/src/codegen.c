@@ -532,6 +532,7 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
         code->byteCode[i] = cg.byteCode[i];
     code->nConstants = cg.nConsts;
     code->constants = naAlloc(code->nConstants * sizeof(naRef));
+    code->srcFile = p->srcFile;
     for(i=0; i<code->nConstants; i++)
         code->constants[i] = getConstant(p, i);
 
