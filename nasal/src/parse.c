@@ -276,6 +276,8 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
                 addSemi = 1;
             break;
         }
+        if(t->next && t->next->type == TOK_SEMI)
+            addSemi = 0; // don't bother if it's already there!
         if(addSemi) {
             struct Token* semi = emptyToken(p);
             semi->type = TOK_SEMI;
