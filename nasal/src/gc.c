@@ -61,6 +61,9 @@ static void freeelem(struct naPool* p, struct naObj* o)
     case T_CODE:
         naCode_gcclean((struct naCode*)o);
         break;
+    case T_GHOST:
+        ((struct naGhost*)o)->gtype->destroy(((struct naGhost*)o)->ptr);
+        break;
     }
 
     // And add it to the free list
