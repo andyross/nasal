@@ -8,7 +8,9 @@ struct Lexeme {
     char* str;
     int   tok;
 } LEXEMES[] = {
-    {"!", TOK_NOT},
+    {"and", TOK_AND},
+    {"or",  TOK_OR},
+    {"!",   TOK_NOT},
     {"(", TOK_LPAR},
     {")", TOK_RPAR},
     {"[", TOK_LBRA},
@@ -118,15 +120,15 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->str = str;
     tok->strlen = slen;
     tok->num = num;
-    tok->parent = 0;
+    tok->parent = &p->tree;
     tok->next = 0;
-    tok->prev = p->tail;
+    tok->prev = p->tree.lastChild;
     tok->children = 0;
     tok->lastChild = 0;
 
-    if(p->tree == 0) p->tree = tok;
-    if(p->tail) p->tail->next = tok;
-    p->tail = tok;
+    if(!p->tree.children) p->tree.children = tok;
+    if(p->tree.lastChild) p->tree.lastChild->next = tok;
+    p->tree.lastChild = tok;
 }
 
 // Emits a symbol that has been accumulating in the lexer

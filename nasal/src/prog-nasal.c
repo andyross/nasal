@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 
         naParse(&p);
 
-        dumpTokenList(p.tree, 0);
+        dumpTokenList(p.tree.children, 0);
 
         naParseDestroy(&p);
     }

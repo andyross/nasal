@@ -3,6 +3,32 @@
 
 #include "parse.h"
 
+// Static precedence table, from low (loose binding, do first) to high
+// (tight binding, do last).
+enum { PREC_LIST, PREC_BINARY, PREC_PREFIX, PREC_REVERSE, PREC_SUFFIX };
+
+#define MAX_PREC_TOKS 5
+struct precedence {
+    int toks[MAX_PREC_TOKS];
+    int rule;
+} PRECEDENCE[] = {
+    { { TOK_SEMI },                            PREC_LIST    },
+    { { TOK_COMMA },                           PREC_LIST    },
+    { { TOK_COLON },                           PREC_BINARY  },
+    { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
+    { { TOK_ASSIGN },                          PREC_REVERSE },
+    { { TOK_OR },                              PREC_BINARY  },
+    { { TOK_AND },                             PREC_BINARY  },
+    { { TOK_EQ, TOK_NEQ },                     PREC_BINARY  },
+    { { TOK_LT, TOK_LTE, TOK_GT, TOK_GTE },    PREC_BINARY  },
+    { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_BINARY  },
+    { { TOK_MUL, TOK_DIV },                    PREC_BINARY  },
+    { { TOK_MINUS, TOK_NOT },                  PREC_PREFIX  },
+    { { TOK_DOT },                             PREC_BINARY  },
+    { { TOK_LPAR, TOK_LBRA },                  PREC_SUFFIX  },
+};
+#define PRECEDENCE_LEVELS (sizeof(PRECEDENCE)/sizeof(struct precedence))
+
 // FIXME
 static void error(char* msg, int line)
 {
@@ -27,8 +53,17 @@ void naParseInit(struct Parser* p)
     p->nChunks = 0;
     p->leftInChunk = 0;
     p->symbolStart = -1;
-    p->tree = 0;
-    p->tail = 0;
+
+    p->tree.type = TOK_TOP;
+    p->tree.line = 1;
+    p->tree.str = 0;
+    p->tree.strlen = 0;
+    p->tree.num = 0;
+    p->tree.parent = 0;
+    p->tree.next = 0;
+    p->tree.prev = 0;
+    p->tree.children = 0;
+    p->tree.lastChild = 0;
 }
 
 void naParseDestroy(struct Parser* p)
@@ -199,9 +234,28 @@ static void fixBlockStructure(struct Token* start)
     }
 }
 
+#if 0
+static int tokInLevel(int tok, int level)
+{
+    int i;
+    for(i=0; i<MAX_PREC_TOKS; i++)
+        if(PRECEDENCE[level].toks[i] == tok)
+            return 1;
+    return 0;
+}
+
+static void parsePrecedenceChildren(struct Token* t)
+{
+}
+
+static void parsePrecedence(struct Token* start, struct Token* end, int level)
+{
+}
+#endif
+
 void naParse(struct Parser* p)
 {
     naLex(p);
-    braceMatch(p->tree);
-    fixBlockStructure(p->tree);
+    braceMatch(p->tree.children);
+    fixBlockStructure(p->tree.children);
 }

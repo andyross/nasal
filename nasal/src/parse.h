@@ -4,12 +4,13 @@
 #include "nasl.h"
 
 enum {
-    TOK_NOT, TOK_LPAR, TOK_RPAR, TOK_LBRA, TOK_RBRA, TOK_LCURL,
-    TOK_RCURL, TOK_MUL, TOK_PLUS, TOK_MINUS, TOK_DIV, TOK_CAT,
-    TOK_COLON, TOK_DOT, TOK_COMMA, TOK_SEMI, TOK_ASSIGN, TOK_LT,
-    TOK_LTE, TOK_EQ, TOK_NEQ, TOK_GT, TOK_GTE, TOK_IF, TOK_ELSIF,
-    TOK_ELSE, TOK_FOR, TOK_FOREACH, TOK_WHILE, TOK_RETURN,
-    TOK_BREAK, TOK_CONTINUE, TOK_FUNC, TOK_SYMBOL, TOK_LITERAL 
+    TOK_TOP=1, TOK_AND, TOK_OR, TOK_NOT, TOK_LPAR, TOK_RPAR, TOK_LBRA,
+    TOK_RBRA, TOK_LCURL, TOK_RCURL, TOK_MUL, TOK_PLUS, TOK_MINUS,
+    TOK_DIV, TOK_CAT, TOK_COLON, TOK_DOT, TOK_COMMA, TOK_SEMI,
+    TOK_ASSIGN, TOK_LT, TOK_LTE, TOK_EQ, TOK_NEQ, TOK_GT, TOK_GTE,
+    TOK_IF, TOK_ELSIF, TOK_ELSE, TOK_FOR, TOK_FOREACH, TOK_WHILE,
+    TOK_RETURN, TOK_BREAK, TOK_CONTINUE, TOK_FUNC, TOK_SYMBOL,
+    TOK_LITERAL
 };
 
 struct Token {
@@ -26,8 +27,8 @@ struct Token {
 };
 
 struct Parser {
-    // The parse tree
-    struct Token* tree;
+    // The parse tree ubernode
+    struct Token tree;
 
     // The input buffer
     char* buf;
@@ -45,9 +46,6 @@ struct Parser {
 
     // Start of current symbol in the lexer
     int symbolStart;
-    
-    // End of the lexer token list
-    struct Token* tail;
 };
 
 void naParseInit(struct Parser* p);
