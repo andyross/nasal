@@ -129,3 +129,16 @@ Revisiting the "store hash codes in strings" issue, after all the
 other optimizations, worked GREAT!  We are now down to 4.5s, for
 another 15% speed increase.  This was apparently always a good idea,
 it was just drowned in the overhead uncovered by other optimizations.
+
+Writing a (comparatively small) special case naHash_sym() lookup
+function got another huge increase.  This mechanism is tried first,
+and is allowed to assume that the key is always a string, always has
+its hashcode precomputed, and that object identity is the only
+equality that is needed.  This gets us from 4.5s to 3.6s on objperf,
+so we're now beating perl (!) with full optimizations.  Using only
+-O2, we're tying it.
+
+The Frame object's args field is unused (another relic from past
+optimizations).  Yank it.  Ditto for the obj field.  The line field is
+already going away, so that shrinks a frame down to just
+func/locals/ip/bp.

@@ -399,13 +399,26 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
     emitImmediate(p, OP_JMP, t->type == TOK_BREAK ? bp : cp);
 }
 
+static void newLineEntry(struct Parser* p, int line)
+{
+    int i;
+    if(p->nextLineIp >= p->nLineIps) {
+        int nsz = p->nLineIps*2 + 1;
+        unsigned short* n = naParseAlloc(p, sizeof(unsigned short)*2*nsz);
+        for(i=0; i<(p->nextLineIp*2); i++)
+            n[i] = p->lineIps[i];
+        p->lineIps = n;
+        p->nLineIps = nsz;
+    }
+    p->lineIps[p->nextLineIp++] = (unsigned short) p->cg->nBytes;
+    p->lineIps[p->nextLineIp++] = (unsigned short) line;
+}
+
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
-    if(t == 0)
-        naParseError(p, "BUG: null subexpression", -1);
     if(t->line != p->cg->lastLine)
-        emitImmediate(p, OP_LINE, t->line);
+        newLineEntry(p, t->line);
     p->cg->lastLine = t->line;
     switch(t->type) {
     case TOK_IF:
@@ -548,6 +561,9 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     code->srcFile = p->srcFile;
     for(i=0; i<code->nConstants; i++)
         code->constants[i] = getConstant(p, i);
-
+    code->nLines = p->nextLineIp;
+    code->lineIps = naAlloc(sizeof(unsigned short)*p->nLineIps*2);
+    for(i=0; i<p->nLineIps*2; i++)
+        code->lineIps[i] = p->lineIps[i];
     return codeObj;
 }

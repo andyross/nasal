@@ -224,7 +224,6 @@ static struct Frame* setupFuncall(struct Context* ctx, naRef obj, naRef func,
     f->obj = obj;
     f->ip = 0;
     f->bp = ctx->opTop;
-    f->line = 0;
     f->args = args;
     f->locals = locals;
 
@@ -365,18 +364,23 @@ static void evalEach(struct Context* ctx)
 #define TOP() ctx->opStack[ctx->opTop-1]
 #define CONSTARG() cd->constants[ARG16(cd->byteCode, f)]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
+#define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
+                   cd = f->func.ref.ptr.func->code.ref.ptr.code;
+#define POPFRAME() do { if(--ctx->fTop) { FIXFRAME(); } } while(0)
 static naRef run(struct Context* ctx)
 {
-    struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
-    struct naCode* cd = f->func.ref.ptr.func->code.ref.ptr.code;
+    struct Frame* f;
+    struct naCode* cd;
     int* temps = &(globals->temps.ref.ptr.vec->size);
     int op, arg;
     naRef a, b, c;
 
+    FIXFRAME();
+
     while(ctx->fTop > 0) {
         if(f->ip >= cd->nBytes) {
             DBG(printf("Done with frame %d\n", ctx->fTop-1);)
-            ctx->fTop--;
+            POPFRAME();
             continue;
         }
         
@@ -515,12 +519,9 @@ static naRef run(struct Context* ctx)
             break;
         case OP_RETURN:
             a = TOP();
-            ctx->opTop = f->bp; // restore the correct stack frame!
-            ctx->fTop--;
+            ctx->opTop = f->bp; // restore the correct opstack frame!
+            POPFRAME();
             PUSH(ctx, a);
-            break;
-        case OP_LINE:
-            f->line = ARG16(cd->byteCode, f);
             break;
         case OP_EACH:
             evalEach(ctx);
@@ -546,6 +547,9 @@ static naRef run(struct Context* ctx)
 #undef POP
 #undef TOP
 #undef CONSTARG
+#undef STK
+#undef FIXFRAME
+#undef POPFRAME
 
 void naSave(struct Context* ctx, naRef obj)
 {
@@ -559,7 +563,17 @@ int naStackDepth(struct Context* ctx)
 
 int naGetLine(struct Context* ctx, int frame)
 {
-    return ctx->fStack[ctx->fTop-1-frame].line;
+    struct Frame* f = &ctx->fStack[ctx->fTop-1-frame];
+    naRef func = f->func;
+    int ip = f->ip;
+    if(IS_FUNC(func) && IS_CODE(func.ref.ptr.func->code)) {
+        struct naCode* c = func.ref.ptr.func->code.ref.ptr.code;
+        unsigned short* p = c->lineIps + c->nLines - 2;
+        while(p >= c->lineIps && p[0] > ip)
+            p -= 2;
+        return p[1];
+    }
+    return -1;
 }
 
 naRef naGetSourceFile(struct Context* ctx, int frame)
@@ -585,9 +599,7 @@ naRef naBindFunction(naContext ctx, naRef code, naRef closure)
 naRef naBindToContext(naContext ctx, naRef code)
 {
     naRef func = naNewFunc(ctx, code);
-    // Note fTop - 2: not the top frame, because that is our current
-    // (CCODE) call context.
-    struct Frame* f = &ctx->fStack[ctx->fTop-2];
+    struct Frame* f = &ctx->fStack[ctx->fTop-1];
     func.ref.ptr.func->namespace = f->locals;
     func.ref.ptr.func->next = f->func;
     return func;

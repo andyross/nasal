@@ -59,6 +59,11 @@ struct Parser {
     int* lines;
     int  nLines;
 
+    // Inst. -> line table, stores pairs of {ip, line}
+    unsigned short* lineIps;
+    int nLineIps; // number of pairs
+    int nextLineIp;
+    
     struct CodeGenerator* cg;
 };
 

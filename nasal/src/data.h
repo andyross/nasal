@@ -69,9 +69,11 @@ struct naCode {
     GC_HEADER;
     unsigned char* byteCode;
     int nBytes;
+    naRef srcFile;
     naRef* constants;
     int nConstants;
-    naRef srcFile;
+    unsigned short* lineIps; // pairs of {ip, line}
+    int nLines;
 };
 
 struct naFunc {
