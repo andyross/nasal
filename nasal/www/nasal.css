@@ -14,3 +14,17 @@ dt { font-weight:bold; color:#000033 }
 
 a { color:#5555aa }
 a:hover { color:#0000033; background-color:#eeeeff; text-decoration:none }
+
+/* Stuff for the highlight-generated sample.html file: */
+
+pre.hlgt { color:#000000; background-color:#ffffff;
+                font-size:10pt; font-family:Courier;}
+pre.hlgt .key { color:#000080; font-weight:bold; }
+pre.hlgt .num { color:#0000ff; }
+pre.hlgt .typ { color:#000080; }
+pre.hlgt .esc { color:#0000ff; }
+pre.hlgt .str { color:#0000ff; }
+pre.hlgt .dstr { color:#0000ff; }
+pre.hlgt .com { color:#008000; font-style:italic; }
+pre.hlgt .dir { color:#008000; }
+pre.hlgt .line { color:#008000; }

@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Nasal Sample Code</title>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="nasal.css">
+</head>
+<body>
+
+<h3>Nasal Sample Code</h3>
+
+<p>The following code was beautified with André Simon's magnificent <a
+href="http://freshmeat.net/projects/highlight/">Highlight</a> program,
+which supports Nasal as of version 2.0-13!  The unformatted source is
+still <a href="sample.nas">available here</a>.
+
+<h3>&nbsp;</h3>
+
+<pre class="hlgt">
+
+<span class="com"># A no-op function used below to get this file to run.  Ignore and read on...
+</span>dummyFunc = <span class="key">func </span>{ <span class="num">1 </span>}
+
+<span class="com">#
+</span><span class="com"># Literal numbers can be decimal or exponential
+</span><span class="com">#
+</span>n1 = <span class="num">3</span>;
+n2 = <span class="num">3.14</span>;
+n3 = <span class="num">6.023e23</span>;
+
+<span class="com">#
+</span><span class="com"># Two identical string literals with different quotes.  Double quotes
+</span><span class="com"># use typical escape sequences.  Single quotes treat everything as
+</span><span class="com"># literal except for embedded single quotes (including embedded
+</span><span class="com"># whitespace like newlines).  Double quotes handle the following
+</span><span class="com"># C-like escapes: \n \r \t \xnn \&quot;
+</span><span class="com">#
+</span>s1 = <span class="str">'Andy</span><span class="esc">\'</span><span class="str">s &quot;computer&quot; has a C:</span><span class="esc">\r</span><span class="str">ighteous</span><span class="esc">\n</span><span class="str">ewstuff directory.'</span>;
+s2 = <span class="str">&quot;Andy's </span><span class="esc">\&quot;</span><span class="str">computer</span><span class="esc">\&quot; </span><span class="str">has a C:</span><span class="esc">\\</span><span class="str">righteous</span><span class="esc">\\</span><span class="str">newstuff directory.&quot;</span>;
+
+<span class="com">#
+</span><span class="com"># Literal lists use square brackets with a comma-separated expression
+</span><span class="com"># list.
+</span><span class="com">#
+</span>list1 = [<span class="str">&quot;a&quot;</span>, <span class="str">&quot;b&quot;</span>, <span class="num">1</span>, <span class="num">2</span>];
+
+<span class="com">#
+</span><span class="com"># Literal hashes (or objects -- same thing) use curlies and colons to
+</span><span class="com"># separate the key/value pairs.  Note that the key can be either a
+</span><span class="com"># symbol or a literal scalar.  Object definitions will typically want
+</span><span class="com"># to use symbols, lookup tables of other types will be more
+</span><span class="com"># comfortable with literals.
+</span><span class="com">#
+</span>hash1 = { name : <span class="str">&quot;Andy&quot;</span>, job : <span class="str">&quot;Hacker&quot;</span> };
+EnglishEspanol = { <span class="str">&quot;one&quot;</span> : <span class="str">&quot;uno&quot;</span>, <span class="str">&quot;two&quot;</span>: <span class="str">&quot;dos&quot;</span>, <span class="str">&quot;blue&quot;</span> : <span class="str">&quot;azul&quot;</span> };
+
+<span class="com">#
+</span><span class="com"># Both vectors and hashes use square brackets for the lookup operation:
+</span><span class="com">#
+</span>list1[<span class="num">0</span>] == <span class="str">&quot;a&quot;</span>;
+hash1[<span class="str">&quot;name&quot;</span>] == <span class="str">&quot;Andy&quot;</span>;
+
+<span class="com">#
+</span><span class="com"># Typical little function.  Arguments are passed in the arg array, not
+</span><span class="com"># unlike perl.  Note that this is just an assignment of an (anonymous)
+</span><span class="com"># function argument to the local &quot;dist&quot; variable.  There is no
+</span><span class="com"># function declaration syntax in Nasal.
+</span><span class="com">#
+</span>sqrt = dummyFunc;
+dist = <span class="key">func </span>{
+    x1 = <span class="typ">arg</span>[<span class="num">0</span>]; y1 = <span class="typ">arg</span>[<span class="num">1</span>];
+    x2 = <span class="typ">arg</span>[<span class="num">2</span>]; y2 = <span class="typ">arg</span>[<span class="num">3</span>];
+    dx = x2-x1;
+    dy = y2-y1;
+    <span class="key">return </span>sqrt(dx*dx + dy*dy);
+}
+dist(<span class="num">0</span>,<span class="num">0</span>,<span class="num">1</span>,<span class="num">1</span>); <span class="com"># == sqrt(2)
+</span>
+<span class="com">#
+</span><span class="com"># Nasal has no &quot;statements&quot;, which means that any expression can appear
+</span><span class="com"># in any context.  This means that you can use an if/else clause to do
+</span><span class="com"># what the ?: does in C.  The last semicolon in a code block is
+</span><span class="com"># optional, to make this prettier.
+</span><span class="com">#
+</span>abs = <span class="key">func </span>{ <span class="key">if</span>(<span class="typ">arg</span>[<span class="num">0</span>] &lt; <span class="num">0</span>) { -<span class="typ">arg</span>[<span class="num">0</span>] } <span class="key">else </span>{ <span class="typ">arg</span>[<span class="num">0</span>] } }
+
+<span class="com">#
+</span><span class="com"># Nasal supports a &quot;nil&quot; value for use as a null pointer equivalent.
+</span><span class="com"># It can be tested for equality, matching only other nils.
+</span><span class="com">#
+</span>listNode = { data : [<span class="str">&quot;what&quot;</span>, <span class="str">&quot;ever&quot;</span>], next : <span class="key">nil </span>};
+
+<span class="com">#
+</span><span class="com"># Nasal's binary boolean operators are &quot;and&quot; and &quot;or&quot;, unlike C.
+</span><span class="com"># unary not is still &quot;!&quot; however.  They short-circuit like you expect
+</span><span class="com">#
+</span>toggle = <span class="num">0</span>;
+a = <span class="key">nil</span>;
+<span class="key">if</span>(a <span class="key">and </span>a.field == <span class="num">42</span>) {
+    toggle = !toggle; <span class="com"># doesn't crash when a is nil
+</span>}
+
+<span class="com">#
+</span><span class="com"># Looping constructs are mostly C-like.  The differences are that
+</span><span class="com"># there is no do{}while(); construct, and there is a foreach, which
+</span><span class="com"># takes a local variable name as its first argument and a vector as
+</span><span class="com"># its second.
+</span><span class="com">#
+</span>doSomething = dummyFunc;
+
+stillGoing = <span class="num">0</span>;
+<span class="key">while</span>(stillGoing) { doSomething(); }
+
+<span class="key">for</span>(i=<span class="num">0</span>; i &lt; <span class="num">3</span>; i = i+<span class="num">1</span>) {
+    elem = list1[i];
+    doSomething(elem);
+}
+
+<span class="key">foreach</span>(elem; list1) { doSomething(elem) }  <span class="com"># Shorthand for above
+</span>
+<span class="com">#
+</span><span class="com"># Define a class object with one method, one field and one &quot;new&quot;
+</span><span class="com"># contstructor.  The &quot;new&quot; function is not special in any way; it
+</span><span class="com"># simply returns an initialized object with the &quot;parents&quot; field set
+</span><span class="com"># appropriately.  Member functions can get their local object (the
+</span><span class="com"># equivalent of the &quot;this&quot; pointer in C++) as the &quot;me&quot; variable.
+</span><span class="com">#
+</span>Class1 = {};
+
+Class1.new = <span class="key">func </span>{
+    obj = { <span class="typ">parents </span>: [Class1],
+            count : <span class="num">0 </span>};
+    <span class="key">return </span>obj;
+}
+
+Class1.getcount = <span class="key">func </span>{
+    <span class="typ">me</span>.count = <span class="typ">me</span>.count + <span class="num">1</span>;
+    <span class="key">return </span><span class="typ">me</span>.count;
+}
+
+c = Class1.new();
+print(c.getcount(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 1
+</span>print(c.getcount(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 2
+</span>print(c.getcount(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 3
+</span>
+<span class="com">#
+</span><span class="com"># This creates an identical class using alternative syntax.
+</span><span class="com">#
+</span>Class2 = {
+    new : <span class="key">func </span>{
+        obj = {};
+	obj.<span class="typ">parents </span>= [Class2];
+	obj.count = <span class="num">0</span>;
+        <span class="key">return </span>obj;
+    },
+    getcount : <span class="key">func </span>{
+        <span class="typ">me</span>.count = <span class="typ">me</span>.count + <span class="num">1</span>;
+        <span class="key">return </span><span class="typ">me</span>.count;
+    }
+};
+
+<span class="com">###
+</span><span class="com">### Now some fun examples:
+</span><span class="com">###
+</span>
+<span class="com">#
+</span><span class="com"># Make a &quot;inverted index&quot; hash out of a vector that returns the index
+</span><span class="com"># for each element.
+</span><span class="com">#
+</span>invert = <span class="key">func </span>{
+    vec = <span class="typ">arg</span>[<span class="num">0</span>];
+    hash = {};
+    <span class="key">for</span>(i=<span class="num">0</span>; i&lt;<span class="key">size</span>(vec); i = i+<span class="num">1</span>) {
+        hash[vec[i]] = i;
+    }
+    <span class="key">return </span>hash;
+}
+
+<span class="com">#
+</span><span class="com"># Use the return value of the above function to do an &quot;index of&quot;
+</span><span class="com"># lookup on a vector
+</span><span class="com">#
+</span>vecfind = <span class="key">func</span>{ <span class="key">return </span>invert(<span class="typ">arg</span>[<span class="num">0</span>])[<span class="typ">arg</span>[<span class="num">1</span>]]; }
+
+<span class="com">#
+</span><span class="com"># Joins its arguments with the empty string and returns a scalar.
+</span><span class="com"># Note use of &quot;~&quot; operator to do string concatenation (Nasal's only
+</span><span class="com"># funny syntax).
+</span><span class="com">#
+</span>join = <span class="key">func </span>{
+    s = <span class="str">&quot;&quot;</span>;
+    <span class="key">foreach</span>(elem; <span class="typ">arg</span>) { s = s ~ elem; }
+    <span class="key">return </span>s;
+}
+
+<span class="com">#
+</span><span class="com"># Labeled break/continue syntax puts the label in as an extra first
+</span><span class="com"># argument to the for/while/foreach.
+</span><span class="com">#
+</span>doneWithInnerLoopEarly = dummyFunc;
+completelyDone = dummyFunc;
+<span class="key">for</span>(OUTER; i=<span class="num">0</span>; i&lt;<span class="num">100</span>; i = i+<span class="num">1</span>) {
+    <span class="key">for</span>(j=<span class="num">0</span>; j&lt;<span class="num">100</span>; j = j+<span class="num">1</span>) {
+        <span class="key">if</span>(doneWithInnerLoopEarly()) {
+            <span class="key">break</span>;
+        } <span class="key">elsif</span>(completelyDone()) {
+            <span class="key">break </span>OUTER;
+        }
+    }
+}
+
+<span class="com">##
+</span><span class="com">## A rockin' metaprogramming hack.  Generates and returns a deep copy
+</span><span class="com">## of the object in valid Nasal syntax.  A warning to those who might
+</span><span class="com">## want to use this: it ignores function objects (which cannot be
+</span><span class="com">## inspected from Nasal) and replaces them with nil references.  It
+</span><span class="com">## also makes no attempt to escape special characters in strings, which
+</span><span class="com">## can break re-parsing in strange (and possibly insecure!) ways.
+</span><span class="com">##
+</span>dump = <span class="key">func </span>{
+    o = <span class="typ">arg</span>[<span class="num">0</span>];
+    result = <span class="str">&quot;&quot;</span>;
+    <span class="key">if</span>(<span class="key">typeof</span>(o) == <span class="str">&quot;scalar&quot;</span>) {
+        n = num(o);
+        <span class="key">if</span>(n == <span class="key">nil</span>) { result = result ~ <span class="str">'&quot;'</span> ~ o ~ <span class="str">'&quot;'</span>; }
+        <span class="key">else </span>{ result = result ~ o; }
+    } <span class="key">elsif</span>(<span class="key">typeof</span>(o) == <span class="str">&quot;vector&quot;</span>) {
+        result = result ~ <span class="str">&quot;[ &quot;</span>;
+        <span class="key">if</span>(<span class="key">size</span>(o) &gt; <span class="num">0</span>) { result = result ~ dump(o[<span class="num">0</span>]); }
+        <span class="key">for</span>(i=<span class="num">1</span>; i&lt;<span class="key">size</span>(o); i=i+<span class="num">1</span>) {
+            result = result ~ <span class="str">&quot;, &quot;</span> ~ dump(o[i]);
+        }
+        result = result ~ <span class="str">&quot; ]&quot;</span>;
+    } <span class="key">elsif</span>(<span class="key">typeof</span>(o) == <span class="str">&quot;hash&quot;</span>) {
+        ks = <span class="key">keys</span>(o);
+        result = result ~ <span class="str">&quot;{ &quot;</span>;
+        <span class="key">if</span>(<span class="key">size</span>(o) &gt; <span class="num">0</span>) {
+            k = ks[<span class="num">0</span>];
+            result = result ~ k ~ <span class="str">&quot;:&quot;</span> ~ dump(o[k]);
+        }
+        <span class="key">for</span>(i=<span class="num">1</span>; i&lt;<span class="key">size</span>(o); i=i+<span class="num">1</span>) {
+            k = ks[i];
+            result = result ~ <span class="str">&quot;, &quot;</span> ~ k ~ <span class="str">&quot; : &quot;</span> ~ dump(o[k]);
+        }
+        result = result ~ <span class="str">&quot; }&quot;</span>;
+    } <span class="key">else </span>{
+        result = result ~ <span class="str">&quot;nil&quot;</span>;
+    }
+    <span class="key">return </span>result;
+}
+
+<span class="com">#
+</span><span class="com"># Functional programming A: All function expressions are inherently
+</span><span class="com"># anonymous lambdas and can be used and evaluated mid-expression:
+</span><span class="com">#
+</span><span class="com"># (Note the parens around the function expression.  This is necessary
+</span><span class="com"># because otherwise the parser would read a func following an
+</span><span class="com"># assignment as a &quot;code block&quot; instead of a subexpression.  This is
+</span><span class="com"># the rule that allows you to omit the semicolon at the end of a
+</span><span class="com"># normal function definition.  Oh well, every language has a syntactic
+</span><span class="com"># quirk or two...)
+</span><span class="com">#
+</span>a = (<span class="key">func</span>{ <span class="typ">arg</span>[<span class="num">0</span>] + <span class="num">1 </span>})(<span class="num">232</span>);  <span class="com"># &quot;a&quot; now equals 233
+</span>
+<span class="com">#
+</span><span class="com"># Functional programming B.  All expressions have a value, the last
+</span><span class="com"># expression in a code block is the return value of that code block.
+</span><span class="com"># There are no &quot;statements&quot; in Nasal, although some expressions
+</span><span class="com"># (assignment, duh) have side effects.  e.g. The &quot;if&quot; expression works
+</span><span class="com"># both for code flow and as the ?: expression in C/C++.
+</span><span class="com">#
+</span>factorial = <span class="key">func </span>{ <span class="key">if</span>(<span class="typ">arg</span>[<span class="num">0</span>] == <span class="num">0</span>) { <span class="num">1 </span>}
+                   <span class="key">else            </span>{ <span class="typ">arg</span>[<span class="num">0</span>] * factorial(<span class="typ">arg</span>[<span class="num">0</span>]<span class="num">-1</span>) } }
+print(factorial(<span class="num">10</span>), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>);
+
+<span class="com">#
+</span><span class="com"># Functional programming C:  Lexical closures.
+</span><span class="com">#
+</span>getcounter = <span class="key">func </span>{ count = <span class="num">0</span>; <span class="key">return func </span>{ count = count + <span class="num">1 </span>} }
+mycounter = getcounter();
+print(mycounter(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 1
+</span>print(mycounter(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 2
+</span>print(mycounter(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 3
+</span>print(mycounter(), <span class="str">&quot;</span><span class="esc">\n</span><span class="str">&quot;</span>); <span class="com"># prints 4...</span>
+</pre>
+</body>
+</html>
+<!--HTML generated by highlight 2.0-13, http://www.andre-simon.de/-->
