@@ -156,7 +156,6 @@ static void braceMatch(struct Token* start)
 static void fixBlockStructure(struct Token* start)
 {
     struct Token *t;
-    printf("fixBlockStructure()...\n"); // DEBUG
     t = start;
     while(t) {
         switch(t->type) {
@@ -178,6 +177,7 @@ static void fixBlockStructure(struct Token* start)
             break;
         case TOK_LPAR: case TOK_LBRA: case TOK_LCURL:
             fixBlockStructure(t->children);
+            break;
         }
         t = t->next;
     }
