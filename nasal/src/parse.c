@@ -61,7 +61,6 @@ void naParseInit(struct Parser* p)
     p->tree.str = 0;
     p->tree.strlen = 0;
     p->tree.num = 0;
-    p->tree.parent = 0;
     p->tree.next = 0;
     p->tree.prev = 0;
     p->tree.children = 0;
@@ -119,12 +118,9 @@ void* naParseAlloc(struct Parser* p, int bytes)
 static void addNewChild(struct Token* p, struct Token* c)
 {
     if(c->prev) c->prev->next = c->next;
-    else if(c->parent) c->parent->children = c->next;
 
     if(c->next) c->next->prev = c->prev;
-    else if(c->parent) c->parent->lastChild = c->next;
 
-    c->parent = p;
     c->next = 0;
     c->prev = p->lastChild;
     if(p->lastChild) p->lastChild->next = c;
@@ -255,7 +251,6 @@ static struct Token* emptyToken(struct Parser* p)
     t->str = 0;
     t->strlen = 0;
     t->num = 0;
-    t->parent = 0;
     t->next = 0;
     t->prev = 0;
     t->children = 0;
