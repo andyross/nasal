@@ -30,11 +30,11 @@ static void setlen(struct naStr* s, int sz)
 {
     int currSz, waste;
     sz += 1; // Allow for an extra nul terminator
-    currSz = s->len < MINLEN ? MINLEN : s->len;
+    currSz = s->len+1 < MINLEN ? MINLEN : s->len+1;
     waste = currSz - sz; // how much extra if we don't reallocate?
     if(s->data == 0 || waste < 0 || waste > MINLEN) {
         naFree(s->data);
-        s->data = naAlloc(s->len < MINLEN ? MINLEN : s->len);
+        s->data = naAlloc(sz < MINLEN ? MINLEN : sz);
     }
     s->len = sz - 1;
     s->data[s->len] = 0; // nul terminate
