@@ -76,8 +76,7 @@ void naGarbageCollect()
     struct Context* c = &globalContext; // FIXME: more than one!
     for(i=0; i < c->fTop; i++) {
         struct Frame* f = &(c->fStack[i]);
-        naGC_mark(f->code);
-        naGC_mark(f->namespace);
+        naGC_mark(f->func);
         naGC_mark(f->locals);
     }
     for(i=0; i <= c->opTop-1; i++)
@@ -90,26 +89,25 @@ void naGarbageCollect()
     // compilation, they aren't referenced anywhere yet!
 }
 
-void setupFuncall(struct Context* ctx, naRef closure, naRef args)
+void setupFuncall(struct Context* ctx, naRef func, naRef args)
 {
     struct Frame* f;
 
     // DEBUG
-    if(!IS_CLOSURE(closure)) ERR("DEBUG");
-    if(!IS_CODE(closure.ref.ptr.closure->code)) ERR("DEBUG");
-    if(!IS_HASH(closure.ref.ptr.closure->namespace)) ERR("DEBUG");
+    if(!IS_CODE(func.ref.ptr.func->code)) ERR("DEBUG");
     if(!IS_VEC(args)) ERR("DEBUG");
     // DEBUG
 
     if(ctx->fTop >= MAX_RECURSION) ERR("recursion too deep");
 
     f = &(ctx->fStack[ctx->fTop++]);
-    f->code = closure.ref.ptr.closure->code;
-    f->namespace = closure.ref.ptr.closure->namespace;
-    f->locals = naNewHash(ctx);
+    f->func = func;
     f->ip = 0;
     f->bp = ctx->opTop;
     f->line = 0;
+
+    // Initialize the local namespace with "arg"
+    f->locals = naNewHash(ctx);
     naHash_set(f->locals, ctx->argRef, args);
 }
 
@@ -186,36 +184,48 @@ static naRef evalEach(struct Context* ctx)
 
 // When a code object comes out of the constant pool and shows up on
 // the stack, it needs to be bound with the lexical context.
-// FIXME: transitive binding?
-static naRef bindFunction(struct Context* ctx, naRef code, naRef locals)
+static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
 {
-    naRef result = naNewClosure(ctx);
-    result.ref.ptr.closure->code = code;
-    result.ref.ptr.closure->namespace = locals;
+    naRef next = f->func.ref.ptr.func->closure;
+    naRef closure = naNewClosure(ctx, f->locals, next);
+    naRef result = naNewFunc(ctx, code, closure);
     return result;
 }
 
+static int getClosure(naRef closure, naRef sym, naRef* result)
+{
+    struct naClosure* c = closure.ref.ptr.closure;
+    if(c == 0) return 0;
+    else if(naHash_get(c->namespace, sym, result)) return 1;
+    else return getClosure(c->next, sym, result);
+}
+
+// Get a local symbol, or check the closure list if it isn't there
 static naRef getLocal(struct Frame* f, naRef sym)
 {
-    // Locals first, then the function closure
     naRef result;
-    if(!naHash_get(f->locals, sym, &result))
-        if(!naHash_get(f->namespace, sym, &result))
+    if(!naHash_get(f->locals, sym, &result)) {
+        if(!getClosure(f->func.ref.ptr.func->closure, sym, &result))
             ERR("undefined symbol");
+    }
     return result;
+}
+
+static int setClosure(naRef closure, naRef sym, naRef val)
+{
+    struct naClosure* c = closure.ref.ptr.closure;
+    if(c == 0) { return 0; }
+    else if(naHash_tryset(c->namespace, sym, val)) { return 1; }
+    else { return setClosure(c->next, sym, val); }
 }
 
 static naRef setLocal(struct Frame* f, naRef sym, naRef val)
 {
-    // Put it in locals, unless it isn't defined there already *and*
-    // exists in the closure.
-    naRef dummy, hash = f->locals;
-    if((naHash_get(f->locals,    sym, &dummy) == 0) &&
-       (naHash_get(f->namespace, sym, &dummy) == 1))
-    {
-        hash = f->namespace;
-    }
-    naHash_set(hash, sym, val);
+    // Try the locals first, if not already there try the closures in
+    // order.  Finally put it in the locals if nothing matched.
+    if(!naHash_tryset(f->locals, sym, val))
+        if(!setClosure(f->func.ref.ptr.func->closure, sym, val))
+            naHash_set(f->locals, sym, val);
     return val;
 }
 
@@ -265,7 +275,8 @@ static void run1(struct Context* ctx)
 {
     naRef a, b, c;
     struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
-    struct naCode* cd = f->code.ref.ptr.code;
+    naRef code = f->func.ref.ptr.func->code;
+    struct naCode* cd = code.ref.ptr.code;
     int op, arg;
 
     if(f->ip >= cd->nBytes) {
@@ -318,7 +329,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_PUSHCONST:
         a = cd->constants[ARG16(cd->byteCode, f)];
-        if(IS_CODE(a)) a = bindFunction(ctx, a, f->locals);
+        if(IS_CODE(a)) a = bindFunction(ctx, f, a);
         PUSH(ctx, a);
         break;
     case OP_PUSHONE:
@@ -421,9 +432,8 @@ static void run1(struct Context* ctx)
 
 void naRun(struct Context* ctx, naRef code)
 {
-    naRef closure;
-    closure = bindFunction(ctx, code, naNewHash(ctx));
-    setupFuncall(ctx, closure, naNewVector(ctx));
+    naRef func = naNewFunc(ctx, code, naNil());
+    setupFuncall(ctx, func, naNewVector(ctx));
 
     ctx->done = 0;
     while(!ctx->done) {

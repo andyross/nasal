@@ -8,9 +8,10 @@
 // zillions of tiny "number" object that have to be collected.  Note
 // sneaky hack: on little endian systems, placing reftag after ptr and
 // putting 1's in the top 13 bits makes the double value a NaN, and
-// thus unmistakable.  Swap the structure order on 32 bit big-endian
-// systems.  On 64 bit sytems of either endianness, reftag and the
-// double won't be coincident anyway.
+// thus unmistakable (no actual number can appear as a reference).
+// Swap the structure order on 32 bit big-endian systems.  On 64 bit
+// sytems of either endianness, reftag and the double won't be
+// coincident anyway.
 #define NASL_REFTAG 0x7ff56789 // == 2,146,789,257 decimal
 typedef union {
     double num;
@@ -21,6 +22,7 @@ typedef union {
             struct naVec* vec;
             struct naHash* hash;
             struct naCode* code;
+            struct naFunc* func;
             struct naClosure* closure;
         } ptr;
         int reftag;
@@ -35,7 +37,11 @@ typedef union {
     unsigned char mark; \
     unsigned char type
 
-enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE,
+// Notes: A CODE object is a compiled set of bytecode instructions.
+// What actually gets executed at runtime is a bound FUNC object,
+// which combines the raw code with a pointer to a CLOSURE chain of
+// namespaces.
+enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC,
        NUM_NASL_TYPES }; // V. important that this come last!
 
 #define IS_REF(r) ((r).ref.reftag == NASL_REFTAG)
@@ -45,6 +51,7 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE,
 #define IS_VEC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_VEC)
 #define IS_HASH(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_HASH)
 #define IS_CODE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CODE)
+#define IS_FUNC(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_FUNC)
 #define IS_CLOSURE(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
 #define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == T_STR)
@@ -90,10 +97,16 @@ struct naCode {
     int nConstants;
 };
 
-struct naClosure {
+struct naFunc {
     GC_HEADER;
     naRef code;
+    naRef closure;
+};
+
+struct naClosure {
+    GC_HEADER;
     naRef namespace;
+    naRef next; // parent closure
 };
 
 struct naPool {
@@ -131,7 +144,8 @@ naRef naNewString(struct Context* c);
 naRef naNewVector(struct Context* c);
 naRef naNewHash(struct Context* c);
 naRef naNewCode(struct Context* c);
-naRef naNewClosure(struct Context* c);
+naRef naNewClosure(struct Context* c, naRef namespace, naRef next);
+naRef naNewFunc(struct Context* c, naRef code, naRef closure);
 
 // String utilities:
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
@@ -159,6 +173,7 @@ void naVec_gcclean(struct naVec* s);
 int naHash_size(naRef h);
 void naHash_keys(naRef dst, naRef hash);
 void naHash_delete(naRef hash, naRef key);
+int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
 void naHash_set(naRef hash, naRef key, naRef val);
 int naHash_get(naRef hash, naRef key, naRef* out);
 void naHash_init(naRef hash);

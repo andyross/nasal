@@ -95,11 +95,22 @@ int naHash_get(naRef hash, naRef key, naRef* out)
     }
 }
 
+// Simpler version.  Don't create a new node if the value isn't there
+int naHash_tryset(naRef hash, naRef key, naRef val)
+{
+    struct naHash* h = hash.ref.ptr.hash;
+    struct HashNode* n = find(h, key);
+    if(n) n->val = val;
+    return n != 0;
+}
+
 void naHash_set(naRef hash, naRef key, naRef val)
 {
     struct naHash* h = hash.ref.ptr.hash;
     unsigned int col;
     struct HashNode* n;
+
+    if(!IS_HASH(hash)) *(int*)0=0;
 
     if(!IS_SCALAR(key)) ERR("Hash insert by non-scalar illegal");
     n = find(h, key);

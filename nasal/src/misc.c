@@ -54,9 +54,20 @@ naRef naNewCode(struct Context* c)
     return naNew(c, T_CODE);
 }
 
-naRef naNewClosure(struct Context* c)
+naRef naNewFunc(struct Context* c, naRef code, naRef closure)
 {
-    return naNew(c, T_CLOSURE);
+    naRef func = naNew(c, T_FUNC);
+    func.ref.ptr.func->code = code;
+    func.ref.ptr.func->closure = closure;
+    return func;
+}
+
+naRef naNewClosure(struct Context* c, naRef namespace, naRef next)
+{
+    naRef closure = naNew(c, T_CLOSURE);
+    closure.ref.ptr.closure->namespace = namespace;
+    closure.ref.ptr.closure->next = next;
+    return closure;
 }
 
 naRef naNil()
@@ -110,7 +121,9 @@ int naTypeSize(int type)
     case T_VEC: return sizeof(struct naVec);
     case T_HASH: return sizeof(struct naHash);
     case T_CODE: return sizeof(struct naCode);
+    case T_FUNC: return sizeof(struct naFunc);
     case T_CLOSURE: return sizeof(struct naClosure);
+    default: *(int*)0=0;
     };
-    return -1;
+    return 0x7fffffff;
 }

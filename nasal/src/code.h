@@ -17,8 +17,7 @@ enum {
 };
 
 struct Frame {
-    naRef code; // naCode object
-    naRef namespace; // lexical closure of the function object
+    naRef func; // naFunc object
     naRef locals; // local per-call namespace
     int ip; // instruction pointer into code
     int bp; // opStack pointer to start of frame

@@ -54,6 +54,9 @@ static void freeelem(struct naPool* p, struct naObj* o)
         break;
     case T_CLOSURE:
         CLOBBER(o, sizeof(struct naClosure)); // DEBUG
+        break;
+    case T_FUNC:
+        CLOBBER(o, sizeof(struct naFunc)); // DEBUG
         break; // Nothing there
     }
 
@@ -116,8 +119,12 @@ void naGC_mark(naRef r)
             naGC_mark(r.ref.ptr.code->constants[i]);
         break;
     case T_CLOSURE:
-        naGC_mark(r.ref.ptr.closure->code);
         naGC_mark(r.ref.ptr.closure->namespace);
+        naGC_mark(r.ref.ptr.closure->next);
+        break;
+    case T_FUNC:
+        naGC_mark(r.ref.ptr.func->code);
+        naGC_mark(r.ref.ptr.func->closure);
         break;
     }
 }
