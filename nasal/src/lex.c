@@ -318,7 +318,7 @@ void naLex(struct Parser* p)
         if(!handled) {
             int symlen=0, lexlen=0, lexeme;
             lexlen = tryLexemes(p, i, &lexeme);
-            if((c>='A' && c<='Z') || (c>='a' && c<='z'))
+            if((c>='A' && c<='Z') || (c>='a' && c<='z') || (c=='_'))
                 symlen = trySymbol(p, i);
             if(lexlen && lexlen >= symlen) {
                 newToken(p, i, LEXEMES[lexeme].tok, 0, 0, 0);
