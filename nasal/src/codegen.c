@@ -352,7 +352,6 @@ static void genForEach(struct Parser* p, struct Token* t)
     emit(p, OP_PUSHZERO);
     loopTop = p->cg->nBytes;
     emit(p, OP_EACH);
-    emit(p, OP_DUP);
     jumpEnd = emitJump(p, OP_JIFNIL);
     assignOp = genLValue(p, elem);
     emit(p, OP_XCHG);

@@ -28,7 +28,7 @@ naRef naNumValue(naRef n)
 
 naRef naStringValue(naContext c, naRef r)
 {
-    if(IS_STR(r)) return r;
+    if(IS_NIL(r) || IS_STR(r)) return r;
     if(IS_NUM(r)) {
         naRef s = naNewString(c);
         naStr_fromnum(s, r.num);

@@ -151,7 +151,7 @@ void naHash_keys(naRef dst, naRef hash)
     for(i=0; i<(1<<h->lgalloced); i++) {
         struct HashNode* hn = h->table[i];
         while(hn) {
-            naVec_append(dst, hn->val);
+            naVec_append(dst, hn->key);
             hn = hn->next;
         }
     }

@@ -75,8 +75,8 @@ static naRef substr(naContext c, naRef args)
 {
     naRef s;
     naRef src = naVec_get(args, 0);
-    naRef startR = naVec_get(args, 0);
-    naRef lenR = naVec_get(args, 0);
+    naRef startR = naVec_get(args, 1);
+    naRef lenR = naVec_get(args, 2);
     int start, len;
     if(!IS_STR(src)) return naNil();
     startR = naNumValue(startR);

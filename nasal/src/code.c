@@ -402,8 +402,9 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_JIFNIL:
         arg = ARG16(cd->byteCode, f);
-        a = POP(ctx);
+        a = TOP(ctx);
         if(IS_NIL(a)) {
+            POP(ctx); // Pops **ONLY** if it's nil!
             f->ip = arg;
             DBG(printf("   [Jump to: %d]\n", f->ip);)
         }
@@ -468,7 +469,8 @@ void naRun(struct Context* ctx, naRef code)
     setupFuncall(ctx, func, naNewVector(ctx));
 
     if(setjmp(ctx->jumpHandle)) {
-        printf("Runtime error: %s\n", ctx->error);
+        printf("Runtime error: %s at line %d\n", ctx->error,
+               ctx->fStack[ctx->fTop-1].line);
         exit(1);
     }
 
