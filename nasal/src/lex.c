@@ -50,18 +50,17 @@ static int* findLines(struct Parser* p)
     int sz = p->len/10;
     int* lines = naParseAlloc(p, (sizeof(int) * sz));
     int i, j, n=0;
-    
+
     for(i=0; i<p->len; i++) {
         // Not a line ending at all
         if(buf[i] != '\n' && buf[i] != '\r')
             continue;
-        
+
         // Skip over the \r of a \r\n pair.
         if(buf[i] == '\r' && (i+1)<p->len && buf[i+1] == '\n') {
             i++;
             continue;
         }
-        
         // Reallocate if necessary
         if(n == sz) {
             sz *= 2;
@@ -69,7 +68,6 @@ static int* findLines(struct Parser* p)
             for(j=0; j<n; j++) nl[j] = lines[j];
             lines = nl;
         }
-        
         lines[n++] = i;
     }
     p->lines = lines;
@@ -92,7 +90,7 @@ static void error(struct Parser* p, char* msg, int index)
     // FIXME: use a longjmp to a handler in the parser
     printf("Error: %s at line %d\n", msg, getLine(p, index));
     exit(1);
-    
+
 }
 
 // End index (the newline character) of the given line
@@ -102,48 +100,6 @@ static int lineEnd(struct Parser* p, int line)
     return p->lines[line-1];
 }
 
-char* tokStrDEBUG(int tok)
-{
-    switch(tok) {
-    case TOK_NOT: return "TOK_NOT";
-    case TOK_LPAR: return "TOK_LPAR";
-    case TOK_RPAR: return "TOK_RPAR";
-    case TOK_LBRA: return "TOK_LBRA";
-    case TOK_RBRA: return "TOK_RBRA";
-    case TOK_LCURL: return "TOK_LCURL";
-    case TOK_RCURL: return "TOK_RCURL";
-    case TOK_MUL: return "TOK_MUL";
-    case TOK_PLUS: return "TOK_PLUS";
-    case TOK_MINUS: return "TOK_MINUS";
-    case TOK_DIV: return "TOK_DIV";
-    case TOK_CAT: return "TOK_CAT";
-    case TOK_COLON: return "TOK_COLON";
-    case TOK_DOT: return "TOK_DOT";
-    case TOK_COMMA: return "TOK_COMMA";
-    case TOK_SEMI: return "TOK_SEMI";
-    case TOK_ASSIGN: return "TOK_ASSIGN";
-    case TOK_LT: return "TOK_LT";
-    case TOK_LTE: return "TOK_LTE";
-    case TOK_EQ: return "TOK_EQ";
-    case TOK_NEQ: return "TOK_NEQ";
-    case TOK_GT: return "TOK_GT";
-    case TOK_GTE: return "TOK_GTE";
-    case TOK_IF: return "TOK_IF";
-    case TOK_ELSIF: return "TOK_ELSIF";
-    case TOK_ELSE: return "TOK_ELSE";
-    case TOK_FOR: return "TOK_FOR";
-    case TOK_FOREACH: return "TOK_FOREACH";
-    case TOK_WHILE: return "TOK_WHILE";
-    case TOK_RETURN: return "TOK_RETURN";
-    case TOK_BREAK: return "TOK_BREAK";
-    case TOK_CONTINUE: return "TOK_CONTINUE";
-    case TOK_FUNC: return "TOK_FUNC";
-    case TOK_SYMBOL: return "TOK_SYMBOL";
-    case TOK_LITERAL: return "TOK_LITERAL";
-    }
-    return 0;
-}
-
 // Forward reference to permit recursion with newToken
 static void collectSymbol(struct Parser* p, int onePastEnd);
 
@@ -151,11 +107,11 @@ static void newToken(struct Parser* p, int pos, int type,
                      char* str, int slen, double num)
 {
     struct Token* tok;
-    
+
     // Push an accumulating symbol first
     if(p->symbolStart >= 0)
         collectSymbol(p, pos);
-    
+
     tok = naParseAlloc(p, sizeof(struct Token));
     tok->type = type;
     tok->line = getLine(p, pos);
@@ -165,22 +121,10 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->next = 0;
     tok->prev = p->tail;
     tok->children = 0;
-    
+
+    if(p->tree == 0) p->tree = tok;
     if(p->tail) p->tail->next = tok;
     p->tail = tok;
-
-    // DEBUG
-    {
-        int i;
-        printf("line %d %s ", getLine(p, pos), tokStrDEBUG(type));
-        if(str) {
-            printf("\"");
-            for(i=0; i<slen; i++) printf("%c", str[i]);
-            printf("\" ");
-        }
-        printf("(%f)\n", num);
-    }
-    
 }
 
 // Emits a symbol that has been accumulating in the lexer
@@ -224,10 +168,11 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
     if(len < 2) error(p, "Unterminated string", index);
     *eatenOut = 2;
     switch(buf[1]) {
-    case '"': *cOut = '"'; break; 
-    case 'r': *cOut = '\r'; break; 
-    case 'n': *cOut = '\n'; break; 
-    case 't': *cOut = '\t'; break; 
+    case '"': *cOut = '"'; break;
+    case 'r': *cOut = '\r'; break;
+    case 'n': *cOut = '\n'; break;
+    case 't': *cOut = '\t'; break;
+    case '\\': *cOut = '\\'; break;
     case 'x':
         if(len < 4) error(p, "Unterminated string", index);
         *cOut = (char)((hexc(buf[2], p, index)<<4) | hexc(buf[3], p, index));
@@ -242,35 +187,32 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
 // Read in a string literal
 static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
 {
-    int i, j=0, len=0, iteration;
+    int i, j, len, iteration;
     char* out = 0;
     char* buf = p->buf;
     char endMark = singleQuote ? '\'' : '"';
 
     for(iteration = 0; iteration<2; iteration++) {
         i = index+1;
+        j = len = 0;
         while(i < p->len) {
             char c = buf[i];
             int eaten = 1;
             if(c == endMark)
                 break;
             if(c == '\\') {
-                if(singleQuote) sqEscape(buf+i, len-i, i, p, &c, &eaten);
-                else            dqEscape(buf+i, len-i, i, p, &c, &eaten);
+                if(singleQuote) sqEscape(buf+i, p->len-i, i, p, &c, &eaten);
+                else            dqEscape(buf+i, p->len-i, i, p, &c, &eaten);
             }
             if(iteration == 1) out[j++] = c;
             i += eaten;
             len++;
         }
-
         // Finished stage one -- allocate the buffer for stage two
-        if(iteration == 0)
-            out = naParseAlloc(p, len);
+        if(iteration == 0) out = naParseAlloc(p, len);
     }
-
     newToken(p, index, TOK_LITERAL, out, len, 0);
-
-    return i;
+    return i+1;
 }
 
 static int lexNumLiteral(struct Parser* p, int index)
@@ -291,7 +233,6 @@ static int lexNumLiteral(struct Parser* p, int index)
             while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
         }
     }
-
     naStr_parsenum(p->buf + index, i - index, &d);
     newToken(p, index, TOK_LITERAL, 0, 0, d);
     return i;
@@ -344,10 +285,11 @@ void naLex(struct Parser* p)
 
     findLines(p);
 
-    for(i=0; i<p->len; i++) {
+    while(i<p->len) {
         int handled = 1;
         switch(p->buf[i]) {
         case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
+            i++;
             break; // ignore whitespace
         case '#':
             i = lineEnd(p, getLine(p, i));
@@ -363,26 +305,26 @@ void naLex(struct Parser* p)
             if(p->symbolStart >= 0) {
                 // Ignore numbers when parsing a symbol
                 handled = 0;
-                break;
+                i++;
+                continue; // NOTE: short circuit!
             }
             i = lexNumLiteral(p, i);
             break;
         default:
             handled = 0;
         }
-
-        if(handled && p->symbolStart >= 0)
-            collectSymbol(p, i);
-
-        if(!handled) {
+        if(handled) {
+            if(p->symbolStart >= 0)
+                collectSymbol(p, i-1);
+        } else {
             int lexlen = tryLexemes(p, i);
-
-            // Got nothing?  Then it's a symbol char.  Is it the first?
-            if(lexlen == 0 && p->symbolStart < 0)
-                p->symbolStart = i;
-
-            if(lexlen > 1)
-                i += lexlen - 1;
+            if(lexlen > 0) {
+                i += lexlen;
+            } else {
+                if(p->symbolStart < 0)
+                    p->symbolStart = i;
+                i++;
+            }
         }
     }
 }

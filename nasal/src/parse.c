@@ -18,7 +18,6 @@ void naParseInit(struct Parser* p)
 void naParseDestroy(struct Parser* p)
 {
     int i;
-    FREE(p->lines);
     for(i=0; i<p->nChunks; i++) FREE(p->chunks[i]);
     FREE(p->chunks);
     FREE(p->chunkSizes);
@@ -45,15 +44,15 @@ void* naParseAlloc(struct Parser* p, int bytes)
         newChunks = ALLOC(p->nChunks * sizeof(void*));
         for(i=1; i<p->nChunks; i++) newChunks[i] = p->chunks[i-1];
         newChunks[0] = newChunk;
+        FREE(p->chunks);
+        p->chunks = newChunks;
 
         newChunkSizes = ALLOC(p->nChunks * sizeof(int));
         for(i=1; i<p->nChunks; i++) newChunkSizes[i] = p->chunkSizes[i-1];
         newChunkSizes[0] = sz;
-
-        FREE(p->chunks);
         FREE(p->chunkSizes);
-        p->chunks = newChunks;
         p->chunkSizes = newChunkSizes;
+
         p->leftInChunk = sz;
     }
 
