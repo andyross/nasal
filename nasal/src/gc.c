@@ -7,15 +7,6 @@ struct Block {
     char* block;
 };
 
-struct naPool {
-    int           elemsz;
-    int           nblocks;
-    struct Block* blocks;
-    int           nfree;   // number of entries in the free array
-    int           freesz;  // size of the free array
-    void**        free;    // pointers to usable elements
-};
-
 static void appendfree(struct naPool*p, struct naObj* o)
 {
     // Need more space?
@@ -50,23 +41,22 @@ static void freeelem(struct naPool* p, struct naObj* o)
     appendfree(p, o);
 }
 
+void naGC_init(struct naPool* p, int elemsz)
+{
+    p->elemsz = elemsz;
+    p->nblocks = 0;
+    p->blocks = 0;
+    p->nfree = 0;
+    p->freesz = 0;
+    p->free = 0;
+}
+
 // Grabs a free object.  Returns 0 if none is available (i.e., it's
 // time to collect)
 struct naObj* naGC_get(struct naPool* p)
 {
     if(p->nfree == 0) return 0;
     return p->free[p->nfree--];
-}
-
-// Marks all pool contents as unreferenced
-void naGC_clearpool(struct naPool* p)
-{
-    int i, elem;
-    for(i=0; i<p->nblocks; i++) {
-        struct Block* b = p->blocks + i;
-        for(elem=0; elem < b->size; elem++)
-            ((struct naObj*)(b->block + elem * p->elemsz))->mark = 0;
-    }
 }
 
 // Sets the reference bit on the object, and recursively on all
@@ -77,7 +67,7 @@ void naGC_mark(naRef r)
 {
     int i;
 
-    if(IS_NUM(r))
+    if(IS_NUM(r) || IS_NIL(r))
         return;
 
     if(r.ref.ptr.obj->mark == 1)

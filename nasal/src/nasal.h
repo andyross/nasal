@@ -24,8 +24,6 @@ typedef union {
     } ref;
 } naRef;
 
-extern naRef NASL_NIL;
-
 // This is a macro instead of a separate struct to allow compilers to
 // avoid padding.  GCC on x86, at least, will always padd the size of
 // an embedded struct up to 32 bits.  Doing it this way allows the
@@ -75,12 +73,25 @@ struct naHash {
     int nextnode;
 };
 
+struct naPool {
+    int           elemsz;
+    int           nblocks;
+    struct Block* blocks;
+    int           nfree;   // number of entries in the free array
+    int           freesz;  // size of the free array
+    void**        free;    // pointers to usable elements
+};
+
 // FIXME: write these!
 void FREE(void* m);
 void* ALLOC(int n);
 void ERR(char* msg);
 void BZERO(void* m, int n);
 
+naRef naNum(double num);
+naRef naObj(struct naObj* o);
+
+void naStr_fromdata(naRef dst, unsigned char* data, int len);
 double naStr_tonum(naRef str);
 void naStr_fromnum(naRef dest, double num);
 int naStr_equal(naRef s1, naRef s2);
@@ -102,5 +113,10 @@ void naHash_delete(naRef hash, naRef key);
 void naHash_set(naRef hash, naRef key, naRef val);
 naRef naHash_get(naRef hash, naRef key);
 void naHash_init(naRef hash);
+
+void naGC_init(struct naPool* p, int elemsz);
+struct naObj* naGC_get(struct naPool* p);
+void naGC_mark(naRef r);
+void naGC_reap(struct naPool* p);
 
 #endif // _NASL_H

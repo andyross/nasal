@@ -10,6 +10,21 @@
 static int tonum(unsigned char* s, int len, double* result);
 static int fromnum(double val, unsigned char* s);
 
+naRef naNum(double num)
+{
+    naRef r;
+    r.num = num;
+    return r;
+}
+
+naRef naObj(struct naObj* o)
+{
+    naRef r;
+    r.ref.reftag = NASL_REFTAG;
+    r.ref.ptr.obj = o;
+    return r;
+}
+
 int naStr_len(naRef s)
 {
     return s.ref.ptr.str->len;
@@ -18,6 +33,14 @@ int naStr_len(naRef s)
 unsigned char* naStr_data(naRef s)
 {
     return s.ref.ptr.str->data;
+}
+
+void naStr_fromdata(naRef dst, unsigned char* data, int len)
+{
+    FREE(dst.ref.ptr.str->data);
+    dst.ref.ptr.str->len = len;
+    dst.ref.ptr.str->data = ALLOC(len);
+    memcpy(dst.ref.ptr.str->data, data, len);
 }
 
 void naStr_concat(naRef dest, naRef s1, naRef s2)

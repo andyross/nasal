@@ -90,8 +90,14 @@ naRef naHash_get(naRef hash, naRef key)
     struct HashNode* n;
     if(!IS_SCALAR(key)) ERR("Hash lookup by non-scalar illegal");
     n = find(h, key);
-    if(n) return n->val;
-    return NASL_NIL;
+    if(n) {
+        return n->val;
+    } else {
+        naRef nil;
+        nil.ref.reftag = NASL_REFTAG;
+        nil.ref.ptr.obj = 0;
+        return nil;
+    }
 }
 
 void naHash_set(naRef hash, naRef key, naRef val)
