@@ -333,9 +333,11 @@ static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
 }
 
 // Recursively descend into the parents lists
-static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
+static int getMember(struct Context* ctx, naRef obj, naRef fld,
+                     naRef* result, int count)
 {
     naRef p;
+    if(--count < 0) ERR(ctx, "too many parents");
     if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
     if(naHash_get(obj, fld, result)) {
         return 1;
@@ -343,7 +345,7 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
         int i;
         if(!IS_VEC(p)) ERR(ctx, "parents field not vector");
         for(i=0; i<p.ref.ptr.vec->size; i++)
-            if(getMember(ctx, p.ref.ptr.vec->array[i], fld, result))
+            if(getMember(ctx, p.ref.ptr.vec->array[i], fld, result, count))
                 return 1;
     }
     return 0;
@@ -496,7 +498,7 @@ static naRef run(struct Context* ctx)
             break;
         case OP_MEMBER:
             a = POP();
-            if(!getMember(ctx, a, CONSTARG(), &b))
+            if(!getMember(ctx, a, CONSTARG(), &b, 64))
                 ERR(ctx, "no such member");
             PUSH(b);
             break;
