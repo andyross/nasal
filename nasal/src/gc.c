@@ -1,6 +1,6 @@
 #include "nasl.h"
 
-#define MIN_BLOCK_SIZE 4096
+#define MIN_BLOCK_SIZE 256
 
 struct Block {
     int   size;
@@ -130,11 +130,14 @@ void naGC_reap(struct naPool* p)
     }
 
     // Allocate more if necessary (try to keep 33% available)
-    if(3*p->nfree <= 2*total) {
+    if(3*p->nfree <= total) {
         char* buf;
         struct Block* newblocks;
 
-        int need = ((3*p->nfree)>>1) - total;
+        int used = total - p->nfree;
+        int need = 3*used/2 - total;
+        if(need < 0)
+            return;
         if(need < MIN_BLOCK_SIZE)
             need = MIN_BLOCK_SIZE;
 
