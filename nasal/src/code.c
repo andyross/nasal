@@ -194,6 +194,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     int i;
     naRef args, func;
     struct Frame* f;
+    struct naCode* c;
     
     DBG(printf("setupFuncall(nargs:%d, mcall:%d)\n", nargs, mcall);)
         
@@ -201,14 +202,14 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     if(!IS_FUNC(func))
         ERR(ctx, "function/method call invoked on uncallable object");
 
-    args = naNewVector(ctx);
-    naVec_setsize(args, nargs);
-    for(i=0; i<nargs; i++)
-        args.ref.ptr.vec->array[i] = ctx->opStack[ctx->opTop - nargs + i];
-
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one (unless it's a tail call!).
     if(IS_CCODE(func.ref.ptr.func->code)) {
+        args = naNewVector(ctx);
+        naVec_setsize(args, nargs);
+        for(i=0; i<nargs; i++)
+            args.ref.ptr.vec->array[i] = ctx->opStack[ctx->opTop - nargs + i];
+
         naRef obj = mcall ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
         naRef result = nativeCall(ctx, func.ref.ptr.func->code, args, obj);
         ctx->opTop -= nargs + 1 + mcall;
@@ -225,7 +226,21 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     f->ip = 0;
     f->bp = ctx->opTop - (nargs + 1 + mcall);
 
-    naHash_set(f->locals, globals->argRef, args);
+    // Set the argument symbols, and put any remaining args in a vector
+    c = func.ref.ptr.func->code.ref.ptr.code;
+    if(nargs < c->nArgs) ERR(ctx, "not enough arguments to function call");
+    for(i=0; i<c->nArgs; i++)
+        naHash_set(f->locals, c->constants[c->argSyms[i]],
+                   ctx->opStack[ctx->opTop - nargs + i]);
+    if(c->nArgs == 0 || nargs > c->nArgs) {
+        args = naNewVector(ctx);
+        naVec_setsize(args, nargs - c->nArgs);
+        for(i=0; i<(nargs-c->nArgs); i++)
+            args.ref.ptr.vec->array[i] =
+                ctx->opStack[ctx->opTop - nargs + c->nArgs + i];
+        naHash_set(f->locals, c->restArgSym, args);
+    }
+
     if(mcall)
         naHash_set(f->locals, globals->meRef,
                    ctx->opStack[ctx->opTop - nargs - 2]);

@@ -92,7 +92,7 @@ void naParseInit(struct Parser* p);
 void* naParseAlloc(struct Parser* p, int bytes);
 void naParseDestroy(struct Parser* p);
 void naLex(struct Parser* p);
-naRef naCodeGen(struct Parser* p, struct Token* tok);
+naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist);
 
 void naParse(struct Parser* p);
 

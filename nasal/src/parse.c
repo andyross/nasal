@@ -210,7 +210,12 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
     t = start;
     while(t) {
         switch(t->type) {
-        case TOK_ELSE: case TOK_FUNC:
+        case TOK_FUNC:
+            // Slurp an optional paren block containing an arglist, then
+            // fall through to parse the curlies...
+            if(t->next && t->next->type == TOK_LPAR)
+                addNewChild(t, t->next);
+        case TOK_ELSE: // and TOK_FUNC!
             // These guys precede a single curly block
             if(!t->next || t->next->type != TOK_LCURL) oops(p, t);
             c = t->next;
@@ -521,7 +526,7 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
     p.tree.lastChild = t;
 
     // Generate code!
-    codeObj = naCodeGen(&p, &(p.tree));
+    codeObj = naCodeGen(&p, &(p.tree), 0);
 
     // Clean up our mess
     naParseDestroy(&p);

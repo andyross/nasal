@@ -72,6 +72,14 @@ struct naCode {
     naRef srcFile;
     naRef* constants;
     int nConstants;
+    naRef restArgSym; // The "..." vector name, defaults to "arg"
+    int nArgs;
+    int* argSyms; // indices into constants
+#if 0
+    int nOptArgs;
+    int* optArgSyms;
+    naRef* optArgVals;
+#endif
     unsigned short* lineIps; // pairs of {ip, line}
     int nLines;
 };

@@ -1,6 +1,8 @@
 #include "parse.h"
 #include "code.h"
 
+#define MAX_FUNARGS 32
+
 // These are more sensical predicate names in most contexts in this file
 #define LEFT(tok)   ((tok)->children)
 #define RIGHT(tok)  ((tok)->lastChild)
@@ -159,21 +161,35 @@ static int genLValue(struct Parser* p, struct Token* t)
     }
 }
 
+static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
+{
+    if(t->type == TOK_EMPTY) return;
+    if(t->type == TOK_SYMBOL) {
+        if(c->nArgs >= MAX_FUNARGS)
+            naParseError(p, "too many named function arguments", t->line);
+        c->argSyms[c->nArgs++] = findConstantIndex(p, t);
+    } else if(t->type == TOK_COMMA) {
+        genArgList(p, c, LEFT(t));
+        genArgList(p, c, RIGHT(t));
+    } else
+        naParseError(p, "bad function argument list", t->line);
+}
+
 static void genLambda(struct Parser* p, struct Token* t)
 {
-    int idx;
     struct CodeGenerator* cgSave;
     naRef codeObj;
-    if(LEFT(t)->type != TOK_LCURL)
+    struct Token* arglist;
+    if(RIGHT(t)->type != TOK_LCURL)
         naParseError(p, "bad function definition", t->line);
 
     // Save off the generator state while we do the new one
     cgSave = p->cg;
-    codeObj = naCodeGen(p, LEFT(LEFT(t)));
+    arglist = LEFT(t)->type == TOK_LPAR ? LEFT(LEFT(t)) : 0;
+    codeObj = naCodeGen(p, LEFT(RIGHT(t)), arglist);
     p->cg = cgSave;
 
-    idx = newConstant(p, codeObj);
-    emitImmediate(p, OP_PUSHCONST, idx);
+    emitImmediate(p, OP_PUSHCONST, newConstant(p, codeObj));
 }
 
 static int genList(struct Parser* p, struct Token* t, int doAppend)
@@ -579,7 +595,7 @@ static void genExprList(struct Parser* p, struct Token* t)
     }
 }
 
-naRef naCodeGen(struct Parser* p, struct Token* t)
+naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
 {
     int i;
     naRef codeObj;
@@ -597,11 +613,27 @@ naRef naCodeGen(struct Parser* p, struct Token* t)
     cg.nextLineIp = 0;
     p->cg = &cg;
 
-    genExprList(p, t);
+    genExprList(p, block);
 
     // Now make a code object
     codeObj = naNewCode(p->context);
     code = codeObj.ref.ptr.code;
+
+    // Parse the argument list, if any
+    code->nArgs = 0;
+    code->restArgSym = globals->argRef;
+    code->argSyms = 0;
+    if(arglist) {
+        code->argSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        genArgList(p, code, arglist);
+        if(code->nArgs) {
+            int i, *nsyms;
+            nsyms = naAlloc(sizeof(int) * code->nArgs);
+            for(i=0; i<code->nArgs; i++) nsyms[i] = code->argSyms[i];
+            code->argSyms = nsyms;
+        } else code->argSyms = 0;
+    }
+
     code->nBytes = cg.nBytes;
     code->byteCode = naAlloc(cg.nBytes);
     for(i=0; i < cg.nBytes; i++)
