@@ -75,6 +75,7 @@ static int* findLines(struct Parser* p)
         
         lines[n++] = i;
     }
+    p->lines = lines;
     p->nLines = n;
     return lines;
 }
@@ -107,7 +108,8 @@ static int lineEnd(struct Parser* p, int line)
 // Forward reference to permit recursion with newToken
 static void collectSymbol(struct Parser* p, int onePastEnd);
 
-static void newToken(struct Parser* p, int pos, int type, naRef data)
+static void newToken(struct Parser* p, int pos, int type,
+                     char* str, int slen, double num)
 {
     struct Token* tok;
     
@@ -117,24 +119,24 @@ static void newToken(struct Parser* p, int pos, int type, naRef data)
     
     tok = naParseAlloc(p, sizeof(struct Token));
     tok->type = type;
-    tok->data = data;
     tok->line = getLine(p, pos);
+    tok->str = str;
+    tok->strlen = slen;
+    tok->num = num;
     tok->next = 0;
     tok->prev = p->tail;
     tok->children = 0;
     
-    p->tail->next = tok;
+    if(p->tail) p->tail->next = tok;
     p->tail = tok;
 }
 
 // Emits a symbol that has been accumulating in the lexer
 static void collectSymbol(struct Parser* p, int onePastEnd)
 {
-    naRef data;
     int start = p->symbolStart;
     p->symbolStart = -1;
-    naStr_fromdata(data, p->buf + start, onePastEnd - start);
-    newToken(p, start, TOK_SYMBOL, data);
+    newToken(p, start, TOK_SYMBOL, p->buf + start, onePastEnd - start, 0);
 }
 
 // Parse a hex nibble
@@ -192,7 +194,6 @@ static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
     char* out = 0;
     char* buf = p->buf;
     char endMark = singleQuote ? '\'' : '"';
-    naRef str;
 
     for(iteration = 0; iteration<2; iteration++) {
         i = index+1;
@@ -215,8 +216,7 @@ static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
             out = naParseAlloc(p, len);
     }
 
-    naStr_fromdata(str, out, len);
-    newToken(p, index, TOK_LITERAL, str);
+    newToken(p, index, TOK_LITERAL, out, len, 0);
 
     return i;
 }
@@ -225,7 +225,6 @@ static int lexNumLiteral(struct Parser* p, int index)
 {
     int len = p->len, i = index;
     unsigned char* buf = p->buf;
-    naRef str;
     double d;
 
     while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
@@ -241,9 +240,8 @@ static int lexNumLiteral(struct Parser* p, int index)
         }
     }
 
-    naStr_fromdata(str, p->buf + index, i - index);
-    naStr_parsenum(str, &d);
-    newToken(p, index, TOK_LITERAL, naNum(d));
+    naStr_parsenum(p->buf + index, i - index, &d);
+    newToken(p, index, TOK_LITERAL, 0, 0, d);
     return i;
 }
 
@@ -283,7 +281,7 @@ static int tryLexemes(struct Parser* p, int index)
         }
     }
     if(best > 0)
-        newToken(p, index, LEXEMES[bestIndex].tok, naNil());
+        newToken(p, index, LEXEMES[bestIndex].tok, 0, 0, 0);
     return index + best;
 }
 
@@ -293,7 +291,7 @@ void naLex(struct Parser* p)
 
     findLines(p);
 
-    while(i<p->len) {
+    for(i=0; i<p->len; i++) {
         int handled = 1;
         switch(p->buf[i]) {
         case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':

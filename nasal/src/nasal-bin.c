@@ -13,6 +13,7 @@ int main(int argc, char** argv)
     struct stat fdat;
     char* buf;
     struct Parser p;
+    struct Token* t;
 
     for(i=1; i<argc; i++) {
         stat(argv[i], &fdat);
@@ -21,6 +22,16 @@ int main(int argc, char** argv)
         fread(buf, 1, fdat.st_size, f);
 
         naParseInit(&p);
+
+        p.buf = buf;
+        p.len = fdat.st_size;
+
+        naLex(&p);
+
+        t = p.tree;
+        while(t) {
+            
+        }
     }
     return 0;
 }

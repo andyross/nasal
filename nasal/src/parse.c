@@ -12,6 +12,7 @@ void naParseInit(struct Parser* p)
     p->leftInChunk = 0;
     p->symbolStart = -1;
     p->tree = 0;
+    p->tail = 0;
 }
 
 void naParseDestroy(struct Parser* p)

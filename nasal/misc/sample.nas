@@ -17,9 +17,23 @@ n2 = 3.14;
 n3 = 6.023e23;
 
 #
+# Literal lists use square brackets with a comma-separated expression
+# list.
+#
+list1 = ["a", "b", 1, 2];
+
+#
+# Literal hashes (or objects -- same thing) use curlies and colons to
+# separate the key/value pairs.
+#
+hash1 = { name : "Andy", job : "Hacker" };
+
+#
 # Two identical strings with different quotes.  Double quotes use
 # typical escape sequences.  Single quotes treat everything as literal
-# except for embedded single quotes.
+# except for embedded single quotes (including embedded whitespace
+# like newlines).  Double quotes handle the following C-like escapes:
+# \n \r \t \xnn \"
 #
 s1 = 'Andy\'s "computer" has a C:\righteous\newstuff directory.';
 s2 = "Andy's \"computer\" has a C:\\righteous\\newstuff directory.";

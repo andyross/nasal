@@ -35,7 +35,7 @@ naRef naObj(int type, struct naObj* o)
 
 int naEqual(naRef a, naRef b)
 {
-    double na, nb;
+    double na=0, nb=0;
     if(IS_REF(a) && IS_REF(b) && a.ref.ptr.obj == b.ref.ptr.obj)
         return 1; // Object identity
     if(IS_NUM(a) && IS_NUM(b) && a.num == b.num)
@@ -45,10 +45,10 @@ int naEqual(naRef a, naRef b)
 
     // Numeric equality after conversion
     if(IS_NUM(a)) { na = a.num; }
-    else if(!(IS_STR(a) && naStr_parsenum(a, &na))) { return 0; }
+    else if(!(IS_STR(a) && naStr_numeric(a))) { return 0; }
 
     if(IS_NUM(b)) { nb = b.num; }
-    else if(!(IS_STR(b) && naStr_parsenum(b, &nb))) { return 0; }
+    else if(!(IS_STR(b) && naStr_numeric(b))) { return 0; }
 
     return na == nb;
 }

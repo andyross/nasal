@@ -97,7 +97,8 @@ naRef naObj(int type, struct naObj* o);
 
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
 naRef naStr_tonum(naRef str);
-int naStr_parsenum(naRef str, double* result);
+int naStr_numeric(naRef str);
+int naStr_parsenum(char* str, int len, double* result);
 void naStr_fromnum(naRef dest, double num);
 int naStr_equal(naRef s1, naRef s2);
 void naStr_substr(naRef dest, naRef str, int start, int len);

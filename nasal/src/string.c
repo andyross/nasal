@@ -70,9 +70,15 @@ void naStr_fromnum(naRef dest, double num)
     memcpy(dst->data, buf, dst->len);
 }
 
-int naStr_parsenum(naRef str, double* result)
+int naStr_numeric(naRef str)
 {
-    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, result);
+    double dummy;
+    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, &dummy);
+}
+
+int naStr_parsenum(char* str, int len, double* result)
+{
+    return tonum(str, len, result);
 }
 
 naRef naStr_tonum(naRef str)
