@@ -1,3 +1,33 @@
+Nasal 0.9.2, 2004 Dec 06
+------------------------
+
+Bug Fixes:
+
+Runtime errors due bad function setup information could cause a
+  nonsensical/corrupt stack frame to be exposed to the calling C code.
+
+New Features:
+
+Support for multiple naContext objects has been added
+New call() and eval() functions in the standard library
+
+Nasal 0.9.1, 2004 Jun 26
+------------------------
+
+Bug Fixes:
+
+Removed an optimization with function arguments that had no
+  performance impact in practice.
+Fixed a lexer bug where DOS (\r\n) newlines in source code would be
+  misdetected and cause incorrect line number generation.
+Fixed a bug where the "me" reference to a method call could be
+  prematurely destroyed by the garbage collector
+
+New Features:
+
+Updates to the Vim syntax highlighting
+Changed the naCFunction callback type to include a "me" reference
+
 Nasal 0.9, 2003 Dec 03
 ----------------------
 
