@@ -361,6 +361,7 @@ static void genForEach(struct Parser* p, struct Token* t)
 static int tokMatch(struct Token* a, struct Token* b)
 {
     int i, l = a->strlen;
+    if(!a || !b) return 0;
     if(l != b->strlen) return 0;
     for(i=0; i<l; i++) if(a->str[i] != b->str[i]) return 0;
     return 1;
@@ -383,7 +384,8 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
     cp = p->cg->loops[p->cg->loopTop - levels].contIP;
     for(i=0; i<levels; i++)
         emit(p, OP_BREAK);
-    emit(p, OP_PUSHNIL); // breakIP must be a JIFNOT/JIFNIL!
+    if(t->type == TOK_BREAK)
+        emit(p, OP_PUSHNIL); // breakIP is always a JIFNOT/JIFNIL!
     emitImmediate(p, OP_JMP, t->type == TOK_BREAK ? bp : cp);
 }
 
