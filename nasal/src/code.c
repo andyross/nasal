@@ -322,7 +322,7 @@ static int setClosure(naRef func, naRef sym, naRef val)
     else { return setClosure(c->next, sym, val); }
 }
 
-static naRef setLocal(struct Frame* f, naRef sym, naRef val)
+static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
 {
     // Try the locals first, if not already there try the closures in
     // order.  Finally put it in the locals if nothing matched.
@@ -485,9 +485,14 @@ static naRef run(struct Context* ctx)
             getLocal(ctx, f, &a, &STK(0));
             ctx->opTop++;
             break;
-        case OP_SETLOCAL:
+        case OP_SETSYM:
             a = POP(); b = POP();
-            PUSH(setLocal(f, b, a));
+            PUSH(setSymbol(f, b, a));
+            break;
+        case OP_SETLOCAL:
+            naHash_set(f->locals, STK(2), STK(1));
+            STK(2) = STK(1); // FIXME: reverse order of arguments instead!
+            ctx->opTop--;
             break;
         case OP_MEMBER:
             a = POP();

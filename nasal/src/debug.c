@@ -55,6 +55,7 @@ char* opStringDEBUG(int op)
     case OP_BREAK: return "BREAK";
     case OP_FTAIL: return "FTAIL";
     case OP_MTAIL: return "MTAIL";
+    case OP_SETSYM: return "SETSYM";
     }
     sprintf(buf, "<bad opcode: %d>\n", op);
     return buf;

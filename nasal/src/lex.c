@@ -43,6 +43,7 @@ struct Lexeme {
     {"func", TOK_FUNC},
     {"...", TOK_ELLIPSIS},
     {"?", TOK_QUESTION},
+    {"var", TOK_VAR},
 };
 
 // Build a table of where each line ending is

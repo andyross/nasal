@@ -146,7 +146,7 @@ static int genLValue(struct Parser* p, struct Token* t)
         return genLValue(p, LEFT(t)); // Handle stuff like "(a) = 1"
     } else if(t->type == TOK_SYMBOL) {
         genScalarConstant(p, t);
-        return OP_SETLOCAL;
+        return OP_SETSYM;
     } else if(t->type == TOK_DOT && RIGHT(t) && RIGHT(t)->type == TOK_SYMBOL) {
         genExpr(p, LEFT(t));
         genScalarConstant(p, RIGHT(t));
@@ -155,6 +155,9 @@ static int genLValue(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
         genExpr(p, RIGHT(t));
         return OP_INSERT;
+    } else if(t->type == TOK_VAR) {
+        genScalarConstant(p, RIGHT(t));
+        return OP_SETLOCAL;
     } else {
         naParseError(p, "bad lvalue", t->line);
         return -1;
