@@ -39,6 +39,7 @@ static void naCode_gcclean(struct naCode* o)
 {
     naFree(o->byteCode);  o->byteCode = 0;
     naFree(o->constants); o->constants = 0;
+    naFree(o->argSyms);   o->argSyms = 0;
 }
 
 static void naGhost_gcclean(struct naGhost* g)
