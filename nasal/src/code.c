@@ -518,8 +518,9 @@ static naRef run(naContext ctx)
         ctx->temps.ref.ptr.vec->size = 0; // Reset the temporaries
         // DBG(printStackDEBUG(ctx);)
     }
+
     // DBG(printStackDEBUG(ctx);)
-    return ctx->opStack[ctx->opTop-1];
+    return ctx->opStack[--ctx->opTop];
 }
 
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)

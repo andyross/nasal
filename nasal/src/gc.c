@@ -32,6 +32,12 @@ static void appendfree(struct naPool*p, struct naObj* o)
     p->free[p->nfree++] = o;
 }
 
+static void naCode_gcclean(struct naCode* o)
+{
+    naFree(o->byteCode);  o->byteCode = 0;
+    naFree(o->constants); o->constants = 0;
+}
+
 static void freeelem(struct naPool* p, struct naObj* o)
 {
     // Free any intrinsic (i.e. non-garbage collected) storage the
@@ -47,8 +53,7 @@ static void freeelem(struct naPool* p, struct naObj* o)
         naHash_gcclean((struct naHash*)o);
         break;
     case T_CODE:
-        naFree(((struct naCode*)o)->byteCode);
-        naFree(((struct naCode*)o)->constants);
+        naCode_gcclean((struct naCode*)o);
         break;
     }
 
