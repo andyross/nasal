@@ -1,5 +1,6 @@
 #include "nasal.h"
 #include "data.h"
+#include "thread.h"
 
 #define MIN_BLOCK_SIZE 256
 
@@ -54,6 +55,10 @@ static void freeelem(struct naPool* p, struct naObj* o)
     // Mark the object as "freed" for debugging purposes
     o->type = T_GCFREED; // DEBUG
 
+    // Free its thread lock, if it has one
+    if(o->lock) naFreeLock(o->lock);
+    o->lock = 0;
+
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
     switch(p->type) {
@@ -100,6 +105,7 @@ static void newBlock(struct naPool* p, int need)
     for(i=0; i<need; i++) {
         struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
         o->mark = 0;
+        o->lock = 0;
         o->type = p->type;
         appendfree(p, o);
     }

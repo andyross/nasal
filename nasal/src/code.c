@@ -1,5 +1,6 @@
 #include "nasal.h"
 #include "code.h"
+#include "thread.h"
 
 ////////////////////////////////////////////////////////////////////////
 // Debugging stuff. ////////////////////////////////////////////////////
@@ -104,6 +105,8 @@ static void initContext(struct Context* c)
 static void initGlobals()
 {
     globals = (struct Globals*)naAlloc(sizeof(struct Globals));
+
+    naInitThreads();
 
     int i;
     for(i=0; i<NUM_NASAL_TYPES; i++)
@@ -217,6 +220,9 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     f->ip = 0;
     f->bp = ctx->opTop - (nargs + 1 + mcall);
 
+    if(mcall)
+        naHash_set(f->locals, globals->meRef, frame[-1]);
+
     // Set the argument symbols, and put any remaining args in a vector
     c = (*frame++).ref.ptr.func->code.ref.ptr.code;
     if(nargs < c->nArgs) ERR(ctx, "not enough arguments to function call");
@@ -236,9 +242,6 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
             args.ref.ptr.vec->array[i] = *frame++;
         naHash_newsym(f->locals.ref.ptr.hash, &c->restArgSym, &args);
     }
-
-    if(mcall)
-        naHash_set(f->locals, globals->meRef, frame[-1]);
 
     ctx->opTop = f->bp; // Pop the stack last, to avoid GC lossage
     DBG(printf("Entering frame %d with %d args\n", ctx->fTop-1, nargs);)
@@ -513,6 +516,7 @@ static naRef run(struct Context* ctx)
             PUSH(containerGet(ctx, a, b));
             break;
         case OP_JMP:
+            naCheckGCLock(); // only called for jmp, see notes
             f->ip = ARG16(cd->byteCode, f);
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
@@ -640,6 +644,9 @@ naRef naBindToContext(naContext ctx, naRef code)
 
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
 {
+    naRef result;
+    naModLock(ctx);
+
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
     // C-space arguments.
@@ -676,8 +683,10 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     if(IS_CCODE(func.ref.ptr.func->code)) {
         naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
         struct naVec* av = args.ref.ptr.vec;
-        return (*fp)(ctx, obj, av->size, av->array);
-    }
-    return run(ctx);
+        result = (*fp)(ctx, obj, av->size, av->array);
+    } else
+        result = run(ctx);
+    naModUnlock(ctx);
+    return result;
 }
 

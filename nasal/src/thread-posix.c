@@ -11,6 +11,12 @@ void* naNewLock()
     return lock;
 }
 
+void naFreeLock(void* lock)
+{
+    pthread_mutex_destroy((pthread_mutex_t*)lock);
+    naFree(lock);
+}
+
 void naLock(void* lock)
 {
     pthread_mutex_lock((pthread_mutex_t*)lock);
