@@ -83,9 +83,9 @@ Class2 = {
 invert = func {
     vec = arg[0];
     hash = {};
-    for(i=0; i<size(vec); i++) {
-        hash{vec[i]} = i;
-    }
+    for(i=0; i<size(vec); i = i+1) {
+        hash[vec[i]] = i;
+    };
     return hash;
 };
 
@@ -93,7 +93,7 @@ invert = func {
 # Use the return value of the above function to do an "index of"
 # lookup on a vector
 #
-vecfind = func{ return invert(arg[0]){arg[0]}; };
+vecfind = func{ return invert(arg[0])[arg[0]]; };
 
 #
 # Joins its arguments with the empty string and returns a scalar.
@@ -102,7 +102,7 @@ vecfind = func{ return invert(arg[0]){arg[0]}; };
 #
 join = func { 
     s = "";
-    foreach(elem; arg) { s = s ~ elem; }
+    foreach(elem; arg) { s = s ~ elem; };
     return s;
 };
 
@@ -118,7 +118,7 @@ for(OUTER; i=0; i<100; i = i+1) {
             break OUTER;
         }
     }
-}
+};
 
 #
 # Functional programming A: All function expressions are inherently
