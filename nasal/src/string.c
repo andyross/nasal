@@ -86,6 +86,13 @@ naRef naStr_tonum(naRef str)
     return r;
 }
 
+void naStr_gcclean(struct naStr* str)
+{
+    FREE(str->data);
+    str->len = 0;
+    str->data = 0;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Below is a custom double<->string conversion library.  Why not
 // simply use sprintf and atof?  Because they aren't acceptably

@@ -11,6 +11,21 @@ static void realloc(struct naVec* v)
     v->array = na;
 }
 
+void naVec_init(naRef vec)
+{
+    struct naVec* v = vec.ref.ptr.vec;
+    v->size = 0;
+    v->alloced = 0;
+}
+
+void naVec_gcclean(struct naVec* v)
+{
+    FREE(v->array);
+    v->size = 0;
+    v->alloced = 0;
+    v->array = 0;
+}
+
 naRef naVec_get(naRef v, int i)
 {
     return v.ref.ptr.vec->array[i];

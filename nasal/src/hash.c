@@ -155,9 +155,8 @@ int naHash_size(naRef h)
     return h.ref.ptr.hash->size;
 }
 
-void naHash_destroy(naRef hash)
+void naHash_gcclean(struct naHash* h)
 {
-    struct naHash* h = hash.ref.ptr.hash;
     FREE(h->nodes);
     h->nodes = 0;
     h->size = 0;

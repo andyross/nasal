@@ -103,20 +103,22 @@ void naStr_substr(naRef dest, naRef str, int start, int len);
 void naStr_concat(naRef dest, naRef s1, naRef s2);
 unsigned char* naStr_data(naRef s);
 int naStr_len(naRef s);
+void naStr_gcclean(struct naStr* s);
 
 naRef naVec_removelast(naRef vec);
 int naVec_append(naRef vec, naRef o);
 int naVec_size(naRef v);
 void naVec_set(naRef vec, int i, naRef o);
 naRef naVec_get(naRef v, int i);
+void naVec_gcclean(struct naVec* s);
 
-void naHash_destroy(naRef hash);
 int naHash_size(naRef h);
 void naHash_keys(naRef dst, naRef hash);
 void naHash_delete(naRef hash, naRef key);
 void naHash_set(naRef hash, naRef key, naRef val);
 naRef naHash_get(naRef hash, naRef key);
 void naHash_init(naRef hash);
+void naHash_gcclean(struct naHash* s);
 
 void naGC_init(struct naPool* p, int elemsz);
 struct naObj* naGC_get(struct naPool* p);

@@ -29,16 +29,13 @@ static void freeelem(struct naPool* p, struct naObj* o)
     // object might have
     switch(o->type) {
     case TYPE_NASTR:
-        FREE(((struct naStr*)o)->data);
-        ((struct naStr*)o)->data = 0;
+        naStr_gcclean((struct naStr*)o);
         break;
     case TYPE_NAVEC:
-        FREE(((struct naVec*)o)->array);
-        ((struct naVec*)o)->array = 0;
+        naVec_gcclean((struct naVec*)o);
         break;
     case TYPE_NAHASH:
-        FREE(((struct naHash*)o)->nodes);
-        ((struct naHash*)o)->nodes = 0;
+        naHash_gcclean((struct naHash*)o);
         break;
     }
 
