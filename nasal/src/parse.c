@@ -13,9 +13,9 @@ struct precedence {
 } PRECEDENCE[] = {
     { { TOK_SEMI, TOK_COMMA },                 PREC_REVERSE },
     { { TOK_ELLIPSIS },                        PREC_SUFFIX  },
-    { { TOK_COLON, TOK_QUESTION },             PREC_REVERSE },
     { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
     { { TOK_ASSIGN },                          PREC_REVERSE },
+    { { TOK_COLON, TOK_QUESTION },             PREC_REVERSE },
     { { TOK_OR },                              PREC_BINARY  },
     { { TOK_AND },                             PREC_BINARY  },
     { { TOK_EQ, TOK_NEQ },                     PREC_BINARY  },
