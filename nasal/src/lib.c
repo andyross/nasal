@@ -264,6 +264,11 @@ static naRef f_sprintf(naContext ctx, naRef me, naRef args)
                                
     while((next = nextFormat(ctx, s, &fstr, &flen, &t))) {
         APPEND(NEWSTR(s, fstr-s)); // stuff before the format string
+        if(flen == 2 && fstr[1] == '%') {
+            APPEND(NEWSTR("%", 1));
+            s = next;
+            continue;
+        }
         if(argn >= naVec_size(args)) ERR("not enough arguments to sprintf");
         arg = naVec_get(args, argn++);
         nultmp = fstr[flen]; // sneaky nul termination...
