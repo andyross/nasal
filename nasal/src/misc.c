@@ -155,6 +155,19 @@ int naEqual(naRef a, naRef b)
     return na == nb ? 1 : 0;
 }
 
+int naStrEqual(naRef a, naRef b)
+{
+    int i;
+    if(!(IS_STR(a) && IS_STR(b)))
+        return 0;
+    if(a.ref.ptr.str->len != b.ref.ptr.str->len)
+        return 0;
+    for(i=0; i<a.ref.ptr.str->len; i++)
+        if(a.ref.ptr.str->data[i] != b.ref.ptr.str->data[i])
+            return 0;
+    return 1;
+}
+
 int naTypeSize(int type)
 {
     switch(type) {

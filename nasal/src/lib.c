@@ -90,15 +90,9 @@ static naRef num(naContext c, naRef me, naRef args)
 
 static naRef streq(naContext c, naRef me, naRef args)
 {
-    int i;
     naRef a = naVec_get(args, 0);
     naRef b = naVec_get(args, 1);
-    if(!naIsString(a) || !naIsString(b)) return naNil();
-    if(naStr_len(a) != naStr_len(b)) return naNum(0);
-    for(i=0; i<naStr_len(a); i++)
-        if(naStr_data(a)[i] != naStr_data(b)[i])
-            return naNum(0);
-    return naNum(1);
+    return naNum(naStrEqual(a, b));
 }
 
 static naRef substr(naContext c, naRef me, naRef args)

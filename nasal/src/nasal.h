@@ -150,6 +150,7 @@ naRef naNewCCode(naContext c, naCFunction fptr);
 
 // Some useful conversion/comparison routines
 int naEqual(naRef a, naRef b);
+int naStrEqual(naRef a, naRef b);
 int naTrue(naRef b);
 naRef naNumValue(naRef n);
 naRef naStringValue(naContext c, naRef n);
