@@ -98,7 +98,9 @@ static void initContext(struct Context* c)
     c->fTop = c->opTop = c->markTop = 0;
 
     // Chicken and egg, can't use naNew because it requires temps to exist
-    c->temps = naObj(T_VEC, naGC_get(&(c->globals->pools[T_VEC])));
+    int dummy;
+    c->temps = naObj(T_VEC, (naGC_get(&c->globals->pools[T_VEC],
+                                      1, &dummy))[0]);
     naVec_init(c->temps);
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));

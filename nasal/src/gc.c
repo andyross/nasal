@@ -152,20 +152,20 @@ int naGC_size(struct naPool* p)
     return total;
 }
 
-struct naObj* naGC_get(struct naPool* p)
+struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 {
-    // Collect every GlobalAllocCount allocations.
-    // This gets set to ~50% of the total object count each collection
-    // by each (per-type) call to naGC_reap().
-    if(--globals->allocCount < 0) {
+    struct naObj** result;
+    if(globals->allocCount < 0) {
         globals->allocCount = 0;
         garbageCollect();
     }
-
-    // If we're out, then allocate an extra 12.5%
     if(p->nfree == 0)
         newBlock(p, naGC_size(p)/8);
-    return p->free[--p->nfree];
+    *nout = p->nfree < n ? p->nfree : n;
+    p->nfree -= *nout;
+    globals->allocCount -= *nout;
+    result = (struct naObj**)&p->free[p->nfree];
+    return result;
 }
 
 // Sets the reference bit on the object, and recursively on all
