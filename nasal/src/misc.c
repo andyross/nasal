@@ -5,8 +5,6 @@
 #include "nasal.h"
 #include "code.h"
 
-#define OBJ_CACHE_SZ 32
-
 void naFree(void* m) { free(m); }
 void* naAlloc(int n) { return malloc(n); }
 void naBZero(void* m, int n) { memset(m, 0, n); }

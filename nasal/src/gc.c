@@ -8,38 +8,44 @@
 // "type" for an object freed by the collector
 #define T_GCFREED 123 // DEBUG
 
+static void reap(struct naPool* p);
+static void mark(naRef r);
+
 struct Block {
     int   size;
     char* block;
 };
 
+// Must be called with the bigLock!
 static void garbageCollect()
 {
     int i;
-    struct Context* c = globals->allContexts;
+    struct Context* c;
+    naWaitForGC();
+    c = globals->allContexts;
     while(c) {
         for(i=0; i<NUM_NASAL_TYPES; i++)
             c->nfree[i] = 0;
         for(i=0; i < c->fTop; i++) {
-            naGC_mark(c->fStack[i].func);
-            naGC_mark(c->fStack[i].locals);
+            mark(c->fStack[i].func);
+            mark(c->fStack[i].locals);
         }
         for(i=0; i < c->opTop; i++)
-            naGC_mark(c->opStack[i]);
-        naGC_mark(c->dieArg);
-        naGC_mark(c->temps);
+            mark(c->opStack[i]);
+        mark(c->dieArg);
+        mark(c->temps);
         c = c->nextAll;
     }
 
-    naGC_mark(globals->save);
-    naGC_mark(globals->symbols);
-    naGC_mark(globals->meRef);
-    naGC_mark(globals->argRef);
-    naGC_mark(globals->parentsRef);
+    mark(globals->save);
+    mark(globals->symbols);
+    mark(globals->meRef);
+    mark(globals->argRef);
+    mark(globals->parentsRef);
 
     // Finally collect all the freed objects
     for(i=0; i<NUM_NASAL_TYPES; i++)
-        naGC_reap(&(globals->pools[i]));
+        reap(&(globals->pools[i]));
 }
 
 static void naCode_gcclean(struct naCode* o)
@@ -94,7 +100,7 @@ static void newBlock(struct naPool* p, int need)
     struct Block* newblocks;
 
     if(need < MIN_BLOCK_SIZE) need = MIN_BLOCK_SIZE;
-    
+
     // FIXME: store blocks in a list. This is just dumb...
     newblocks = naAlloc((p->nblocks+1) * sizeof(struct Block));
     for(i=0; i<p->nblocks; i++) newblocks[i] = p->blocks[i];
@@ -128,10 +134,10 @@ void naGC_init(struct naPool* p, int type)
 
     p->free0 = p->free = 0;
     p->nfree = p->freesz = p->freetop = 0;
-    naGC_reap(p);
+    reap(p);
 }
 
-int naGC_size(struct naPool* p)
+static int poolsize(struct naPool* p)
 {
     int i, total=0;
     for(i=0; i<p->nblocks; i++)
@@ -142,23 +148,26 @@ int naGC_size(struct naPool* p)
 struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 {
     struct naObj** result;
+    naLock(globals->threads->bigLock);
+    naCheckGCLockWithLock();
     if(globals->allocCount < 0 || (p->nfree == 0 && p->freetop >= p->freesz)) {
         globals->allocCount = 0;
         garbageCollect();
     }
     if(p->nfree == 0)
-        newBlock(p, naGC_size(p)/8);
+        newBlock(p, poolsize(p)/8);
     n = p->nfree < n ? p->nfree : n;
     *nout = n;
     p->nfree -= n;
     globals->allocCount -= n;
     result = (struct naObj**)(p->free + p->nfree);
+    naUnlock(globals->threads->bigLock);
     return result;
 }
 
 // Sets the reference bit on the object, and recursively on all
 // objects reachable from it.  Uses the processor stack for recursion...
-void naGC_mark(naRef r)
+static void mark(naRef r)
 {
     int i;
 
@@ -176,7 +185,7 @@ void naGC_mark(naRef r)
     case T_VEC:
         if(r.ref.ptr.vec->rec)
             for(i=0; i<r.ref.ptr.vec->rec->size; i++)
-                naGC_mark(r.ref.ptr.vec->rec->array[i]);
+                mark(r.ref.ptr.vec->rec->array[i]);
         break;
     case T_HASH:
         if(r.ref.ptr.hash->table == 0)
@@ -184,35 +193,33 @@ void naGC_mark(naRef r)
         for(i=0; i < (1<<r.ref.ptr.hash->lgalloced); i++) {
             struct HashNode* hn = r.ref.ptr.hash->table[i];
             while(hn) {
-                naGC_mark(hn->key);
-                naGC_mark(hn->val);
+                mark(hn->key);
+                mark(hn->val);
                 hn = hn->next;
             }
         }
         break;
     case T_CODE:
-        naGC_mark(r.ref.ptr.code->srcFile);
+        mark(r.ref.ptr.code->srcFile);
         for(i=0; i<r.ref.ptr.code->nConstants; i++)
-            naGC_mark(r.ref.ptr.code->constants[i]);
+            mark(r.ref.ptr.code->constants[i]);
         break;
     case T_FUNC:
-        naGC_mark(r.ref.ptr.func->code);
-        naGC_mark(r.ref.ptr.func->namespace);
-        naGC_mark(r.ref.ptr.func->next);
+        mark(r.ref.ptr.func->code);
+        mark(r.ref.ptr.func->namespace);
+        mark(r.ref.ptr.func->next);
         break;
     }
 }
 
 // Collects all the unreachable objects into a free list, and
 // allocates more space if needed.
-void naGC_reap(struct naPool* p)
+static void reap(struct naPool* p)
 {
-    int i, elem, freesz, total = 0;
+    int i, elem, freesz, total = poolsize(p);
     p->nfree = 0;
-    for(i=0; i<p->nblocks; i++)
-        total += (p->blocks+i)->size;
     freesz = total < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : total;
-    freesz = 3 * freesz / 2;
+    freesz = (3 * freesz / 2) + (globals->threads->nThreads * OBJ_CACHE_SZ);
     if(p->freesz < freesz) {
         naFree(p->free0);
         p->freesz = freesz;

@@ -9,6 +9,11 @@
 #define MAX_RECURSION 128
 #define MAX_MARK_DEPTH 16
 
+// Number of objects (per pool per thread) asked for using naGC_get().
+// Testing with fib.nas shows that this gives the best performance,
+// without too much per-thread overhead.
+#define OBJ_CACHE_SZ 128
+
 enum {    
     OP_AND, OP_OR, OP_NOT, OP_MUL, OP_PLUS, OP_MINUS, OP_DIV, OP_NEG,
     OP_CAT, OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ, OP_EACH,
