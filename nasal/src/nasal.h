@@ -74,7 +74,7 @@ typedef union {
 typedef struct Context* naContext;
     
 // The function signature for an extension function:
-typedef naRef (*naCFunction)(naContext ctx, naRef me, naRef args);
+typedef naRef (*naCFunction)(naContext ctx, naRef me, int argc, naRef* args);
 
 // All Nasal code runs under the watch of a naContext:
 naContext naNewContext();

@@ -10,59 +10,56 @@
 #include "nasal.h"
 #include "code.h"
 
-static naRef size(naContext c, naRef me, naRef args)
+static naRef size(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef r;
-    if(naVec_size(args) == 0) return naNil();
-    r = naVec_get(args, 0);
-    if(naIsString(r)) return naNum(naStr_len(r));
-    if(naIsVector(r)) return naNum(naVec_size(r));
-    if(naIsHash(r)) return naNum(naHash_size(r));
+    if(argc == 0) return naNil();
+    if(naIsString(args[0])) return naNum(naStr_len(args[0]));
+    if(naIsVector(args[0])) return naNum(naVec_size(args[0]));
+    if(naIsHash(args[0])) return naNum(naHash_size(args[0]));
     return naNil();
 }
 
-static naRef keys(naContext c, naRef me, naRef args)
+static naRef keys(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef v, h = naVec_get(args, 0);
+    naRef v, h = args[0];
     if(!naIsHash(h)) return naNil();
     v = naNewVector(c);
     naHash_keys(v, h);
     return v;
 }
 
-static naRef append(naContext c, naRef me, naRef args)
+static naRef append(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef v = naVec_get(args, 0);
-    naRef e = naVec_get(args, 1);
-    if(!naIsVector(v)) return naNil();
-    naVec_append(v, e);
-    return v;
+    if(argc < 2) return naNil();
+    if(!naIsVector(args[0])) return naNil();
+    naVec_append(args[0], args[1]);
+    return args[0];
 }
 
-static naRef pop(naContext c, naRef me, naRef args)
+static naRef pop(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef v = naVec_get(args, 0);
-    if(!naIsVector(v)) return naNil();
-    return naVec_removelast(v);
+    if(argc < 1 || !naIsVector(args[0])) return naNil();
+    return naVec_removelast(args[0]);
 }
 
-static naRef setsize(naContext c, naRef me, naRef args)
+static naRef setsize(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef v = naVec_get(args, 0);
-    int sz = (int)naNumValue(naVec_get(args, 1)).num;
-    if(!naIsVector(v)) return naNil();
-    naVec_setsize(v, sz);
-    return v;
+    if(argc < 2) return naNil();
+    int sz = (int)naNumValue(args[1]).num;
+    if(!naIsVector(args[0])) return naNil();
+    naVec_setsize(args[0], sz);
+    return args[0];
 }
 
-static naRef subvec(naContext c, naRef me, naRef args)
+static naRef subvec(naContext c, naRef me, int argc, naRef* args)
 {
     int i;
-    naRef nlen, result, v = naVec_get(args, 0);
-    int len = 0, start = (int)naNumValue(naVec_get(args, 1)).num;
-    nlen = naNumValue(naVec_get(args, 2));
+    naRef nlen, result, v = args[0];
+    int len = 0, start = (int)naNumValue(args[1]).num;
+    if(argc < 2) return naNil();
+    nlen = argc > 2 ? naNumValue(args[2]) : naNil();
     if(!naIsNil(nlen))
-        len = (int)naNumValue(naVec_get(args, 2)).num;
+        len = (int)nlen.num;
     if(!naIsVector(v) || start < 0 || start >= naVec_size(v) || len < 0)
         return naNil();
     if(len == 0 || len > naVec_size(v) - start) len = naVec_size(v) - start;
@@ -73,40 +70,38 @@ static naRef subvec(naContext c, naRef me, naRef args)
     return result;
 }
 
-static naRef delete(naContext c, naRef me, naRef args)
+static naRef delete(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef h = naVec_get(args, 0);
-    naRef k = naVec_get(args, 1);
-    if(naIsHash(h)) naHash_delete(h, k);
+    if(argc > 1 && naIsHash(args[0])) naHash_delete(args[0], args[1]);
     return naNil();
 }
 
-static naRef intf(naContext c, naRef me, naRef args)
+static naRef intf(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef n = naNumValue(naVec_get(args, 0));
-    if(naIsNil(n)) return n;
-    if(n.num < 0) n.num = -floor(-n.num);
-    else n.num = floor(n.num);
-    return n;
+    if(argc > 0) {
+        naRef n = naNumValue(args[0]);
+        if(naIsNil(n)) return n;
+        if(n.num < 0) n.num = -floor(-n.num);
+        else n.num = floor(n.num);
+        return n;
+    } else return naNil();
 }
 
-static naRef num(naContext c, naRef me, naRef args)
+static naRef num(naContext c, naRef me, int argc, naRef* args)
 {
-    return naNumValue(naVec_get(args, 0));
+    return argc > 0 ? naNumValue(args[0]) : naNil();
 }
 
-static naRef streq(naContext c, naRef me, naRef args)
+static naRef streq(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef a = naVec_get(args, 0);
-    naRef b = naVec_get(args, 1);
-    return naNum(naStrEqual(a, b));
+    return argc > 1 ? naNum(naStrEqual(args[0], args[1])) : naNil();
 }
 
-static naRef substr(naContext c, naRef me, naRef args)
+static naRef substr(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef src = naVec_get(args, 0);
-    naRef startR = naVec_get(args, 1);
-    naRef lenR = naVec_get(args, 2);
+    naRef src = argc > 1 ? args[0] : naNil();
+    naRef startR = argc > 1 ? args[1] : naNil();
+    naRef lenR = argc > 2 ? args[2] : naNil();
     int start, len;
     if(!naIsString(src)) return naNil();
     startR = naNumValue(startR);
@@ -122,18 +117,18 @@ static naRef substr(naContext c, naRef me, naRef args)
     return naStr_substr(naNewString(c), src, start, len);
 }
 
-static naRef contains(naContext c, naRef me, naRef args)
+static naRef contains(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef hash = naVec_get(args, 0);
-    naRef key = naVec_get(args, 1);
+    naRef hash = argc > 0 ? args[0] : naNil();
+    naRef key = argc > 1 ? args[1] : naNil();
     if(naIsNil(hash) || naIsNil(key)) return naNil();
     if(!naIsHash(hash)) return naNil();
     return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
 }
 
-static naRef typeOf(naContext c, naRef me, naRef args)
+static naRef typeOf(naContext c, naRef me, int argc, naRef* args)
 {
-    naRef r = naVec_get(args, 0);
+    naRef r = argc > 0 ? args[0] : naNil();
     char* t = "unknown";
     if(naIsNil(r)) t = "nil";
     else if(naIsNum(r)) t = "scalar";
@@ -146,11 +141,11 @@ static naRef typeOf(naContext c, naRef me, naRef args)
     return r;
 }
 
-static naRef f_compile(naContext c, naRef me, naRef args)
+static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
 {
     int errLine;
     naRef script, code, fname;
-    script = naVec_get(args, 0);
+    script = argc > 0 ? args[0] : naNil();
     if(!naIsString(script)) return naNil();
     fname = naStr_fromdata(naNewString(c), "<compile>", 4);
     code = naParseCode(c, fname, 1,
@@ -161,23 +156,23 @@ static naRef f_compile(naContext c, naRef me, naRef args)
 
 // Funcation metacall API.  Allows user code to generate an arg vector
 // at runtime and/or call function references on arbitrary objects.
-static naRef f_call(naContext c, naRef me, naRef args)
+static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;
     naRef func, callargs, callme, result;
-    func = naVec_get(args, 0);
-    callargs = naVec_get(args, 1);
-    callme = naVec_get(args, 2); // Might be nil, that's OK
+    func = argc > 0 ? args[0] : naNil();
+    callargs = argc > 1 ? args[1] : naNil();
+    callme = argc > 2 ? args[2] : naNil(); // Might be nil, that's OK
     if(!naIsFunc(func)) return naNil();
     if(naIsNil(callargs)) callargs = naNewVector(c);
     else if(!naIsVector(callargs)) return naNil();
     if(!naIsHash(callme)) callme = naNil();
     subc = naNewContext();
     result = naCall(subc, func, callargs, callme, naNil());
-    if(naVec_size(args) > 2 &&
+    if(argc > 2 &&
        naGetError(subc) && (strcmp(naGetError(subc), "__die__") == 0))
     {
-        naRef ex = naVec_get(args, naVec_size(args) - 1);
+        naRef ex = args[argc - 1];
         if(naIsVector(ex)) {
             naVec_append(ex, subc->dieArg);
             // FIXME: append stack trace
@@ -187,9 +182,9 @@ static naRef f_call(naContext c, naRef me, naRef args)
     return result;
 }
 
-static naRef f_die(naContext c, naRef me, naRef args)
+static naRef f_die(naContext c, naRef me, int argc, naRef* args)
 {
-    c->dieArg = naVec_get(args, 0);
+    c->dieArg = argc > 0 ? args[0] : naNil();
     naRuntimeError(c, "__die__");
     return naNil(); // never executes
 }
@@ -251,14 +246,14 @@ static char* nextFormat(naContext ctx, char* f, char** out, int* len, char* type
 #define NEWSTR(s, l) naStr_fromdata(naNewString(ctx), s, l)
 #define ERR(m) naRuntimeError(ctx, m)
 #define APPEND(r) result = naStr_concat(naNewString(ctx), result, r)
-static naRef f_sprintf(naContext ctx, naRef me, naRef args)
+static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
 {
     char t, nultmp, *fstr, *next, *fout=0, *s;
     int flen, argn=1;
     naRef format, arg, result = naNewString(ctx);
 
-    if(naVec_size(args) < 1) ERR("not enough arguments to sprintf");
-    format = naStringValue(ctx, naVec_get(args, 0));
+    if(argc < 1) ERR("not enough arguments to sprintf");
+    format = naStringValue(ctx, argc > 0 ? args[0] : naNil());
     if(naIsNil(format)) ERR("bad format string in sprintf");
     s = naStr_data(format);
                                
@@ -269,8 +264,8 @@ static naRef f_sprintf(naContext ctx, naRef me, naRef args)
             s = next;
             continue;
         }
-        if(argn >= naVec_size(args)) ERR("not enough arguments to sprintf");
-        arg = naVec_get(args, argn++);
+        if(argn >= argc) ERR("not enough arguments to sprintf");
+        arg = args[argn++];
         nultmp = fstr[flen]; // sneaky nul termination...
         fstr[flen] = 0;
         if(t == 's') {

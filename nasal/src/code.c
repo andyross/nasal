@@ -184,12 +184,6 @@ void naGarbageCollect()
     ctx->opStack[ctx->opTop++] = r; \
     } while(0)
 
-static naRef nativeCall(struct Context* ctx, naRef ccode, naRef args, naRef obj)
-{
-    naCFunction fptr = IS_CCODE(ccode) ? ccode.ref.ptr.ccode->fptr : 0;
-    return (*fptr)(ctx, obj, args);
-}
-
 struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
 {
     int i;
@@ -206,13 +200,9 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one (unless it's a tail call!).
     if(IS_CCODE(func.ref.ptr.func->code)) {
-        args = naNewVector(ctx);
-        naVec_setsize(args, nargs);
-        for(i=0; i<nargs; i++)
-            args.ref.ptr.vec->array[i] = ctx->opStack[ctx->opTop - nargs + i];
-
         naRef obj = mcall ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
-        naRef result = nativeCall(ctx, func.ref.ptr.func->code, args, obj);
+        naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
+        naRef result = (*fp)(ctx, obj, nargs, &ctx->opStack[ctx->opTop-nargs]);
         ctx->opTop -= nargs + 1 + mcall;
         PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);

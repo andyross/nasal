@@ -8,12 +8,11 @@
 #include "nasal.h"
 
 // A Nasal extension function (prints its argument list to stdout)
-static naRef print(naContext c, naRef me, naRef args)
+static naRef print(naContext c, naRef me, int argc, naRef* args)
 {
-    int i, n;
-    n = naVec_size(args);
-    for(i=0; i<n; i++) {
-        naRef s = naStringValue(c, naVec_get(args, i));
+    int i;
+    for(i=0; i<argc; i++) {
+        naRef s = naStringValue(c, args[i]);
         if(naIsNil(s)) continue;
         fwrite(naStr_data(s), 1, naStr_len(s), stdout);
     }
