@@ -2,9 +2,6 @@
 #include <stdlib.h> // DEBUG
 
 #include "parse.h"
-////////////////////////////////////////////////////////////////////////
-// End of Parser Stuff, Lexer Below ////////////////////////////////////
-////////////////////////////////////////////////////////////////////////
 
 // Static table of recognized lexemes in the language
 struct Lexeme {
@@ -105,6 +102,48 @@ static int lineEnd(struct Parser* p, int line)
     return p->lines[line-1];
 }
 
+char* tokStrDEBUG(int tok)
+{
+    switch(tok) {
+    case TOK_NOT: return "TOK_NOT";
+    case TOK_LPAR: return "TOK_LPAR";
+    case TOK_RPAR: return "TOK_RPAR";
+    case TOK_LBRA: return "TOK_LBRA";
+    case TOK_RBRA: return "TOK_RBRA";
+    case TOK_LCURL: return "TOK_LCURL";
+    case TOK_RCURL: return "TOK_RCURL";
+    case TOK_MUL: return "TOK_MUL";
+    case TOK_PLUS: return "TOK_PLUS";
+    case TOK_MINUS: return "TOK_MINUS";
+    case TOK_DIV: return "TOK_DIV";
+    case TOK_CAT: return "TOK_CAT";
+    case TOK_COLON: return "TOK_COLON";
+    case TOK_DOT: return "TOK_DOT";
+    case TOK_COMMA: return "TOK_COMMA";
+    case TOK_SEMI: return "TOK_SEMI";
+    case TOK_ASSIGN: return "TOK_ASSIGN";
+    case TOK_LT: return "TOK_LT";
+    case TOK_LTE: return "TOK_LTE";
+    case TOK_EQ: return "TOK_EQ";
+    case TOK_NEQ: return "TOK_NEQ";
+    case TOK_GT: return "TOK_GT";
+    case TOK_GTE: return "TOK_GTE";
+    case TOK_IF: return "TOK_IF";
+    case TOK_ELSIF: return "TOK_ELSIF";
+    case TOK_ELSE: return "TOK_ELSE";
+    case TOK_FOR: return "TOK_FOR";
+    case TOK_FOREACH: return "TOK_FOREACH";
+    case TOK_WHILE: return "TOK_WHILE";
+    case TOK_RETURN: return "TOK_RETURN";
+    case TOK_BREAK: return "TOK_BREAK";
+    case TOK_CONTINUE: return "TOK_CONTINUE";
+    case TOK_FUNC: return "TOK_FUNC";
+    case TOK_SYMBOL: return "TOK_SYMBOL";
+    case TOK_LITERAL: return "TOK_LITERAL";
+    }
+    return 0;
+}
+
 // Forward reference to permit recursion with newToken
 static void collectSymbol(struct Parser* p, int onePastEnd);
 
@@ -129,6 +168,19 @@ static void newToken(struct Parser* p, int pos, int type,
     
     if(p->tail) p->tail->next = tok;
     p->tail = tok;
+
+    // DEBUG
+    {
+        int i;
+        printf("line %d %s ", getLine(p, pos), tokStrDEBUG(type));
+        if(str) {
+            printf("\"");
+            for(i=0; i<slen; i++) printf("%c", str[i]);
+            printf("\" ");
+        }
+        printf("(%f)\n", num);
+    }
+    
 }
 
 // Emits a symbol that has been accumulating in the lexer
@@ -264,7 +316,8 @@ static int matchLexeme(char* buf, int len, char* l)
 // elegant to sort and binary search the lexeme list, but that's a lot
 // more code and this really isn't very slow in practice; it checks
 // every byte of every lexeme for each input byte.  There are less
-// than 100 bytes of lexemes in the grammar.
+// than 100 bytes of lexemes in the grammar.  Returns the number of
+// bytes in the lexeme read (or zero if none was recognized)
 static int tryLexemes(struct Parser* p, int index)
 {
     int i, n, best, bestIndex=-1;
@@ -282,7 +335,7 @@ static int tryLexemes(struct Parser* p, int index)
     }
     if(best > 0)
         newToken(p, index, LEXEMES[bestIndex].tok, 0, 0, 0);
-    return index + best;
+    return best;
 }
 
 void naLex(struct Parser* p)
@@ -307,6 +360,11 @@ void naLex(struct Parser* p)
             break;
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
+            if(p->symbolStart >= 0) {
+                // Ignore numbers when parsing a symbol
+                handled = 0;
+                break;
+            }
             i = lexNumLiteral(p, i);
             break;
         default:
@@ -317,12 +375,14 @@ void naLex(struct Parser* p)
             collectSymbol(p, i);
 
         if(!handled) {
-            int oldi = i;
-            i = tryLexemes(p, i);
+            int lexlen = tryLexemes(p, i);
 
             // Got nothing?  Then it's a symbol char.  Is it the first?
-            if(i == oldi && p->symbolStart < 0)
+            if(lexlen == 0 && p->symbolStart < 0)
                 p->symbolStart = i;
+
+            if(lexlen > 1)
+                i += lexlen - 1;
         }
     }
 }
