@@ -159,25 +159,18 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
 static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;
-    naRef func, callargs, callme, result;
-    func = argc > 0 ? args[0] : naNil();
+    naRef callargs, callme, result;
     callargs = argc > 1 ? args[1] : naNil();
     callme = argc > 2 ? args[2] : naNil(); // Might be nil, that's OK
-    if(!naIsFunc(func)) return naNil();
+    if(!naIsFunc(args[0])) naRuntimeError(c, "call() on non-function");
     if(naIsNil(callargs)) callargs = naNewVector(c);
-    else if(!naIsVector(callargs)) return naNil();
+    else if(!naIsVector(callargs)) naRuntimeError(c, "call() args not vector");
     if(!naIsHash(callme)) callme = naNil();
     subc = naNewContext();
-    result = naCall(subc, func, callargs, callme, naNil());
-    if(argc > 2 &&
-       naGetError(subc) && (strcmp(naGetError(subc), "__die__") == 0))
-    {
-        naRef ex = args[argc - 1];
-        if(naIsVector(ex)) {
-            naVec_append(ex, subc->dieArg);
-            // FIXME: append stack trace
-        }
-    }
+    result = naCall(subc, args[0], callargs, callme, naNil());
+    if(argc > 2 && !IS_NIL(subc->dieArg))
+        if(naIsVector(args[argc-1]))
+            naVec_append(args[argc-1], subc->dieArg);
     naFreeContext(subc);
     return result;
 }
