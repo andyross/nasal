@@ -1,0 +1,16 @@
+body { width:750px }
+
+h1, h2, h3, h4 { padding:2px; font-family:helvetica,arial,sans-serif }
+h1 { text-align:center }
+h1, h2 { background-color:#555588 }
+h1, h2, h3 { color:white; padding-left:10px }
+h3 { background-color:#8888ac }
+h4 { border-bottom:1px solid #000033; color:#000033 }
+
+pre { background-color:#dddddd; margin-left:20px; margin-right:100px; padding:6px }
+pre, code { color:#000033; }
+
+dt { font-weight:bold; color:#000033 }
+
+a { color:#5555aa }
+a:hover { color:#0000033; background-color:#eeeeff; text-decoration:none }

@@ -1,0 +1,26 @@
+Nasal 0.9, 2003 Dec 03
+----------------------
+
+Bug Fixes:
+
+Parser precedence bug with unary negation expressions like "5 * -1".
+Properly handle "optimized" assignment of function argument vectors
+  for nested cases like "a(b(), c())".
+Fixed boundary checking in naVec_get().
+GC bug on interpreter entry: the arguments to naCall() could be
+  collected before being placed on the Nasal stack.
+Lexer fixes to properly support "\x" escaping in double quoted strings.
+Lexer fixes to properly support "_" in symbol names.
+
+New Features:
+
+Stack trace support added to the C error handling API.
+Added a math library.
+Added a delete() function.
+Lexical function binding can happen from user code via naBindFunction().
+New naSave() API for explicitly caching references to preserve
+  them across garbage collection.
+Vim syntax highlighting file contributed by Melchior FRANZ.
+A new "ghost" opaque handle type, which wraps a C pointer and provides
+  for a callback upon garbage collection.
+
