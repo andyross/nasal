@@ -50,6 +50,7 @@ dist = func {
     dy = y2-y1;
     return sqrt(dx*dx + dy*dy);
 };
+dist(0,0,1,1); # == sqrt(2)
 
 #
 # Nasl has no "statements", which means that any expression can appear
@@ -57,12 +58,7 @@ dist = func {
 # what the ?: does in C.  The last semicolon in a code block is
 # optional, to make this prettier.
 #
-abs = func { if(a<0) { -arg[0] } else { arg[0] } };
-
-#
-# Nasl's binary boolean operators are "and" and "or", unlike C.
-# unary not is still "!" however.
-#
+abs = func { if(arg[0] < 0) { -arg[0] } else { arg[0] } };
 
 #
 # Nasl supports a "nil" value for use as a null pointer equivalent.
@@ -71,15 +67,29 @@ abs = func { if(a<0) { -arg[0] } else { arg[0] } };
 listNode = { data : ["what", "ever"], next : nil };
 
 #
-# Looping constructs are mostly C-like.  The differences are foreach,
-# which takes a local variable name as its first argument and a vector
-# as its second.
+# Nasl's binary boolean operators are "and" and "or", unlike C.
+# unary not is still "!" however.  They short-circuit like you expect
 #
+toggle = 0;
+a = nil;
+if(a and a.field == 42) {
+    toggle = !toggle; # doesn't crash when a is nil
+}
+
+#
+# Looping constructs are mostly C-like.  The differences are that
+# there is no do{}while(); construct, and there is a foreach, which
+# takes a local variable name as its first argument and a vector as
+# its second.
+#
+stillGoing = 0;
 while(stillGoing) { doSomething(); };
-for(i=0; i < length(list); i = i+1) {
-    elem = list[i];
+
+for(i=0; i < 3; i = i+1) {
+    elem = list1[i];
     doSomething(elem);
 };
+
 foreach(elem; list) { doSomething(elem) };  # Shorthand for above
 
 #

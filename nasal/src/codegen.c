@@ -6,7 +6,7 @@
 // These are more sensical predicate names in most contexts in this file
 #define LEFT(tok)   ((tok)->children)
 #define RIGHT(tok)  ((tok)->lastChild)
-#define BINARY(tok) (LEFT(tok) != RIGHT(tok))
+#define BINARY(tok) (LEFT(tok) && RIGHT(tok) && LEFT(tok) != RIGHT(tok))
 
 // Forward references for recursion
 static void genExpr(struct Parser* p, struct Token* t);
@@ -383,7 +383,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         emit(p, OP_RETURN);
         break;
     case TOK_NOT:
-        genExpr(p, LEFT(t));
+        genExpr(p, RIGHT(t));
         emit(p, OP_NOT);
         break;
     case TOK_SYMBOL:

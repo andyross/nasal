@@ -25,7 +25,7 @@ naRef naNew(struct Context* c, int type)
     if((o = naGC_get(&(c->pools[type]))) == 0)
         naGarbageCollect();
     if((o = naGC_get(&(c->pools[type]))) == 0)
-        ERR("Out of memory");
+        ERR("out of memory");
     return naObj(type, o);
 }
 
