@@ -87,6 +87,7 @@ naRef naMathLib(naContext c)
     naHash_set(namespace, name, naNum(M_PI));
 
     name = naStr_fromdata(naNewString(c), "e", 1);
+    name = naInternSymbol(name);
     naHash_set(namespace, name, naNum(M_E));
 
     return namespace;

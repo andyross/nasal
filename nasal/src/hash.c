@@ -5,6 +5,8 @@
                       && (a).ref.ptr.obj == (b).ref.ptr.obj) \
                      || naEqual(a, b))
 
+#define HASH_MAGIC 2654435769u
+
 static void realloc(naRef hash)
 {
     struct naHash* h = hash.ref.ptr.hash;
@@ -70,7 +72,28 @@ static unsigned int hashcolumn(struct naHash* h, naRef key)
 {
     // Multiply by a big number, and take the top N bits.  Note
     // assumption that sizeof(unsigned int) == 4.
-    return (2654435769u * hashcode(key)) >> (32 - h->lgalloced);
+    return (HASH_MAGIC * hashcode(key)) >> (32 - h->lgalloced);
+}
+
+// Special, optimized version of naHash_get for the express purpose of
+// looking up symbols in the local variables hash (OP_LOCAL is by far
+// the most common opcode and deserves some special case
+// optimization).  Elides all the typing checks that are normally
+// required, presumes that the key is a string and has had its
+// hashcode precomputed, checks only for object identity, and inlines
+// the column computation.
+int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out)
+{
+    int col = (HASH_MAGIC * sym->hashcode) >> (32 - h->lgalloced);
+    struct HashNode* hn = h->table[col];
+    while(hn) {
+        if(hn->key.ref.ptr.str == sym) {
+            *out = hn->val;
+            return 1;
+        }
+        hn = hn->next;
+    }
+    return 0;
 }
 
 static struct HashNode* find(struct naHash* h, naRef key)

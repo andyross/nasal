@@ -66,7 +66,7 @@ static int internConstant(struct Parser* p, naRef c)
     return newConstant(p, c);
 }
 
-static naRef internSymbol(naRef sym)
+naRef naInternSymbol(naRef sym)
 {
     naRef result;
     if(naHash_get(globals->symbols, sym, &result))
@@ -81,7 +81,7 @@ static int findConstantIndex(struct Parser* p, struct Token* t)
     if(t->str) {
         c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
         if(t->type == TOK_SYMBOL)
-            c = internSymbol(c);
+            c = naInternSymbol(c);
     } else {
         c = naNum(t->num);
     }

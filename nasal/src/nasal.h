@@ -161,6 +161,7 @@ char* naStr_data(naRef s);
 naRef naStr_fromdata(naRef dst, char* data, int len);
 naRef naStr_concat(naRef dest, naRef s1, naRef s2);
 naRef naStr_substr(naRef dest, naRef str, int start, int len);
+naRef naInternSymbol(naRef sym);
 
 // Vector utilities:
 int naVec_size(naRef v);

@@ -125,9 +125,9 @@ static void initGlobals()
     struct Context* c = naNewContext();
 
     // Cache pre-calculated "me", "arg" and "parents" scalars
-    globals->meRef = naStr_fromdata(naNewString(c), "me", 2);
-    globals->argRef = naStr_fromdata(naNewString(c), "arg", 3);
-    globals->parentsRef = naStr_fromdata(naNewString(c), "parents", 7);
+    globals->meRef = naInternSymbol(naStr_fromdata(naNewString(c), "me", 2));
+    globals->argRef = naInternSymbol(naStr_fromdata(naNewString(c), "arg", 3));
+    globals->parentsRef = naInternSymbol(naStr_fromdata(naNewString(c), "parents", 7));
 
     globals->symbols = naNewHash(c);
 }
@@ -364,6 +364,7 @@ static void evalEach(struct Context* ctx)
 #define POP() ctx->opStack[--ctx->opTop]
 #define TOP() ctx->opStack[ctx->opTop-1]
 #define CONSTARG() cd->constants[ARG16(cd->byteCode, f)]
+#define STK(n) (ctx->opStack[ctx->opTop-(n)])
 static naRef run(struct Context* ctx)
 {
     struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
@@ -408,7 +409,6 @@ static naRef run(struct Context* ctx)
             break;
         case OP_CAT:
             // stringify can call the GC, so don't take stuff of the stack!
-            if(ctx->opTop <= 1) ERR(ctx, "BUG: stack underflow");
             a = stringify(ctx, ctx->opStack[ctx->opTop-1]);
             b = stringify(ctx, ctx->opStack[ctx->opTop-2]);
             c = naStr_concat(naNewString(ctx), b, a);
@@ -452,8 +452,11 @@ static naRef run(struct Context* ctx)
             naHash_set(a, b, c);
             break;
         case OP_LOCAL:
-            a = getLocal(ctx, f, CONSTARG());
-            PUSH(ctx, a);
+            a = CONSTARG();
+            if(naHash_sym(f->locals.ref.ptr.hash, a.ref.ptr.str, &STK(0)))
+                ctx->opTop++;
+            else
+                PUSH(ctx, getLocal(ctx, f, a));
             break;
         case OP_SETLOCAL:
             a = POP(); b = POP();
