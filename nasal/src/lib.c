@@ -150,9 +150,46 @@ static naRef typeOf(naContext c, naRef me, naRef args)
     return r;
 }
 
-static naRef f_exec(naContext c, naRef me, naRef args)
+// Does a call into a "sub" context.  Throws an error if the subcall
+// does.  Note that there is no outer API for unwinding the stack, so
+// the caller will only see the stack down to the enclosing call() or
+// eval().  That's not a good thing, how to handle this?
+static naRef subcall(naContext c, naRef func, naRef args, naRef me)
 {
-    return naNil();
+    naContext subc = naNewContext();
+    naRef result = naCall(subc, func, args, me, naNil());
+    naFreeContext(subc); // Doesn't free memory, so the next line is OK:
+    if(naGetError(subc)) naRuntimeError(c, naGetError(subc));
+    return result;
+}
+
+static naRef f_eval(naContext c, naRef me, naRef args)
+{
+    int errLine;
+    naRef script, code, fname;
+    script = naVec_get(args, 0);
+    if(!naIsString(script)) return naNil();
+    fname = naStr_fromdata(naNewString(c), "eval", 4);
+    code = naParseCode(c, fname, 1,
+                       naStr_data(script), naStr_len(script), &errLine);
+    if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
+    code = naBindToContext(c, code);
+    return subcall(c, code, naNil(), naNil());
+}
+
+// Funcation metacall API.  Allows user code to generate an arg vector
+// at runtime and/or call function references on arbitrary objects.
+static naRef f_call(naContext c, naRef me, naRef args)
+{
+    naRef func, callargs, callme;
+    func = naVec_get(args, 0);
+    callargs = naVec_get(args, 1);
+    callme = naVec_get(args, 2); // Might be nil, that's OK
+    if(!naIsFunc(func)) return naNil();
+    if(naIsNil(callargs)) callargs = naNewVector(c);
+    else if(!naIsVector(callargs)) return naNil();
+    if(!naIsNil(callme) && !naIsHash(callme)) return naNil();
+    return subcall(c, func, callargs, callme);
 }
 
 struct func { char* name; naCFunction func; };
@@ -170,7 +207,8 @@ static struct func funcs[] = {
     { "substr", substr },
     { "contains", contains },
     { "typeof", typeOf },
-    { "exec", f_exec },
+    { "eval", f_eval },
+    { "call", f_call },
 };
 
 naRef naStdLib(naContext c)

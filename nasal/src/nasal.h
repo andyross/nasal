@@ -79,7 +79,7 @@ typedef naRef (*naCFunction)(naContext ctx, naRef me, naRef args);
 
 // All Nasal code runs under the watch of a naContext:
 naContext naNewContext();
-    void naFreeContext(naContext c);
+void naFreeContext(naContext c);
 
 // Save this object in the context, preventing it (and objects
 // referenced by it) from being garbage collected.
@@ -95,6 +95,10 @@ naRef naParseCode(naContext c, naRef srcFile, int firstLine,
 // closures, and allow for extracting the closure and namespace
 // information from function objects.
 naRef naBindFunction(naContext ctx, naRef code, naRef closure);
+
+// Similar, but it binds to the current context's closure (i.e. the
+// namespace at the top of the current call stack).
+naRef naBindToContext(naContext ctx, naRef code);
 
 // Call a code or function object with the specifed arguments "on" the
 // specified object and using the specified hash for the local

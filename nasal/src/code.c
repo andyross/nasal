@@ -178,13 +178,19 @@ void naGarbageCollect()
         naGC_reap(&(globals->pools[i]));
 }
 
-void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args)
+void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args, naRef locals)
 {
     if(!IS_FUNC(func) ||
        !(IS_CCODE(func.ref.ptr.func->code) ||
          IS_CODE(func.ref.ptr.func->code)))
     {
         ERR(ctx, "function/method call invoked on uncallable object");
+    }
+
+    // Don't bother with arguments if it's a C function
+    if(!IS_CCODE(func)) {
+        if(IS_NIL(locals)) locals = naNewHash(ctx);
+        naHash_set(locals, ctx->globals->argRef, args);
     }
 
     struct Frame* f;
@@ -194,16 +200,10 @@ void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args)
     f->ip = 0;
     f->bp = ctx->opTop;
     f->line = 0;
+    f->args = args;
+    f->locals = locals;
 
     DBG(printf("Entering frame %d\n", ctx->fTop-1);)
-
-    f->args = args;
-    if(IS_CCODE(func.ref.ptr.func->code)) {
-        f->locals = naNil();
-    } else if(IS_CODE(func.ref.ptr.func->code)) {
-        f->locals = naNewHash(ctx);
-        naHash_set(f->locals, ctx->globals->argRef, args);
-    }
 }
 
 static naRef evalAndOr(struct Context* ctx, int op, naRef ra, naRef rb)
@@ -483,12 +483,12 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
-        setupFuncall(ctx, naNil(), a, b);
+        setupFuncall(ctx, naNil(), a, b, naNil());
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
         naVec_append(ctx->globals->temps, a);
-        setupFuncall(ctx, a, b, c);
+        setupFuncall(ctx, a, b, c, naNil());
         naHash_set(ctx->fStack[ctx->fTop-1].locals, ctx->globals->meRef, a);
         break;
     case OP_RETURN:
@@ -587,6 +587,17 @@ naRef naBindFunction(naContext ctx, naRef code, naRef closure)
     return func;
 }
 
+naRef naBindToContext(naContext ctx, naRef code)
+{
+    naRef func = naNewFunc(ctx, code);
+    // Note fTop - 2: not the top frame, because that is our current
+    // (CCODE) call context.
+    struct Frame* f = &ctx->fStack[ctx->fTop-2];
+    naRef cls = naNewClosure(ctx, f->locals, f->func.ref.ptr.func->closure);
+    func.ref.ptr.func->closure = cls;
+    return func;
+}
+
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
 {
     // We might have to allocate objects, which can call the GC.  But
@@ -599,8 +610,6 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
 
     if(IS_NIL(args))
         args = naNewVector(ctx);
-    if(IS_NIL(locals))
-        locals = naNewHash(ctx);
     if(!IS_FUNC(func)) {
         // Generate a noop closure for bare code objects
         naRef code = func;
@@ -611,9 +620,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         naHash_set(locals, ctx->globals->meRef, obj);
 
     ctx->fTop = ctx->opTop = ctx->markTop = 0;
-    setupFuncall(ctx, obj, func, args);
-    ctx->fStack[ctx->fTop-1].locals = locals;
-
+    setupFuncall(ctx, obj, func, args, locals);
 
     return run(ctx);
 }
