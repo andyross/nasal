@@ -156,34 +156,6 @@ void naFreeContext(struct Context* c)
     globals->freeContexts = c;
 }
 
-void naGarbageCollect()
-{
-    int i;
-    struct Context* c = globals->allContexts;
-
-    while(c) {
-        for(i=0; i < c->fTop; i++) {
-            naGC_mark(c->fStack[i].func);
-            naGC_mark(c->fStack[i].locals);
-        }
-        for(i=0; i < c->opTop; i++)
-            naGC_mark(c->opStack[i]);
-        naGC_mark(c->dieArg);
-        naGC_mark(c->temps);
-        c = c->nextAll;
-    }
-
-    naGC_mark(globals->save);
-
-    naGC_mark(globals->meRef);
-    naGC_mark(globals->argRef);
-    naGC_mark(globals->parentsRef);
-
-    // Finally collect all the freed objects
-    for(i=0; i<NUM_NASAL_TYPES; i++)
-        naGC_reap(&(globals->pools[i]));
-}
-
 #define PUSH(r) do { \
     if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow"); \
     ctx->opStack[ctx->opTop++] = r; \

@@ -123,7 +123,6 @@ void* naAlloc(int n);
 void naBZero(void* m, int n);
 
 int naTypeSize(int type);
-void naGarbageCollect();
 naRef naObj(int type, struct naObj* o);
 naRef naNew(naContext c, int type);
 naRef naNewCode(naContext c);

@@ -1,5 +1,6 @@
 #include "nasal.h"
 #include "data.h"
+#include "code.h"
 #include "thread.h"
 
 #define MIN_BLOCK_SIZE 256
@@ -19,6 +20,34 @@ struct Block {
 // collection work is constant with allocation work (i.e. that O(N)
 // work is done only every O(1/2N) allocations).
 static int GlobalAllocCount = 256;
+
+static void garbageCollect()
+{
+    int i;
+    struct Context* c = globals->allContexts;
+
+    while(c) {
+        for(i=0; i < c->fTop; i++) {
+            naGC_mark(c->fStack[i].func);
+            naGC_mark(c->fStack[i].locals);
+        }
+        for(i=0; i < c->opTop; i++)
+            naGC_mark(c->opStack[i]);
+        naGC_mark(c->dieArg);
+        naGC_mark(c->temps);
+        c = c->nextAll;
+    }
+
+    naGC_mark(globals->save);
+
+    naGC_mark(globals->meRef);
+    naGC_mark(globals->argRef);
+    naGC_mark(globals->parentsRef);
+
+    // Finally collect all the freed objects
+    for(i=0; i<NUM_NASAL_TYPES; i++)
+        naGC_reap(&(globals->pools[i]));
+}
 
 static void appendfree(struct naPool*p, struct naObj* o)
 {
@@ -138,7 +167,7 @@ struct naObj* naGC_get(struct naPool* p)
     // collection (it's incremented in naGC_reap()).
     if(--GlobalAllocCount < 0) {
         GlobalAllocCount = 0;
-        naGarbageCollect();
+        garbageCollect();
     }
 
     // If we're out, then allocate an extra 12.5%
