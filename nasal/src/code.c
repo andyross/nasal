@@ -58,6 +58,8 @@ static void initContext(struct Context* c)
     naStr_fromdata(c->meRef, "me", 2);
     c->argRef = naNewString(c);
     naStr_fromdata(c->argRef, "arg", 3);
+    c->parentsRef = naNewString(c);
+    naStr_fromdata(c->parentsRef, "parents", 7);
 }
 
 struct Context* naNewContext()
@@ -242,6 +244,23 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
     return arg;
 }
 
+// Recursively descend into the parents lists
+static int getMember(struct Context* ctx, naRef obj, naRef fld, naRef* result)
+{
+    naRef p;
+    if(!IS_HASH(obj)) ERR("non-objects have no members");
+    if(naHash_get(obj, fld, result)) {
+        return 1;
+    } else if(naHash_get(obj, ctx->parentsRef, &p)) {
+        int i;
+        if(!IS_VEC(p)) ERR("parents field not vector");
+        for(i=0; i<p.ref.ptr.vec->size; i++)
+            if(getMember(ctx, p.ref.ptr.vec->array[i], fld, result))
+                return 1;
+    }
+    return 0;
+}
+
 static void run1(struct Context* ctx)
 {
     naRef a, b, c;
@@ -335,8 +354,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_MEMBER:
         a = POP(ctx); b = POP(ctx);
-        if(!IS_HASH(b)) ERR("non-objects have no members");
-        if(naHash_get(b, a, &c) == 0)
+        if(!getMember(ctx, b, a, &c))
             ERR("no such member");
         PUSH(ctx, c);
         break;

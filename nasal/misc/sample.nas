@@ -92,7 +92,7 @@ foreach(elem; list) { doSomething(elem) };  # Shorthand for above
 Class1 = {};
 
 Class1.new = func {
-    obj = { parents : (Class1),
+    obj = { parents : [Class1],
             count : 0 };
     return obj;
 };
@@ -113,7 +113,7 @@ c.getcount(); # returns 3
 Class2 = {
     new : func {
         obj = {};
-	obj.parents = (Class2);
+	obj.parents = [Class2];
 	obj.count = 0;
         return obj;
     },

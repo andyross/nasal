@@ -34,6 +34,7 @@ struct Context {
     int done;
     naRef meRef;
     naRef argRef;
+    naRef parentsRef;
 };
 
 void naRun(struct Context* ctx, naRef code);
