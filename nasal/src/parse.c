@@ -118,9 +118,12 @@ void* naParseAlloc(struct Parser* p, int bytes)
 static void addNewChild(struct Token* p, struct Token* c)
 {
     if(c->prev) c->prev->next = c->next;
-
     if(c->next) c->next->prev = c->prev;
-
+    if(c == c->parent->children)
+        c->parent->children = c->next;
+    if(c == c->parent->lastChild)
+        c->parent->lastChild = c->prev;
+    c->parent = p;
     c->next = 0;
     c->prev = p->lastChild;
     if(p->lastChild) p->lastChild->next = c;
@@ -151,6 +154,8 @@ static void collectBrace(struct Token* start)
                 error("mismatched closing brace", t->line);
 
             // Drop this node on the floor, stitch up the list and return
+            if(start->parent->lastChild == t)
+                start->parent->lastChild = t->prev;
             start->next = t->next;
             if(t->next) t->next->prev = start;
             return;
@@ -247,22 +252,21 @@ static struct Token* emptyToken(struct Parser* p)
 {
     struct Token* t = naParseAlloc(p, sizeof(struct Token));
     t->type = TOK_EMPTY;
-    t->line = 0;
-    t->str = 0;
-    t->strlen = 0;
+    t->line = t->strlen = 0;
     t->num = 0;
-    t->next = 0;
-    t->prev = 0;
-    t->children = 0;
-    t->lastChild = 0;
+    t->str = 0;
+    t->next = t->prev = t->children = t->lastChild = 0;
+    t->parent = 0;
     return t;
 }
 
-static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
-                                     struct Token* end, int level)
+static struct Token* parsePrecedence(struct Parser* p,
+                                     struct Token* start, struct Token* end,
+                                     int level)
 {
     int rule;
     struct Token *t, *top, *left, *right;
+    struct Token *a, *b, *c, *d; // temporaries
 
     // This is an error.  No "siblings" are allowed at the bottom level.
     if(level >= PRECEDENCE_LEVELS && start != end)
@@ -277,6 +281,8 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
     // handled somewhere above.
     if(end == 0) end = start;
     if(start == 0) start = end;
+    if(start->prev) start->prev->next = 0;
+    if(end->next) end->next->prev = 0;
     start->prev = end->next = 0;
 
     // Single tokens parse as themselves.  Remember to parse any
@@ -304,25 +310,37 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
     switch(rule) {
     case PREC_PREFIX:
         if(tokInLevel(start, level) && start->next) {
-            left = parsePrecedence(p, start->children, start->lastChild, 0);
+            a = start->children;
+            b = start->lastChild;
+            c = start->next;
+            d = end;
             top = start;
-            right = parsePrecedence(p, start->next, end, level);
+            left = parsePrecedence(p, a, b, 0);
+            right = parsePrecedence(p, c, d, level);
         }
         break;
     case PREC_SUFFIX:
         if(tokInLevel(end, level) && end->prev) {
-            left = parsePrecedence(p, start, end->prev, level);
+            a = start;
+            b = end->prev;
+            c = end->children;
+            d = end->lastChild;
             top = end;
-            right = parsePrecedence(p, end->children, end->lastChild, 0);
+            left = parsePrecedence(p, a, b, level);
+            right = parsePrecedence(p, c, d, 0);
         }
         break;
     case PREC_BINARY:
         t = end;
         while(t) {
             if(tokInLevel(t, level)) {
-                left = parsePrecedence(p, t->prev?start:0, t->prev, level);
+                a = t->prev ? start : 0;
+                b = t->prev;
+                c = t->next;
+                d = t->next ? end : 0;
                 top = t;
-                right = parsePrecedence(p, t->next, t->next?end:0, level+1);
+                left = parsePrecedence(p, a, b, level);
+                right = parsePrecedence(p, c, d, level+1);
                 break;
             }
             t = t->prev;
@@ -332,9 +350,13 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
         t = start;
         while(t) {
             if(tokInLevel(t, level)) {
-                left = parsePrecedence(p, t->prev?start:0, t->prev, level+1);
+                a = t->prev ? start : 0;
+                b = t->prev;
+                c = t->next;
+                d = t->next ? end : 0;
                 top = t;
-                right = parsePrecedence(p, t->next, t->next?end:0, level);
+                left = parsePrecedence(p, a, b, level+1);
+                right = parsePrecedence(p, c, d, level);
                 break;
             }
             t = t->next;
@@ -350,12 +372,13 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
     left->prev = 0;
     right->next = 0;
     right->prev = left;
+    left->parent = right->parent = top;
     top->children = left;
     top->lastChild = right;
+    top->next = top->prev = 0;
     return top;
 }
 
-void dumpTokenList(struct Token* t, int prefix); // DEBUG
 
 void naParse(struct Parser* p)
 {
@@ -365,12 +388,8 @@ void naParse(struct Parser* p)
     braceMatch(p->tree.children);
     fixBlockStructure(p->tree.children);
 
-    dumpTokenList(&p->tree, 0); // DEBUG
-
     t = parsePrecedence(p, p->tree.children, p->tree.lastChild, 0);
     t->prev = t->next = 0;
     p->tree.children = t;
     p->tree.lastChild = t;
-
-    printf("\n\n"); // DEBUG
 }

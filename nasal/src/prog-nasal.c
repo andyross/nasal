@@ -51,6 +51,29 @@ char* tokString(int tok)
     return 0;
 }
 
+void ack()
+{
+    *(int*)0=0;
+    printf("ACK!");
+}
+
+void checkList(struct Token* start, struct Token* end)
+{
+    struct Token* t = start;
+    while(t) {
+        if(t->next && t->next->prev != t) ack();
+        if(t->next==0 && t != end) ack();
+        t = t->next;
+    }
+    t = end;
+    while(t) {
+        if(t->prev && t->prev->next != t) ack();
+        if(t->prev==0 && t != start) ack();
+        t = t->prev;
+    };
+}
+
+
 void printToken(struct Token* t, char* prefix)
 {
     int i;
@@ -78,6 +101,8 @@ void dumpTokenList(struct Token* t, int prefix)
 
     while(t) {
         printToken(t, prefstr);
+        if(t->children)
+            checkList(t->children, t->lastChild);
         dumpTokenList(t->children, prefix+1);
         t = t->next;
     }
@@ -107,6 +132,7 @@ int main(int argc, char** argv)
         dumpTokenList(&p.tree, 0);
 
         naParseDestroy(&p);
+        free(buf);
     }
     return 0;
 }

@@ -120,6 +120,7 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->str = str;
     tok->strlen = slen;
     tok->num = num;
+    tok->parent = &p->tree;
     tok->next = 0;
     tok->prev = p->tree.lastChild;
     tok->children = 0;

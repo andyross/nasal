@@ -19,6 +19,7 @@ struct Token {
     char* str;
     int strlen;
     double num;
+    struct Token* parent;
     struct Token* next;
     struct Token* prev;
     struct Token* children;
