@@ -176,6 +176,7 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
         sym = naStr_fromdata(naNewString(p->context),
                              LEFT(t)->str, LEFT(t)->strlen);
         c->restArgSym = naInternSymbol(sym);
+        c->needArgVector = 1;
     } else if(t->type == TOK_ASSIGN) {
         if(LEFT(t)->type != TOK_SYMBOL)
             naParseError(p, "bad function argument expression", t->line);
@@ -661,10 +662,12 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
     code->restArgSym = globals->argRef;
     code->nArgs = code->nOptArgs = 0;
     code->argSyms = code->optArgSyms = code->optArgVals = 0;
+    code->needArgVector = 1;
     if(arglist) {
         code->argSyms    = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
         code->optArgSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
         code->optArgVals = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        code->needArgVector = 0;
         genArgList(p, code, arglist);
         if(code->nArgs) {
             int i, *nsyms;

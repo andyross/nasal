@@ -69,19 +69,20 @@ struct naHash {
 
 struct naCode {
     GC_HEADER;
+    unsigned char nArgs;
+    unsigned char nOptArgs;
+    unsigned char needArgVector;
+    unsigned short nConstants;
+    unsigned short nBytes;
+    unsigned short nLines;
     unsigned char* byteCode;
-    int nBytes;
-    naRef srcFile;
     naRef* constants;
-    int nConstants;
-    naRef restArgSym; // The "..." vector name, defaults to "arg"
-    int nArgs;
     int* argSyms; // indices into constants
-    int nOptArgs;
     int* optArgSyms;
     int* optArgVals;
     unsigned short* lineIps; // pairs of {ip, line}
-    int nLines;
+    naRef srcFile;
+    naRef restArgSym; // The "..." vector name, defaults to "arg"
 };
 
 struct naFunc {

@@ -187,21 +187,21 @@ void naGarbageCollect()
 struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
 {
     int i;
-    naRef args, func;
+    naRef args, *func;
     struct Frame* f;
     struct naCode* c;
     
     DBG(printf("setupFuncall(nargs:%d, mcall:%d)\n", nargs, mcall);)
         
-    func = ctx->opStack[ctx->opTop - nargs - 1];
-    if(!IS_FUNC(func))
+    func = &ctx->opStack[ctx->opTop - nargs - 1];
+    if(!IS_FUNC(*func))
         ERR(ctx, "function/method call invoked on uncallable object");
 
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one (unless it's a tail call!).
-    if(IS_CCODE(func.ref.ptr.func->code)) {
+    if(func->ref.ptr.func->code.ref.ptr.obj->type == T_CCODE) {
         naRef obj = mcall ? ctx->opStack[ctx->opTop - nargs - 2] : naNil();
-        naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
+        naCFunction fp = func->ref.ptr.func->code.ref.ptr.ccode->fptr;
         naRef result = (*fp)(ctx, obj, nargs, &ctx->opStack[ctx->opTop-nargs]);
         ctx->opTop -= nargs + 1 + mcall;
         PUSH(result);
@@ -218,7 +218,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     f->bp = ctx->opTop - (nargs + 1 + mcall);
 
     // Set the argument symbols, and put any remaining args in a vector
-    c = func.ref.ptr.func->code.ref.ptr.code;
+    c = func->ref.ptr.func->code.ref.ptr.code;
     if(nargs < c->nArgs) ERR(ctx, "not enough arguments to function call");
     for(i=0; i<c->nArgs; i++)
         naHash_set(f->locals, c->constants[c->argSyms[i]],
@@ -229,9 +229,9 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
             val = ctx->opStack[ctx->opTop - nargs + c->nArgs + i];
         naHash_set(f->locals, c->constants[c->optArgSyms[i]], val);
     }
-    if((c->nArgs == 0 && c->nOptArgs == 0) || !IS_NIL(c->restArgSym)
-       || nargs > c->nArgs + c->nOptArgs)
+    if(c->needArgVector || (nargs > c->nArgs + c->nOptArgs))
     {
+        *(int*)0=0;
         args = naNewVector(ctx);
         naVec_setsize(args, nargs - c->nArgs - c->nOptArgs);
         for(i=0; i<(nargs - c->nArgs - c->nOptArgs); i++)
