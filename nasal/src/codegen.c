@@ -372,7 +372,8 @@ static void genExpr(struct Parser* p, struct Token* t)
         emit(p, i); // use the op appropriate to the lvalue
         break;
     case TOK_RETURN:
-        genExpr(p, LEFT(t));
+        if(RIGHT(t)) genExpr(p, RIGHT(t));
+        else emit(p, OP_PUSHNIL);
         emit(p, OP_RETURN);
         break;
     case TOK_NOT:

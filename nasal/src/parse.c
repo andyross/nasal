@@ -5,10 +5,6 @@
 
 #include "parse.h"
 
-// Grammar FIXME's:
-//
-// Need to insert semi's after blocks.
-
 // Static precedence table, from low (loose binding, do first) to high
 // (tight binding, do last).
 enum { PREC_BINARY, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };

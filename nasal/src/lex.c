@@ -227,15 +227,14 @@ static int lexNumLiteral(struct Parser* p, int index)
     return i;
 }
 
-static int lexSymbol(struct Parser* p, int start)
+static int trySymbol(struct Parser* p, int start)
 {
     int i = start;
     while((p->buf[i] >= 'A' && p->buf[i] <= 'Z') ||
           (p->buf[i] >= 'a' && p->buf[i] <= 'z') ||
           (p->buf[i] >= '0' && p->buf[i] <= '9'))
     { i++; }
-    newToken(p, start, TOK_SYMBOL, p->buf + start, i-start, 0);
-    return i;
+    return i-start;
 }
 
 // Returns the length of lexeme l if the buffer prefix matches, or
@@ -259,7 +258,7 @@ static int matchLexeme(char* buf, int len, char* l)
 // every byte of every lexeme for each input byte.  There are less
 // than 100 bytes of lexemes in the grammar.  Returns the number of
 // bytes in the lexeme read (or zero if none was recognized)
-static int tryLexemes(struct Parser* p, int index)
+static int tryLexemes(struct Parser* p, int index, int* lexemeOut)
 {
     int i, n, best, bestIndex=-1;
     char* start = p->buf + index;
@@ -274,16 +273,14 @@ static int tryLexemes(struct Parser* p, int index)
             bestIndex = i;
         }
     }
-    if(best > 0)
-        newToken(p, index, LEXEMES[bestIndex].tok, 0, 0, 0);
+    if(best > 0) *lexemeOut = bestIndex;
     return best;
 }
 
 void naLex(struct Parser* p)
 {
-    int lexlen, i;
+    int i = 0;
     findLines(p);
-    i = 0;
     while(i<p->len) {
         char c = p->buf[i];
 
@@ -301,17 +298,27 @@ void naLex(struct Parser* p)
             i = lexStringLiteral(p, i, (c=='"' ? 0 : 1));
             break;
         default:
-            handled = 0;
+            if(c >= '0' && c <= '9') i = lexNumLiteral(p, i);
+            else                     handled = 0;
         }
 
-        // Numbers, lexemes and symbols are a little more complicated
+        // Lexemes and symbols are a little more complicated.  Pick
+        // the longest one that matches.  Since some lexemes look like
+        // symbols (e.g. "or") they need a higher precedence, but we
+        // don't want a lexeme match to clobber the beginning of a
+        // symbol (e.g. "orchid").  If neither match, we have a bad
+        // character in the mix.
         if(!handled) {
-            if(c >= '0' && c <= '9') {
-                i = lexNumLiteral(p, i);
-            } else if((c>='A' && c<='Z') || (c>='a' && c<='z')) {
-                i = lexSymbol(p, i);
-            } else if((lexlen = tryLexemes(p, i)) > 0) {
+            int symlen=0, lexlen=0, lexeme;
+            lexlen = tryLexemes(p, i, &lexeme);
+            if((c>='A' && c<='Z') || (c>='a' && c<='z'))
+                symlen = trySymbol(p, i);
+            if(lexlen && lexlen >= symlen) {
+                newToken(p, i, LEXEMES[lexeme].tok, 0, 0, 0);
                 i += lexlen;
+            } else if(symlen) {
+                newToken(p, i, TOK_SYMBOL, p->buf+i, symlen, 0);
+                i += symlen;
             } else {
                 error(p, "illegal character", i);
             }

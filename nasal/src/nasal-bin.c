@@ -11,7 +11,8 @@ char* tokString(int tok)
 {
     switch(tok) {
     case TOK_TOP: return "TOK_TOP";
-    case TOK_EMPTY: return "TOK_EMPTY";
+    case TOK_AND: return "TOK_AND";
+    case TOK_OR: return "TOK_OR";
     case TOK_NOT: return "TOK_NOT";
     case TOK_LPAR: return "TOK_LPAR";
     case TOK_RPAR: return "TOK_RPAR";
@@ -47,6 +48,7 @@ char* tokString(int tok)
     case TOK_FUNC: return "TOK_FUNC";
     case TOK_SYMBOL: return "TOK_SYMBOL";
     case TOK_LITERAL: return "TOK_LITERAL";
+    case TOK_EMPTY: return "TOK_EMPTY";
     }
     return 0;
 }

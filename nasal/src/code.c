@@ -32,6 +32,7 @@ char* opStringDEBUG(int op)
     case OP_MCALL: return "MCALL";
     case OP_RETURN: return "RETURN";
     case OP_PUSHCONST: return "PUSHCONST";
+    case OP_PUSHONE: return "PUSHONE";
     case OP_PUSHZERO: return "PUSHZERO";
     case OP_PUSHNIL: return "PUSHNIL";
     case OP_POP: return "POP";
@@ -455,8 +456,10 @@ static void run1(struct Context* ctx)
         naHash_set(f->locals, ctx->meRef, a);
         break;
     case OP_RETURN:
+        a = POP(ctx);
         ctx->fTop--;
         f = &(ctx->fStack[ctx->fTop-1]); // ditto
+        PUSH(ctx, a);
         break;
     case OP_LINE:
         f->line = ARG16(cd->byteCode, f);

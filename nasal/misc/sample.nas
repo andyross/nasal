@@ -60,6 +60,11 @@ dist = func {
 abs = func { if(a<0) { -arg[0] } else { arg[0] } };
 
 #
+# Nasl's binary boolean operators are "and" and "or", unlike C.
+# unary not is still "!" however.
+#
+
+#
 # Looping constructs are mostly C-like.  The differences are foreach,
 # which takes a local variable name as its first argument and a vector
 # as its second.
