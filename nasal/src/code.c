@@ -115,6 +115,7 @@ static void initGlobals()
     naInitThreads();
 
     int i;
+    globals->allocCount = 256; // reasonable starting value
     for(i=0; i<NUM_NASAL_TYPES; i++)
         naGC_init(&(globals->pools[i]), i);
 

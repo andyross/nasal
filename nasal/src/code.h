@@ -29,6 +29,7 @@ struct Frame {
 struct Globals {
     // Garbage collecting allocators:
     struct naPool pools[NUM_NASAL_TYPES];
+    int allocCount;
 
     // Constants
     naRef meRef;

@@ -13,14 +13,6 @@ struct Block {
     char* block;
 };
 
-// Decremented every allocation.  When it reaches zero, we do a
-// garbage collection.  The value is reset to 1/2 of the total object
-// count each collection, which is sane: it ensures that no more than
-// 50% growth can happen between collections, and ensures that garbage
-// collection work is constant with allocation work (i.e. that O(N)
-// work is done only every O(1/2N) allocations).
-static int GlobalAllocCount = 256;
-
 static void garbageCollect()
 {
     int i;
@@ -163,10 +155,10 @@ int naGC_size(struct naPool* p)
 struct naObj* naGC_get(struct naPool* p)
 {
     // Collect every GlobalAllocCount allocations.
-    // This gets set to ~50% of the total object count each
-    // collection (it's incremented in naGC_reap()).
-    if(--GlobalAllocCount < 0) {
-        GlobalAllocCount = 0;
+    // This gets set to ~50% of the total object count each collection
+    // by each (per-type) call to naGC_reap().
+    if(--globals->allocCount < 0) {
+        globals->allocCount = 0;
         garbageCollect();
     }
 
@@ -177,9 +169,7 @@ struct naObj* naGC_get(struct naPool* p)
 }
 
 // Sets the reference bit on the object, and recursively on all
-// objects reachable from it.  Clumsy: uses C stack recursion, which
-// is slower than it need be and may cause problems on some platforms
-// due to the very large stack depths that result.
+// objects reachable from it.  Uses the processor stack for recursion...
 void naGC_mark(naRef r)
 {
     int i;
@@ -242,8 +232,8 @@ void naGC_reap(struct naPool* p)
         }
     }
 
-    // Add 50% of our total to the global count
-    GlobalAllocCount += total/2;
+    // allocs of this type until the next collection
+    globals->allocCount += total/2;
     
     // Allocate more if necessary (try to keep 25-50% of the objects
     // available)
