@@ -126,7 +126,11 @@ static void genExpr(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
         emit(p, OP_NOT);
         break;
-    case TOK_SYMBOL: case TOK_LITERAL:
+    case TOK_SYMBOL:
+        genConstant(p, t);
+        emit(p, OP_SYMBOL);
+        break;
+    case TOK_LITERAL:
         genConstant(p, t);
         break;
     case TOK_EMPTY: emit(p, OP_PUSHNIL); break; // *NOT* a noop!

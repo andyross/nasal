@@ -86,7 +86,7 @@ naRef naStr_tonum(naRef str)
     naRef r;
     struct naStr* s = str.ref.ptr.str;
     double n;
-    if(!tonum(s->data, s->len, &n)) ERR("string not number");
+    if(!tonum(s->data, s->len, &n)) ERR("string not numeric");
     r.ref.reftag = 0;
     r.num = n;
     return r;
@@ -104,7 +104,7 @@ void naStr_gcclean(struct naStr* str)
 // simply use sprintf and atof?  Because they aren't acceptably
 // platform independant, sadly.  I've seen some very strange results.
 // This works the same way everywhere, although it is tied to an
-// assumptions of standard IEEE 64 bit floating point doubles.
+// assumption of standard IEEE 64 bit floating point doubles.
 //
 // In practice, these routines work quite well.  Testing conversions
 // of random doubles to strings and back, this routine is beaten by

@@ -426,13 +426,12 @@ naRef naParseCode(struct Context* c, char* buf, int len)
 
     dumpTokenList(&(p.tree), 0); // DEBUG
 
-    // Generate code here...
     codeObj = naCodeGen(&p, &(p.tree));
-    // ...
 
     // Clean up our mess
     naParseDestroy(&p);
-    return naNil();
+
+    return codeObj;
 }
 
 

@@ -115,6 +115,7 @@ int main(int argc, char** argv)
     struct stat fdat;
     char* buf;
     struct Context *ctx;
+    naRef code;
 
     for(i=1; i<argc; i++) {
         stat(argv[i], &fdat);
@@ -123,7 +124,8 @@ int main(int argc, char** argv)
         fread(buf, 1, fdat.st_size, f);
 
         ctx = naNewContext();
-        naParseCode(ctx, buf, fdat.st_size);
+        code = naParseCode(ctx, buf, fdat.st_size);
+        naRun(ctx, code);
 
         free(buf);
     }
