@@ -12,14 +12,15 @@ struct precedence {
     int rule;
 } PRECEDENCE[] = {
     { { TOK_SEMI, TOK_COMMA },                 PREC_REVERSE },
-    { { TOK_COLON },                           PREC_BINARY },
+    { { TOK_ELLIPSIS },                        PREC_SUFFIX  },
+    { { TOK_COLON },                           PREC_BINARY  },
     { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
     { { TOK_ASSIGN },                          PREC_REVERSE },
     { { TOK_OR },                              PREC_BINARY  },
     { { TOK_AND },                             PREC_BINARY  },
     { { TOK_EQ, TOK_NEQ },                     PREC_BINARY  },
     { { TOK_LT, TOK_LTE, TOK_GT, TOK_GTE },    PREC_BINARY  },
-    { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_REVERSE  },
+    { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_REVERSE },
     { { TOK_MUL, TOK_DIV },                    PREC_BINARY  },
     { { TOK_MINUS, TOK_NEG, TOK_NOT },         PREC_PREFIX  },
     { { TOK_LPAR, TOK_LBRA },                  PREC_SUFFIX  },

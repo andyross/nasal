@@ -163,8 +163,17 @@ static int genLValue(struct Parser* p, struct Token* t)
 
 static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
 {
+    naRef sym;
     if(t->type == TOK_EMPTY) return;
-    if(t->type == TOK_SYMBOL) {
+    if(!IDENTICAL(c->restArgSym, globals->argRef))
+            naParseError(p, "remainder must be last", t->line);
+    if(t->type == TOK_ELLIPSIS) {
+        if(LEFT(t)->type != TOK_SYMBOL)
+            naParseError(p, "bad function argument expression", t->line);
+        sym = naStr_fromdata(naNewString(p->context),
+                             LEFT(t)->str, LEFT(t)->strlen);
+        c->restArgSym = naInternSymbol(sym);
+    } else if(t->type == TOK_SYMBOL) {
         if(c->nArgs >= MAX_FUNARGS)
             naParseError(p, "too many named function arguments", t->line);
         c->argSyms[c->nArgs++] = findConstantIndex(p, t);
@@ -172,7 +181,7 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
         genArgList(p, c, LEFT(t));
         genArgList(p, c, RIGHT(t));
     } else
-        naParseError(p, "bad function argument list", t->line);
+        naParseError(p, "bad function argument expression", t->line);
 }
 
 static void genLambda(struct Parser* p, struct Token* t)

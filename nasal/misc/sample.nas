@@ -62,7 +62,7 @@ dist(0,0,1,1); # == sqrt(2)
 # what the ?: does in C.  The last semicolon in a code block is
 # optional, to make this prettier.
 #
-abs = func { if(arg[0] < 0) { -arg[0] } else { arg[0] } }
+abs = func(n) { if(n<0) { -n } else { n } }
 
 #
 # Nasal supports a "nil" value for use as a null pointer equivalent.
@@ -147,8 +147,7 @@ Class2 = {
 # Make a "inverted index" hash out of a vector that returns the index
 # for each element.
 #
-invert = func {
-    vec = arg[0];
+invert = func(vec) {
     hash = {};
     for(i=0; i<size(vec); i = i+1) {
         hash[vec[i]] = i;
@@ -160,7 +159,7 @@ invert = func {
 # Use the return value of the above function to do an "index of"
 # lookup on a vector
 #
-vecfind = func{ return invert(arg[0])[arg[1]]; }
+vecfind = func(vec, elem) { return invert(vec)[elem]; }
 
 #
 # Joins its arguments with the empty string and returns a scalar.
@@ -197,8 +196,7 @@ for(OUTER; i=0; i<100; i = i+1) {
 ## also makes no attempt to escape special characters in strings, which
 ## can break re-parsing in strange (and possibly insecure!) ways.
 ##
-dump = func {
-    o = arg[0];
+dump = func(o) {
     result = "";
     if(typeof(o) == "scalar") {
         n = num(o);
@@ -240,7 +238,7 @@ dump = func {
 # normal function definition.  Oh well, every language has a syntactic
 # quirk or two...)
 #
-a = (func{ arg[0] + 1 })(232);  # "a" now equals 233
+a = (func(n){ n + 1 })(232);  # "a" now equals 233
 
 #
 # Functional programming B.  All expressions have a value, the last
@@ -249,12 +247,15 @@ a = (func{ arg[0] + 1 })(232);  # "a" now equals 233
 # (assignment, duh) have side effects.  e.g. The "if" expression works
 # both for code flow and as the ?: expression in C/C++.
 #
-factorial = func { if(arg[0] == 0) { 1 }
-                   else            { arg[0] * factorial(arg[0]-1) } }
+factorial = func(n) { if(n == 0) { 1 }
+                      else       { n * factorial(n-1) } }
 print(factorial(10), "\n");
 
 #
-# Functional programming C:  Lexical closures.
+# Functional programming C: Lexical closures.  Functions "remember"
+# the context in which they were defined, and can continue to use the
+# local variables in the outer scope even after their creator has
+# returned.
 #
 getcounter = func { count = 0; return func { count = count + 1 } }
 mycounter = getcounter();

@@ -23,6 +23,8 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 #define IS_GHOST(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_GHOST)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
 #define IS_SCALAR(r) (IS_NUM((r)) || IS_STR((r)))
+#define IDENTICAL(a, b) (IS_REF(a) && IS_REF(b) \
+                         && a.ref.ptr.obj == b.ref.ptr.obj)
 
 // This is a macro instead of a separate struct to allow compilers to
 // avoid padding.  GCC on x86, at least, will always padd the size of
