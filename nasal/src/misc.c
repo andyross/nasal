@@ -124,6 +124,8 @@ int naEqual(naRef a, naRef b)
     double na=0, nb=0;
     if(IS_REF(a) && IS_REF(b) && a.ref.ptr.obj == b.ref.ptr.obj)
         return 1; // Object identity (and nil == nil)
+    if(IS_NIL(a) || IS_NIL(b))
+        return 0;
     if(IS_NUM(a) && IS_NUM(b) && a.num == b.num)
         return 1; // Numeric equality
     if(IS_STR(a) && IS_STR(b) && naStr_equal(a, b))
