@@ -193,7 +193,14 @@ for(OUTER; i=0; i<100; i = i+1) {
 # Functional programming A: All function expressions are inherently
 # anonymous lambdas and can be used and evaluated mid-expression:
 #
-a = func{ arg[0] + 1 }(232);  # "a" now equals 233
+# (Note the parens around the function expression.  This is necessary
+# because otherwise the parser would read a func following an
+# assignment as a "code block" instead of a subexpression.  This is
+# the rule that allows you to omit the semicolon at the end of a
+# normal function definition.  Oh well, every language has a syntactic
+# quirk or two...)
+#
+a = (func{ arg[0] + 1 })(232);  # "a" now equals 233
 
 #
 # Functional programming B.  All expressions have a value, the last
