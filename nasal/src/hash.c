@@ -231,7 +231,6 @@ void naHash_delete(naRef hash, naRef key)
         if(EQUAL(hn->key, key)) {
             if(last == 0) h->table[col] = hn->next;
             else last->next = hn->next;
-            h->size--;
             h->dels++;
             return;
         }
