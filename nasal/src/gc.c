@@ -28,7 +28,7 @@ static void freeelem(struct naPool* p, struct naObj* o)
 {
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
-    switch(o->type) {
+    switch(p->type) {
     case T_STR:
         naStr_gcclean((struct naStr*)o);
         break;
@@ -48,9 +48,10 @@ static void freeelem(struct naPool* p, struct naObj* o)
     appendfree(p, o);
 }
 
-void naGC_init(struct naPool* p, int elemsz)
+void naGC_init(struct naPool* p, int type)
 {
-    p->elemsz = elemsz;
+    p->type = type;
+    p->elemsz = naTypeSize(type);
     p->nblocks = 0;
     p->blocks = 0;
     p->nfree = 0;
@@ -155,8 +156,12 @@ void naGC_reap(struct naPool* p)
         p->blocks[p->nblocks].block = buf;
         p->nblocks++;
 
-        for(i=0; i<need; i++)
-            appendfree(p, (struct naObj*)(buf + i*p->elemsz));
+        for(i=0; i<need; i++) {
+            struct naObj* o = (struct naObj*)(buf + i*p->elemsz);
+            o->mark = 0;
+            o->type = p->type;
+            appendfree(p, o);
+        }
     }
 }
 

@@ -89,6 +89,7 @@ struct naCCode {
 };
 
 struct naPool {
+    int           type;
     int           elemsz;
     int           nblocks;
     struct Block* blocks;
@@ -119,7 +120,7 @@ void naVec_init(naRef vec);
 int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
 void naHash_init(naRef hash);
 
-void naGC_init(struct naPool* p, int elemsz);
+void naGC_init(struct naPool* p, int type);
 struct naObj* naGC_get(struct naPool* p);
 void naGC_mark(naRef r);
 void naGC_reap(struct naPool* p);

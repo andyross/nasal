@@ -87,7 +87,7 @@ static void initContext(struct Context* c)
 {
     int i;
     for(i=0; i<NUM_NASL_TYPES; i++)
-        naGC_init(&(c->pools[i]), naTypeSize(i));
+        naGC_init(&(c->pools[i]), i);
 
     c->fTop = c->opTop = c->markTop = 0;
 
