@@ -255,6 +255,7 @@ static void genLoop(struct Parser* p, struct Token* body,
     if(update) { genExpr(p, update); emit(p, OP_POP); }
     emitImmediate(p, OP_JMP, loopTop);
     fixJumpTarget(p, jumpEnd);
+    emit(p, OP_PUSHNIL); // Leave something on the stack
 }
 
 static void genForWhile(struct Parser* p, struct Token* init,

@@ -189,6 +189,19 @@ static void braceMatch(struct Parser* p, struct Token* start)
     }
 }
 
+// Allocate and return an "empty" token as a parsing placeholder.
+static struct Token* emptyToken(struct Parser* p)
+{
+    struct Token* t = naParseAlloc(p, sizeof(struct Token));
+    t->type = TOK_EMPTY;
+    t->line = t->strlen = 0;
+    t->num = 0;
+    t->str = 0;
+    t->next = t->prev = t->children = t->lastChild = 0;
+    t->parent = 0;
+    return t;
+}
+
 // Fixes up parenting for obvious parsing situations, like code blocks
 // being the child of a func keyword, etc...
 static void fixBlockStructure(struct Parser* p, struct Token* start)
@@ -224,7 +237,7 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
         t = t->next;
     }
 
-    // Another pass to hook up the elsif/else chains
+    // Another pass to hook up the elsif/else chains.
     t = start;
     while(t) {
         if(t->type == TOK_IF) {
@@ -235,6 +248,48 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
         }
         t = t->next;
     }
+
+    // And a final one to add semicolons.  Always add one after
+    // for/foreach/while expressions.  Add one after a function lambda
+    // if it immediately follows an assignment, and add one after an
+    // if/elsif/else if it is the first token in an expression list
+    // (i.e has no previous token, or is preceded by a ';' or '{').
+    // This mimicks common usage and avoids a conspicuous difference
+    // between this grammar and more common languages.  It can be
+    // "escaped" with extra parenthesis if necessary, e.g.:
+    //      a = (func { join(" ", arg) })(1, 2, 3, 4);
+    t = start;
+    while(t) {
+        int addSemi = 0;
+        switch(t->type) {
+        case TOK_IF:
+            if(!t->prev
+               || t->prev->type == TOK_SEMI
+               || t->prev->type == TOK_LCURL)
+                addSemi = 1;
+            break;
+        case TOK_FOR: case TOK_FOREACH: case TOK_WHILE:
+            addSemi = 1;
+            break;
+        case TOK_FUNC:
+            if(t->prev && t->prev->type == TOK_ASSIGN)
+                addSemi = 1;
+            break;
+        }
+        if(addSemi) {
+            struct Token* semi = emptyToken(p);
+            semi->type = TOK_SEMI;
+            semi->line = t->line;
+            semi->next = t->next;
+            semi->prev = t;
+            semi->parent = t->parent;
+            if(semi->next) semi->next->prev = semi;
+            t->next = semi;
+            t = semi; // don't bother checking the new one
+        }
+        t = t->next;
+    }
+    
 }
 
 // True if the token's type exists in the precedence level.
@@ -245,19 +300,6 @@ static int tokInLevel(struct Token* tok, int level)
         if(PRECEDENCE[level].toks[i] == tok->type)
             return 1;
     return 0;
-}
-
-// Allocate and return an "empty" token as a parsing placeholder.
-static struct Token* emptyToken(struct Parser* p)
-{
-    struct Token* t = naParseAlloc(p, sizeof(struct Token));
-    t->type = TOK_EMPTY;
-    t->line = t->strlen = 0;
-    t->num = 0;
-    t->str = 0;
-    t->next = t->prev = t->children = t->lastChild = 0;
-    t->parent = 0;
-    return t;
 }
 
 static int isBrace(int type)
