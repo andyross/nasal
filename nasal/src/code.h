@@ -5,9 +5,9 @@
 #include "nasal.h"
 #include "data.h"
 
-#define MAX_STACK_DEPTH 1024
+#define MAX_STACK_DEPTH 32
 #define MAX_RECURSION 128
-#define MAX_MARK_DEPTH 32
+#define MAX_MARK_DEPTH 16
 
 enum {    
     OP_AND, OP_OR, OP_NOT, OP_MUL, OP_PLUS, OP_MINUS, OP_DIV, OP_NEG,
