@@ -131,6 +131,7 @@ void naGarbageCollect()
     for(i=0; i < c->opTop; i++)
         naGC_mark(c->opStack[i]);
 
+    naGC_mark(c->argPool);
     naGC_mark(c->temps);
 
     naGC_mark(c->meRef);

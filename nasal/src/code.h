@@ -42,7 +42,7 @@ struct Context {
     int done;
 
     // Vector of arguments vectors.  A LIFO cache, basically, to avoid
-    // thrashing the GC just for function calls.
+    // thrashing the GC just for function call arguments.
     naRef argPool;
 
     // Constants
