@@ -204,6 +204,20 @@ static void fixJumpTarget(struct Parser* p, int spot)
     p->byteCode[spot+1] = p->nBytes & 0xff;
 }
 
+static void genShortCircuit(struct Parser* p, struct Token* t)
+{
+    int jumpNext, jumpEnd, isAnd = (t->type == TOK_AND);
+    genExpr(p, LEFT(t));
+    if(isAnd) emit(p, OP_NOT);
+    jumpNext = emitJump(p, OP_JIFNOT);
+    emit(p, isAnd ? OP_PUSHNIL : OP_PUSHONE);
+    jumpEnd = emitJump(p, OP_JMP);
+    fixJumpTarget(p, jumpNext);
+    genExpr(p, RIGHT(t));
+    fixJumpTarget(p, jumpEnd);
+}
+
+
 static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
 {
     int jumpNext, jumpEnd;
@@ -390,10 +404,9 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_EMPTY:
         emit(p, OP_PUSHNIL); break; // *NOT* a noop!
-    case TOK_AND: // FIXME: short-circuit
-        genBinOp(OP_AND,    p, t); break;
-    case TOK_OR:  // FIXME: short-circuit
-        genBinOp(OP_OR,     p, t); break;
+    case TOK_AND: case TOK_OR:
+        genShortCircuit(p, t);
+        break;
     case TOK_MUL:   genBinOp(OP_MUL,    p, t); break;
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;

@@ -376,6 +376,9 @@ static void run1(struct Context* ctx)
         if(IS_CODE(a)) a = bindFunction(ctx, a, f->locals);
         PUSH(ctx, a);
         break;
+    case OP_PUSHONE:
+        PUSH(ctx, naNum(1));
+        break;
     case OP_PUSHZERO:
         PUSH(ctx, naNum(0));
         break;
