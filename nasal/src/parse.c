@@ -370,6 +370,15 @@ static struct Token* parsePrecedence(struct Parser* p,
         end = t;
     }
 
+    // Another one: the "." and (postfix) "[]/()" operators should
+    // really be the same precendence level, but the existing
+    // implementation doesn't allow for it.  Bump us up a level if we
+    // are parsing for DOT but find a LPAR/LBRA at the end of the
+    // list.
+    if(PRECEDENCE[level].toks[0] == TOK_DOT)
+        if(end->type == TOK_LPAR || end->type == TOK_LBRA)
+            level--;
+
     top = left = right = 0;
     rule = PRECEDENCE[level].rule;
     switch(rule) {
