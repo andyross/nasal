@@ -268,7 +268,14 @@ static int isBrace(int type)
     return type == TOK_LPAR || type == TOK_LBRA || type == TOK_LCURL;
 }
 
+static int isBlock(int type)
+{
+    return type == TOK_IF || type == TOK_ELSIF || type == TOK_ELSE
+        || type == TOK_FOR || type == TOK_FOREACH || type == TOK_WHILE;
+}
+
 static void precChildren(struct Parser* p, struct Token* t);
+static void precBlock(struct Parser* p, struct Token* t);
 
 static struct Token* parsePrecedence(struct Parser* p,
                                      struct Token* start, struct Token* end,
@@ -296,17 +303,12 @@ static struct Token* parsePrecedence(struct Parser* p,
     start->prev = end->next = 0;
 
     // Single tokens parse as themselves.  Recurse into braces, and
-    // parse children of block structure if they are braces.
+    // parse children of block structure.
     if(start == end) {
         if(isBrace(start->type)) {
             precChildren(p, start);
-        } else {
-            t = start->children;
-            while(t) {
-                if(isBrace(t->type))
-                    precChildren(p, t);
-                t = t->next;
-            }
+        } else if(isBlock(start->type)) {
+            precBlock(p, start);
         }
         return start;
     }
@@ -401,6 +403,21 @@ static void precChildren(struct Parser* p, struct Token* t)
     struct Token* top = parsePrecedence(p, t->children, t->lastChild, 0);
     t->children = top;
     t->lastChild = top;
+}
+
+// Run a "block structure" node (if/elsif/else/for/while/foreach)
+// through the precedence parser.  The funny child structure makes
+// this a little more complicated than it should be.
+static void precBlock(struct Parser* p, struct Token* block)
+{
+    struct Token* t = block->children;
+    while(t) {
+        if(isBrace(t->type))
+            precChildren(p, t);
+        else if(isBlock(t->type))
+            precBlock(p, t);
+        t = t->next;
+    }
 }
 
 void dumpTokenList(struct Token* t, int prefix); // DEBUG
