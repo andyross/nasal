@@ -1,0 +1,11 @@
+AC_INIT(src/code.c)
+AM_INIT_AUTOMAKE(nasal,0.9)
+AM_CONFIG_HEADER(config.h)
+AC_PROG_CC
+AC_ISC_POSIX
+AC_STDC_HEADERS
+AC_PROG_INSTALL
+AC_SEARCH_LIBS(sin, m)
+AC_OUTPUT([Makefile src/Makefile])
+
+
