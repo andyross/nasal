@@ -46,7 +46,7 @@ naContext naNewContext();
 naRef naParseCode(naContext c, char* buf, int len, int* errLine);
 
 // Call a code object inside of the specified namespace
-naRef naCall(naContext ctx, naRef code, naRef namespace);
+naRef naCall(naContext ctx, naRef code, naRef namespc);
 
 // Returns a hash containing functions from the Nasl standard library
 // Useful for passing as a namespace to an initial function call
@@ -99,6 +99,7 @@ naRef naVec_removelast(naRef vec);
 // Hash utilities:
 int naHash_size(naRef h);
 int naHash_get(naRef hash, naRef key, naRef* out);
+naRef naHash_cget(naRef hash, char* key);
 void naHash_set(naRef hash, naRef key, naRef val);
 void naHash_delete(naRef hash, naRef key);
 void naHash_keys(naRef dst, naRef hash);
