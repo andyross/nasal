@@ -59,6 +59,8 @@ struct Context {
     // here, and clears the array each time we return from a C
     // function.
     naRef temps;
+
+    naRef save;
 };
 
 void printRefDEBUG(naRef r);

@@ -108,6 +108,8 @@ static void initContext(struct Context* c)
     // temps exist first.
     c->temps = naObj(T_VEC, naGC_get(&(c->pools[T_VEC])));
 
+    c->save = naNil();
+
     // Cache pre-calculated "me", "arg" and "parents" scalars
     c->meRef = naStr_fromdata(naNewString(c), "me", 2);
     c->argRef = naStr_fromdata(naNewString(c), "arg", 3);
@@ -126,6 +128,7 @@ void naGarbageCollect()
 {
     int i;
     struct Context* c = &globalContext; // FIXME: more than one!
+
     for(i=0; i < c->fTop; i++) {
         naGC_mark(c->fStack[i].func);
         naGC_mark(c->fStack[i].locals);
@@ -137,6 +140,7 @@ void naGarbageCollect()
 
     naGC_mark(c->argPool);
     naGC_mark(c->temps);
+    naGC_mark(c->save);
 
     naGC_mark(c->meRef);
     naGC_mark(c->argRef);
@@ -215,12 +219,13 @@ static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
     return result;
 }
 
-static int getClosure(naRef closure, naRef sym, naRef* result)
+static int getClosure(struct naClosure* c, naRef sym, naRef* result)
 {
-    struct naClosure* c = closure.ref.ptr.closure;
-    if(c == 0) return 0;
-    else if(naHash_get(c->namespace, sym, result)) return 1;
-    else return getClosure(c->next, sym, result);
+    while(c) {
+        if(naHash_get(c->namespace, sym, result)) return 1;
+        c = c->next.ref.ptr.closure;
+    }
+    return 0;
 }
 
 // Get a local symbol, or check the closure list if it isn't there
@@ -228,7 +233,8 @@ static naRef getLocal(struct Context* ctx, struct Frame* f, naRef sym)
 {
     naRef result;
     if(!naHash_get(f->locals, sym, &result)) {
-        if(!getClosure(f->func.ref.ptr.func->closure, sym, &result))
+        naRef c = f->func.ref.ptr.func->closure;
+        if(!getClosure(c.ref.ptr.closure, sym, &result))
             ERR(ctx, "undefined symbol");
     }
     return result;
@@ -494,6 +500,11 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
     PUSH(ctx, result);
 }
 
+void naSave(struct Context* ctx, naRef obj)
+{
+    ctx->save = obj;
+}
+
 int naStackDepth(struct Context* ctx)
 {
     return ctx->fTop;
@@ -567,6 +578,8 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     }
     if(!IS_NIL(obj))
         naHash_set(locals, ctx->meRef, obj);
+
+    ctx->fTop = ctx->opTop = ctx->markTop = 0;
     setupFuncall(ctx, func, args);
     ctx->fStack[ctx->fTop-1].locals = locals;
 

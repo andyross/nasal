@@ -46,8 +46,12 @@ typedef naRef (*naCFunction)(naContext ctx, naRef args);
 // All Nasal code runs under the watch of a naContext:
 naContext naNewContext();
 
+// Save this object in the context, preventing it (and objects
+// referenced by it) from being garbage collected.
+void naSave(naContext ctx, naRef obj);
+
 // Parse a buffer in memory into a code object.
-naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
+naRef naParseCode(naContext c, naRef srcFile, int firstLine,
                   char* buf, int len, int* errLine);
 
 // Binds a bare code object (as returned from naParseCode) with a
