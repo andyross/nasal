@@ -82,6 +82,32 @@ void naHash_init(naRef hash)
     h->nodes = 0;
 }
 
+// Make a temporary string on the stack
+static naRef tmpStr(struct naStr* str, char* key)
+{
+    char* p = key;
+    while(*p) { p++; }
+    str->len = p - key;
+    str->data = key;
+    return naObj(T_STR, (struct naObj*)str);
+}
+
+naRef naHash_cget(naRef hash, char* key)
+{
+    struct naStr str;
+    naRef result, key2 = tmpStr(&str, key);
+    if(naHash_get(hash, key2, &result))
+        return result;
+    return naNil();
+}
+
+void naHash_cset(naRef hash, char* key, naRef val)
+{
+    struct naStr str;
+    naRef key2 = tmpStr(&str, key);
+    naHash_set(hash, key2, val);
+}
+
 int naHash_get(naRef hash, naRef key, naRef* out)
 {
     struct naHash* h = hash.ref.ptr.hash;

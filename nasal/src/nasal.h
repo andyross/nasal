@@ -101,6 +101,7 @@ int naHash_size(naRef h);
 int naHash_get(naRef hash, naRef key, naRef* out);
 naRef naHash_cget(naRef hash, char* key);
 void naHash_set(naRef hash, naRef key, naRef val);
+void naHash_cset(naRef hash, char* key, naRef val);
 void naHash_delete(naRef hash, naRef key);
 void naHash_keys(naRef dst, naRef hash);
 
