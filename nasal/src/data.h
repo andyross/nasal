@@ -32,7 +32,6 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 // an embedded struct up to 32 bits.  Doing it this way allows the
 // implementing objects to pack in 16 bits worth of data "for free".
 #define GC_HEADER \
-    void* lock; \
     unsigned char mark; \
     unsigned char type; \
 

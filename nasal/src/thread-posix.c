@@ -71,4 +71,12 @@ void naSemUpAll(void* sh)
     pthread_mutex_unlock(&sem->lock);
 }
 
+void naFreeSem(void* sh)
+{
+    struct naSem* sem = (struct naSem*)sh;
+    pthread_mutex_destroy(&sem->lock);
+    pthread_cond_destroy(&sem->cvar);
+    naFree(sh);
+}
+
 #endif

@@ -76,10 +76,6 @@ static void naGhost_gcclean(struct naGhost* g)
 
 static void freeelem(struct naPool* p, struct naObj* o)
 {
-    // Free its thread lock, if it has one
-    if(o->lock) naFreeLock(o->lock);
-    o->lock = 0;
-
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
     switch(p->type) {
@@ -125,7 +121,6 @@ static void newBlock(struct naPool* p, int need)
     for(i=0; i < need; i++) {
         struct naObj* o = (struct naObj*)(newb->block + i*p->elemsz);
         o->mark = 0;
-        o->lock = 0;
         o->type = T_GCFREED; // DEBUG
         p->free[p->nfree++] = o;
     }
