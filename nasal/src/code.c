@@ -180,21 +180,6 @@ static naRef evalBinaryNumeric(struct Context* ctx, int op, naRef ra, naRef rb)
     return naNil();
 }
 
-// OP_EACH works like a vector get, except that it leaves the vector
-// and index on the stack, increments the index after use, and pops
-// the arguments and pushes a nil if the index is beyond the end.
-static naRef evalEach(struct Context* ctx)
-{
-    int idx = (int)(ctx->opStack[ctx->opTop-1].num);
-    naRef vec = ctx->opStack[ctx->opTop-2];
-    if(idx >= vec.ref.ptr.vec->size) {
-        ctx->opTop -= 2; // pop two values
-        return naNil();
-    }
-    ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
-    return naVec_get(vec, idx);
-}
-
 // When a code object comes out of the constant pool and shows up on
 // the stack, it needs to be bound with the lexical context.
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
@@ -265,6 +250,22 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
     int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
     f->ip += 2;
     return arg;
+}
+
+// OP_EACH works like a vector get, except that it leaves the vector
+// and index on the stack, increments the index after use, and pops
+// the arguments and pushes a nil if the index is beyond the end.
+static void evalEach(struct Context* ctx)
+{
+    int idx = (int)(ctx->opStack[ctx->opTop-1].num);
+    naRef vec = ctx->opStack[ctx->opTop-2];
+    if(idx >= vec.ref.ptr.vec->size) {
+        ctx->opTop -= 2; // pop two values
+        PUSH(ctx, naNil());
+        return;
+    }
+    ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
+    PUSH(ctx, naVec_get(vec, idx));
 }
 
 // Recursively descend into the parents lists
@@ -433,7 +434,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         f->line = ARG16(cd->byteCode, f);
         break;
     case OP_EACH:
-        PUSH(ctx, evalEach(ctx));
+        evalEach(ctx);
         break;
     case OP_MARK: // save stack state (e.g. "setjmp")
         ctx->markStack[ctx->markTop++] = ctx->opTop;

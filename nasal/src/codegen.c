@@ -190,6 +190,7 @@ static void pushLoop(struct Parser* p, struct Token* label)
 static void popLoop(struct Parser* p)
 {
     p->cg->loopTop--;
+    if(p->cg->loopTop < 0) *(int*)0=0; // DEBUG
     emit(p, OP_UNMARK);
 }
 
@@ -351,12 +352,13 @@ static void genForEach(struct Parser* p, struct Token* t)
     emit(p, OP_PUSHZERO);
     loopTop = p->cg->nBytes;
     emit(p, OP_EACH);
+    emit(p, OP_DUP);
     jumpEnd = emitJump(p, OP_JIFNIL);
     assignOp = genLValue(p, elem);
     emit(p, OP_XCHG);
     emit(p, assignOp);
+    emit(p, OP_POP);
     genLoop(p, body, 0, label, loopTop, jumpEnd);
-    popLoop(p);
 }
 
 static int tokMatch(struct Token* a, struct Token* b)
