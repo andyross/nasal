@@ -250,22 +250,6 @@ static naRef evalEquality(int op, naRef ra, naRef rb)
     return naNum((op==OP_EQ) ? result : !result);
 }
 
-static naRef evalBinaryNumeric(struct Context* ctx, int op, naRef ra, naRef rb)
-{
-    double a = numify(ctx, ra), b = numify(ctx, rb);
-    switch(op) {
-    case OP_PLUS:  return naNum(a + b);
-    case OP_MINUS: return naNum(a - b);
-    case OP_MUL:   return naNum(a * b);
-    case OP_DIV:   return naNum(a / b);
-    case OP_LT:    return naNum(a < b ? 1 : 0);
-    case OP_LTE:   return naNum(a <= b ? 1 : 0);
-    case OP_GT:    return naNum(a > b ? 1 : 0);
-    case OP_GTE:   return naNum(a >= b ? 1 : 0);
-    }
-    return naNil();
-}
-
 // When a code object comes out of the constant pool and shows up on
 // the stack, it needs to be bound with the lexical context.
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
@@ -401,20 +385,33 @@ static naRef run(struct Context* ctx)
         DBG(printOpDEBUG(f->ip-1, op));
         switch(op) {
         case OP_POP:
-            POP();
+            ctx->opTop--;
             break;
         case OP_DUP:
             PUSH(ctx->opStack[ctx->opTop-1]);
             break;
         case OP_XCHG:
-            a = POP(); b = POP();
-            PUSH(a); PUSH(b);
+            a = STK(1); STK(1) = STK(2); STK(2) = a;
             break;
-        case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
-        case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
-            a = POP(); b = POP();
-            PUSH(evalBinaryNumeric(ctx, op, b, a));
-            break;
+
+#define BINOP(expr) do { \
+    double l = IS_NUM(STK(2)) ? STK(2).num : numify(ctx, STK(2)); \
+    double r = IS_NUM(STK(1)) ? STK(1).num : numify(ctx, STK(1)); \
+    STK(2).ref.reftag = ~NASAL_REFTAG; \
+    STK(2).num = expr; \
+    ctx->opTop--; } while(0)
+
+        case OP_PLUS:  BINOP(l + r);         break;
+        case OP_MINUS: BINOP(l - r);         break;
+        case OP_MUL:   BINOP(l * r);         break;
+        case OP_DIV:   BINOP(l / r);         break;
+        case OP_LT:    BINOP(l <  r ? 1 : 0); break;
+        case OP_LTE:   BINOP(l <= r ? 1 : 0); break;
+        case OP_GT:    BINOP(l >  r ? 1 : 0); break;
+        case OP_GTE:   BINOP(l >= r ? 1 : 0); break;
+
+#undef BINOP
+
         case OP_EQ: case OP_NEQ:
             a = POP(); b = POP();
             PUSH(evalEquality(op, b, a));
