@@ -16,33 +16,76 @@ char* opStringDEBUG(int op)
     case OP_PLUS: return "PLUS";
     case OP_MINUS: return "MINUS";
     case OP_DIV: return "DIV";
+    case OP_NEG: return "NEG";
     case OP_CAT: return "CAT";
     case OP_LT: return "LT";
     case OP_LTE: return "LTE";
-    case OP_EQ: return "EQ";
-    case OP_NEQ: return "NEQ";
     case OP_GT: return "GT";
     case OP_GTE: return "GTE";
+    case OP_EQ: return "EQ";
+    case OP_NEQ: return "NEQ";
+    case OP_JMP: return "JMP";
+    case OP_JIF: return "JIF";
+    case OP_CALL: return "CALL";
     case OP_RETURN: return "RETURN";
-    case OP_ASSIGN: return "ASSIGN";
-    case OP_DUP: return "DUP";
     case OP_PUSHCONST: return "PUSHCONST";
     case OP_PUSHNIL: return "PUSHNIL";
+    case OP_POP: return "POP";
     case OP_INSERT: return "INSERT";
     case OP_EXTRACT: return "EXTRACT";
     case OP_MEMBER: return "MEMBER";
     case OP_SETMEMBER: return "SETMEMBER";
-    case OP_POP: return "POP";
     case OP_LOCAL: return "LOCAL";
     case OP_SETLOCAL: return "SETLOCAL";
-    case OP_NEG: return "NEG";
     case OP_NEWVEC: return "NEWVEC";
     case OP_VAPPEND: return "VAPPEND";
     case OP_NEWHASH: return "NEWHASH";
     case OP_HAPPEND: return "HAPPEND";
+    case OP_LINE: return "LINE";
     }
     return "<bad opcode>";
 }
+
+void printOpDEBUG(op)
+{
+    printf("OP: %s\n", opStringDEBUG(op));
+}
+
+void printRefDEBUG(naRef r)
+{
+    int i;
+    if(IS_NUM(r)) {
+        printf("%f\n", r.num);
+    } else if(IS_STR(r)) {
+        printf("\"");
+        for(i=0; i<r.ref.ptr.str->len; i++)
+            printf("%c", r.ref.ptr.str->data[i]);
+        printf("\"\n");
+    } else if(IS_NIL(r)) {
+        printf("<nil>\n");
+    } else if(IS_VEC(r)) {
+        printf("<vec>\n");
+    } else if(IS_HASH(r)) {
+        printf("<hash>\n");
+    } else if(IS_CLOSURE(r)) {
+        printf("<func>\n");
+    } else if(IS_CODE(r)) {
+        printf("ACK: code object on stack!\n");
+        *(int*)0=0;
+    } else *(int*)0=0;
+}
+
+void printStackDEBUG(struct Context* ctx)
+{
+    int i;
+    printf("\n");
+    for(i=ctx->opTop-1; i>=0; i--) {
+        printf("] ");
+        printRefDEBUG(ctx->opStack[i]);
+    }
+    printf("\n");
+}
+
 
 static naRef containerGet(naRef box, naRef key)
 {
@@ -79,6 +122,9 @@ static void initContext(struct Context* c)
 
     BZERO(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     BZERO(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
+
+    c->meRef = naNewString(c);
+    naStr_fromdata(c->meRef, "me", 2);
 }
 
 struct Context* naNewContext()
@@ -109,7 +155,7 @@ void naGarbageCollect()
     // compilation, they aren't referenced anywhere yet!
 }
 
-void setupFuncall(struct Context* ctx, naRef closure)
+void setupFuncall(struct Context* ctx, naRef closure, naRef args)
 {
     struct Frame* f;
 
@@ -120,7 +166,9 @@ void setupFuncall(struct Context* ctx, naRef closure)
     f->namespace = closure.ref.ptr.closure->namespace;
     f->locals = naNewHash(ctx);
     f->ip = 0;
-    f->bp = ctx->opTop;
+    f->line = 0;
+
+    naHash_set(f->locals, ctx->meRef, args);
 }
 
 static double numify(naRef o)
@@ -150,6 +198,12 @@ static naRef evalAndOr(int op, naRef ra, naRef rb)
     if(op == OP_AND) result = a && b ? 1 : 0;
     else             result = a || b ? 1 : 0;
     return naNum(result);
+}
+
+static naRef evalEquality(int op, naRef ra, naRef rb)
+{
+    int result = naEqual(ra, rb);
+    return naNum((op==OP_EQ) ? result : !result);
 }
 
 static naRef evalBinaryNumeric(int op, naRef ra, naRef rb)
@@ -232,7 +286,7 @@ static void run1(struct Context* ctx)
     struct naCode* cd = f->code.ref.ptr.code;
     int op = cd->byteCode[f->ip++];
 
-    printf("OP: %s\n", opStringDEBUG(op));
+    printOpDEBUG(op);
     switch(op) {
     case OP_POP:
         POP(ctx);
@@ -241,6 +295,10 @@ static void run1(struct Context* ctx)
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
         a = POP(ctx); b = POP(ctx);
         PUSH(ctx, evalBinaryNumeric(op, b, a));
+        break;
+    case OP_EQ: case OP_NEQ:
+        a = POP(ctx); b = POP(ctx);
+        PUSH(ctx, evalEquality(op, b, a));
         break;
     case OP_AND: case OP_OR:
         a = POP(ctx); b = POP(ctx);
@@ -312,6 +370,28 @@ static void run1(struct Context* ctx)
         b = POP(ctx); a = POP(ctx); // a,b: box, key
         PUSH(ctx, containerGet(a, b));
         break;
+    case OP_JMP:
+        f->ip = ARG16(cd->byteCode, f);
+        break;
+    case OP_JIF:
+        if(naTrue(POP(ctx)))
+            f->ip = ARG16(cd->byteCode, f);
+        break;
+    case OP_CALL:
+        b = POP(ctx); a = POP(ctx); // a,b = func, args
+        setupFuncall(ctx, a, b);
+        f = &(ctx->fStack[ctx->fTop-1]); // Fixup local variables to reflect
+        cd = f->code.ref.ptr.code;       // the change of frame
+        break;
+    case OP_RETURN:
+        ctx->fTop--;
+        if(ctx->fTop < 0) { ctx->done = 1; return; }
+        f = &(ctx->fStack[ctx->fTop-1]); // ditto
+        cd = f->code.ref.ptr.code;
+        break;
+    case OP_LINE:
+        f->line = ARG16(cd->byteCode, f);
+        break;
     }
 
     // Are we done now?
@@ -319,52 +399,11 @@ static void run1(struct Context* ctx)
         ctx->done = 1;
 }
 
-void printRefDEBUG(naRef r)
-{
-    int i;
-    if(IS_NUM(r)) {
-        printf("%f\n", r.num);
-    } else if(IS_NIL(r)) {
-        printf("<nil>\n");
-    } else if(IS_STR(r)) {
-        printf("\"");
-        for(i=0; i<r.ref.ptr.str->len; i++)
-            printf("%c", r.ref.ptr.str->data[i]);
-        printf("\"\n");
-    } else if(IS_VEC(r)) {
-        printf("[ ");
-        for(i=0; i<r.ref.ptr.vec->size; i++) {
-            printf("  ");
-            printRefDEBUG(r.ref.ptr.vec->array[i]);
-        }
-        printf("]\n");
-    } else if(IS_CODE(r)) {
-        printf("ACK: code object on stack!\n");
-        *(int*)0=0;
-    } else if(IS_CLOSURE(r)) {
-        printf("<func>\n");
-    } else if(IS_HASH(r)) {
-        printf("<hash>\n");
-    } else *(int*)0=0;
-}
-
-void printStackDEBUG(struct Context* ctx)
-{
-    int i;
-    printf("\n");
-    for(i=ctx->opTop-1; i>=0; i--) {
-        printf("] ");
-        printRefDEBUG(ctx->opStack[i]);
-    }
-    printf("\n");
-}
-
-
 void naRun(struct Context* ctx, naRef code)
 {
     naRef closure;
     closure = bindFunction(ctx, code, naNewHash(ctx));
-    setupFuncall(ctx, closure);
+    setupFuncall(ctx, closure, naNewVector(ctx));
 
     ctx->done = 0;
     while(!ctx->done) {
