@@ -210,13 +210,13 @@ static int lexNumLiteral(struct Parser* p, int index)
     if(i<len && buf[i] == '.') {
         i++;
         while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
-        if(i<len && (buf[i] == 'e' || buf[i] == 'E')) {
-            i++;
-            if(i<len
-               && (buf[i] == '-' || buf[i] == '+')
-               && (i+1<len && buf[i+1] >= '0' && buf[i+1] <= '9')) i++;
-            while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
-        }
+    }
+    if(i<len && (buf[i] == 'e' || buf[i] == 'E')) {
+        i++;
+        if(i<len
+           && (buf[i] == '-' || buf[i] == '+')
+           && (i+1<len && buf[i+1] >= '0' && buf[i+1] <= '9')) i++;
+        while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
     }
     naStr_parsenum(p->buf + index, i - index, &d);
     newToken(p, index, TOK_LITERAL, 0, 0, d);
