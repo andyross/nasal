@@ -26,7 +26,7 @@ char* opStringDEBUG(int op)
     case OP_NEQ: return "NEQ";
     case OP_EACH: return "EACH";
     case OP_JMP: return "JMP";
-    case OP_JIF: return "JIF";
+    case OP_JIFNOT: return "JIFNOT";
     case OP_JIFNIL: return "JIFNIL";
     case OP_FCALL: return "FCALL";
     case OP_MCALL: return "MCALL";
@@ -435,9 +435,9 @@ static void run1(struct Context* ctx)
         if(IS_NIL(a))
             f->ip = arg;
         break;
-    case OP_JIF:
+    case OP_JIFNOT:
         arg = ARG16(cd->byteCode, f);
-        if(naTrue(POP(ctx)))
+        if(!naTrue(POP(ctx)))
             f->ip = arg;
         break;
     case OP_FCALL:

@@ -208,8 +208,7 @@ static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
 {
     int jumpNext, jumpEnd;
     genExpr(p, tif->children); // the test
-    emit(p, OP_NOT);
-    jumpNext = emitJump(p, OP_JIF);
+    jumpNext = emitJump(p, OP_JIFNOT);
     genExprList(p, tif->children->next->children); // the body
     jumpEnd = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpNext);
@@ -253,8 +252,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
 
     loopTop = p->nBytes;
     genExpr(p, test);
-    emit(p, OP_NOT);
-    jumpEnd = emitJump(p, OP_JIF);
+    jumpEnd = emitJump(p, OP_JIFNOT);
 
     genLoop(p, body, update, loopTop, jumpEnd);
 }
