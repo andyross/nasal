@@ -106,11 +106,11 @@ static naRef containerGet(naRef box, naRef key)
 static void containerSet(naRef box, naRef key, naRef val)
 {
     if(IS_HASH(box)) naHash_set(box, key, val);
-    if(IS_VEC(box)) {
+    else if(IS_VEC(box)) {
         if(!IS_NUM(key)) ERR("non-numeric index into vector");
         naVec_set(box, (int)key.num, val);
-    }
-    ERR("insert into non-container");
+    } else
+        ERR("insert into non-container");
 }
 
 static void initContext(struct Context* c)
@@ -183,16 +183,21 @@ void setupFuncall(struct Context* ctx, naRef closure, naRef args)
 
 static double numify(naRef o)
 {
+    double n;
     if(IS_NUM(o)) return o.num;
     else if(!IS_STR(o)) ERR("non-scalar in numeric context");
-    return (naStr_tonum(o)).num;   
+    else if(naStr_tonum(o, &n)) return n;
+    else ERR("non-numeric string in numeric context");
+    return 0;
 }
 
-static naRef stringify(naRef r)
+
+static naRef stringify(struct Context* ctx, naRef r)
 {
     naRef result;
     if(IS_STR(r)) return r;
     if(IS_NUM(r)) {
+        result = naNewString(ctx);
         naStr_fromnum(result, r.num);
         return result;
     }
@@ -342,7 +347,7 @@ static void run1(struct Context* ctx)
         PUSH(ctx, evalAndOr(op, a, b));
         break;
     case OP_CAT:
-        a = stringify(POP(ctx)); b = stringify(POP(ctx));
+        a = stringify(ctx, POP(ctx)); b = stringify(ctx, POP(ctx));
         c = naNewString(ctx);
         naStr_concat(c, b, a);
         PUSH(ctx, c);

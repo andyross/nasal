@@ -36,4 +36,6 @@ struct Context {
 
 void naRun(struct Context* ctx, naRef code);
 
+void printRefDEBUG(naRef r);
+
 #endif // _CODE_H

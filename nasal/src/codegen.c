@@ -36,19 +36,27 @@ static int newConstant(struct Parser* p, naRef c)
     int i = p->nConsts++;
     if(i > 0xffff) naParseError(p, "Too many constants in code block", 0);
     naHash_set(p->consts, naNum(i), c);
+    printf("newConstant (idx %d) = ", i);
+    printRefDEBUG(c);
     return i;
 }
 
 static naRef getConstant(struct Parser* p, int idx)
 {
-    return naHash_get(p->consts, naNum(idx));
+    naRef result = naHash_get(p->consts, naNum(idx));
+    printf("getConstant (idx %d) = ", idx);
+    printRefDEBUG(result);
+    return result;
 }
 
 // Interns a scalar (!) constant and returns its index
 static int internConstant(struct Parser* p, naRef c)
 {
     naRef r = naHash_get(p->interned, c);
+    printf("internConstant ");
+    printRefDEBUG(c);
     if(!IS_NIL(r)) {
+        printf("  -- already there, idx %f\n", r.num);
         return (int)r.num;
     } else {
         int idx = newConstant(p, c);

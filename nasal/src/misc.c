@@ -44,12 +44,16 @@ naRef naNewString(struct Context* c)
 
 naRef naNewVector(struct Context* c)
 {
-    return naNew(c, T_VEC);
+    naRef r = naNew(c, T_VEC);
+    naVec_init(r);
+    return r;
 }
 
 naRef naNewHash(struct Context* c)
 {
-    return naNew(c, T_HASH);
+    naRef r = naNew(c, T_HASH);
+    naHash_init(r);
+    return r;
 }
 
 naRef naNewCode(struct Context* c)
@@ -98,10 +102,10 @@ int naEqual(naRef a, naRef b)
 
     // Numeric equality after conversion
     if(IS_NUM(a)) { na = a.num; }
-    else if(!(IS_STR(a) && naStr_numeric(a))) { return 0; }
+    else if(!(IS_STR(a) && naStr_tonum(a, &na))) { return 0; }
 
     if(IS_NUM(b)) { nb = b.num; }
-    else if(!(IS_STR(b) && naStr_numeric(b))) { return 0; }
+    else if(!(IS_STR(b) && naStr_tonum(b, &nb))) { return 0; }
 
     return na == nb;
 }

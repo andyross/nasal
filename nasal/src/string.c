@@ -70,26 +70,20 @@ void naStr_fromnum(naRef dest, double num)
     memcpy(dst->data, buf, dst->len);
 }
 
-int naStr_numeric(naRef str)
-{
-    double dummy;
-    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, &dummy);
-}
-
 int naStr_parsenum(char* str, int len, double* result)
 {
     return tonum(str, len, result);
 }
 
-naRef naStr_tonum(naRef str)
+int naStr_tonum(naRef str, double* out)
 {
-    naRef r;
-    struct naStr* s = str.ref.ptr.str;
-    double n;
-    if(!tonum(s->data, s->len, &n)) ERR("string not numeric");
-    r.ref.reftag = 0;
-    r.num = n;
-    return r;
+    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, out);
+}
+
+int naStr_numeric(naRef str)
+{
+    double dummy;
+    return tonum(str.ref.ptr.str->data, str.ref.ptr.str->len, &dummy);
 }
 
 void naStr_gcclean(struct naStr* str)

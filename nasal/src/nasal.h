@@ -11,7 +11,7 @@
 // thus unmistakable.  Swap the structure order on 32 bit big-endian
 // systems.  On 64 bit sytems of either endianness, reftag and the
 // double won't be coincident anyway.
-#define NASL_REFTAG 0x7ff56789
+#define NASL_REFTAG 0x7ff56789 // == 2,146,789,257 decimal
 typedef union {
     double num;
     struct {
@@ -137,7 +137,7 @@ naRef naNewClosure(struct Context* c);
 
 // String utilities:
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
-naRef naStr_tonum(naRef str);
+int naStr_tonum(naRef str, double* out);
 int naStr_numeric(naRef str);
 int naStr_parsenum(char* str, int len, double* result);
 void naStr_fromnum(naRef dest, double num);
