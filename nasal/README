@@ -2,23 +2,9 @@ NOTE: This is *not* the "NASL" extension language shipped with the
 Nessus project (http://www.nessus.org).  I picked a bad name, and it
 will change.  Send suggestions if you have them.
 
-There is no Makefile.  I build stuff on my home projects using a
-custom dependency/build tool ("plm", which I might get into shape to
-release some day -- bug me if you care).  Just compile all the C
-source together into a binary.  Link in the math library if your
-platform doesn't by default.  On most linux distributions, this is
-sufficient:
-
-     gcc -Wall -O3 -o nasal *.c -lm
-
-The optimizer flag is vaguely important.  Nasal's bytecode interpreter
-makes use of many tiny functions, and benefits greatly from the gcc
-inliner; I've seen tight bytecode loops ("number crunching") run 20
-times faster when using the optimizer.
-
 Documentation, such as it is (it is currently more akin to design
-notes than docs) is in doc.html.  Some sample code with annotation is
-in sample.nas.
+notes than docs) is in misc/doc.html.  Some sample code with
+annotation is in misc/sample.nas.
 
 Important source to read is prog-nasal.c, lib.c and nasal.h.  These
 define and implement the user-side extension API.
@@ -33,14 +19,16 @@ recognition of the "// ..." commenting style, which Nasal uses
 pervasively and is supported by all modern C compilers.  Note that
 -ansi doesn't generate better code, nor find any extra warning
 conditions.  Pedants can take refuge in the fact that Nasal is
-compliant with the emerging ANSI C99 standard. :)
+compliant with the emerging ANSI C99 standard.
 
 More deeply, there is a byte order dependency in nasal.h -- the naRef
 structure needs to be modified for big endian systems by swapping the
 "ref" and "ptr" fields.  Without this, nasal will compile and run just
 fine, but end users will be able to crash the interpreter (or worse)
 by introducing a carefully crafted numeric value that will be
-interpreted as an object.
+interpreted as an object.  The current preprocessor code to implement
+this check (at the top of nasal.h) is hackish, immature, and likely to
+break on at least one platform.
 
 Feel free to send questions and comments to me at andy@plausible.org
  - Andy Ross

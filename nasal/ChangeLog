@@ -16,7 +16,7 @@ New Features:
 
 Stack trace support added to the C error handling API.
 Added a math library.
-Added a delete() function.
+Library functions: delete(), setsize(), subvec()
 Lexical function binding can happen from user code via naBindFunction().
 New naSave() API for explicitly caching references to preserve
   them across garbage collection.

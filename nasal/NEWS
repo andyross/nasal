@@ -1,0 +1,4 @@
+See the ChangeLog file for release news.  Nasal is a codebase for
+developers, so the difference between "user visible" and "internal"
+changes (the reason for separating the NEWS and ChangeLog files) is
+vague.
