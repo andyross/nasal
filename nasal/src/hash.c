@@ -161,4 +161,6 @@ void naHash_gcclean(struct naHash* h)
     h->nodes = 0;
     h->size = 0;
     h->lgalloced = 0;
+    h->table = 0;
+    h->nextnode = 0;
 }

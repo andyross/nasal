@@ -82,6 +82,8 @@ void naGC_mark(naRef r)
             naGC_mark(r.ref.ptr.vec->array[i]);
         break;
     case TYPE_NAHASH:
+        if(r.ref.ptr.hash->table == 0)
+            break;
         for(i=0; i < (1<<r.ref.ptr.hash->lgalloced); i++) {
             struct HashNode* hn = r.ref.ptr.hash->table[i];
             while(hn) {
@@ -113,8 +115,8 @@ void naGC_reap(struct naPool* p)
         }
     }
 
-    // Allocate more if necessary
-    if(2*total <= 3*p->nfree) {
+    // Allocate more if necessary (try to keep 33% available)
+    if(3*p->nfree <= 2*total) {
         char* buf;
         struct Block* newblocks;
 

@@ -9,6 +9,14 @@ void* ALLOC(int n) { return malloc(n); }
 void ERR(char* msg) { fprintf(stderr, "%s\n", msg); *(int*)0=0; }
 void BZERO(void* m, int n) { bzero(m, n); }
 
+naRef naNil()
+{
+    naRef r;
+    r.ref.reftag = NASL_REFTAG;
+    r.ref.ptr.obj = 0;
+    return r;
+}
+
 naRef naNum(double num)
 {
     naRef r;

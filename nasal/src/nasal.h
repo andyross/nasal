@@ -91,6 +91,7 @@ void ERR(char* msg);
 void BZERO(void* m, int n);
 
 int naEqual(naRef a, naRef b);
+naRef naNil();
 naRef naNum(double num);
 naRef naObj(int type, struct naObj* o);
 
