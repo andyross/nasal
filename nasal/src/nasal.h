@@ -62,7 +62,6 @@ typedef union {
             struct naHash* hash;
             struct naCode* code;
             struct naFunc* func;
-            struct naClosure* closure;
             struct naCCode* ccode;
             struct naGhost* ghost;
         } ptr;

@@ -179,13 +179,10 @@ void naGC_mark(naRef r)
         for(i=0; i<r.ref.ptr.code->nConstants; i++)
             naGC_mark(r.ref.ptr.code->constants[i]);
         break;
-    case T_CLOSURE:
-        naGC_mark(r.ref.ptr.closure->namespace);
-        naGC_mark(r.ref.ptr.closure->next);
-        break;
     case T_FUNC:
         naGC_mark(r.ref.ptr.func->code);
-        naGC_mark(r.ref.ptr.func->closure);
+        naGC_mark(r.ref.ptr.func->namespace);
+        naGC_mark(r.ref.ptr.func->next);
         break;
     }
 }

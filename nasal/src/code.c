@@ -245,18 +245,17 @@ static naRef evalBinaryNumeric(struct Context* ctx, int op, naRef ra, naRef rb)
 // the stack, it needs to be bound with the lexical context.
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
 {
-    naRef next = f->func.ref.ptr.func->closure;
-    naRef closure = naNewClosure(ctx, f->locals, next);
     naRef result = naNewFunc(ctx, code);
-    result.ref.ptr.func->closure = closure;
+    result.ref.ptr.func->namespace = f->locals;
+    result.ref.ptr.func->next = f->func;
     return result;
 }
 
-static int getClosure(struct naClosure* c, naRef sym, naRef* result)
+static int getClosure(struct naFunc* c, naRef sym, naRef* result)
 {
     while(c) {
         if(naHash_get(c->namespace, sym, result)) return 1;
-        c = c->next.ref.ptr.closure;
+        c = c->next.ref.ptr.func;
     }
     return 0;
 }
@@ -265,17 +264,15 @@ static int getClosure(struct naClosure* c, naRef sym, naRef* result)
 static naRef getLocal(struct Context* ctx, struct Frame* f, naRef sym)
 {
     naRef result;
-    if(!naHash_get(f->locals, sym, &result)) {
-        naRef c = f->func.ref.ptr.func->closure;
-        if(!getClosure(c.ref.ptr.closure, sym, &result))
+    if(!naHash_get(f->locals, sym, &result))
+        if(!getClosure(f->func.ref.ptr.func, sym, &result))
             ERR(ctx, "undefined symbol");
-    }
     return result;
 }
 
-static int setClosure(naRef closure, naRef sym, naRef val)
+static int setClosure(naRef func, naRef sym, naRef val)
 {
-    struct naClosure* c = closure.ref.ptr.closure;
+    struct naFunc* c = func.ref.ptr.func;
     if(c == 0) { return 0; }
     else if(naHash_tryset(c->namespace, sym, val)) { return 1; }
     else { return setClosure(c->next, sym, val); }
@@ -286,7 +283,7 @@ static naRef setLocal(struct Frame* f, naRef sym, naRef val)
     // Try the locals first, if not already there try the closures in
     // order.  Finally put it in the locals if nothing matched.
     if(!naHash_tryset(f->locals, sym, val))
-        if(!setClosure(f->func.ref.ptr.func->closure, sym, val))
+        if(!setClosure(f->func, sym, val))
             naHash_set(f->locals, sym, val);
     return val;
 }
@@ -586,7 +583,8 @@ static naRef run(naContext ctx)
 naRef naBindFunction(naContext ctx, naRef code, naRef closure)
 {
     naRef func = naNewFunc(ctx, code);
-    func.ref.ptr.func->closure = naNewClosure(ctx, closure, naNil());
+    func.ref.ptr.func->namespace = closure;
+    func.ref.ptr.func->next = naNil();
     return func;
 }
 
@@ -596,8 +594,8 @@ naRef naBindToContext(naContext ctx, naRef code)
     // Note fTop - 2: not the top frame, because that is our current
     // (CCODE) call context.
     struct Frame* f = &ctx->fStack[ctx->fTop-2];
-    naRef cls = naNewClosure(ctx, f->locals, f->func.ref.ptr.func->closure);
-    func.ref.ptr.func->closure = cls;
+    func.ref.ptr.func->namespace = f->locals;
+    func.ref.ptr.func->next = f->func;
     return func;
 }
 
@@ -615,9 +613,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         args = naNewVector(ctx);
     if(!IS_FUNC(func)) {
         // Generate a noop closure for bare code objects
-        naRef code = func;
-        func = naNewFunc(ctx, code);
-        func.ref.ptr.func->closure = naNewClosure(ctx, locals, naNil());
+        func = naNewFunc(ctx, func);
     }
     if(!IS_NIL(obj))
         naHash_set(locals, ctx->globals->meRef, obj);

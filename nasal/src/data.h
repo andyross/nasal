@@ -5,9 +5,9 @@
 
 // Notes: A CODE object is a compiled set of bytecode instructions.
 // What actually gets executed at runtime is a bound FUNC object,
-// which combines the raw code with a pointer to a CLOSURE chain of
-// namespaces.
-enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC, T_CCODE, T_GHOST,
+// which combines the raw code with a namespace and a pointer to
+// parent function in the lexical closure.
+enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
        NUM_NASAL_TYPES }; // V. important that this come last!
 
 #define IS_REF(r) ((r).ref.reftag == NASAL_REFTAG)
@@ -19,7 +19,6 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE, T_FUNC, T_CCODE, T_GHOST,
 #define IS_HASH(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_HASH)
 #define IS_CODE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CODE)
 #define IS_FUNC(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_FUNC)
-#define IS_CLOSURE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CLOSURE)
 #define IS_CCODE(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_CCODE)
 #define IS_GHOST(r) (IS_OBJ((r)) && (r).ref.ptr.obj->type == T_GHOST)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
@@ -77,11 +76,6 @@ struct naCode {
 struct naFunc {
     GC_HEADER;
     naRef code;
-    naRef closure;
-};
-
-struct naClosure {
-    GC_HEADER;
     naRef namespace;
     naRef next; // parent closure
 };
@@ -116,7 +110,6 @@ void naGarbageCollect();
 naRef naObj(int type, struct naObj* o);
 naRef naNew(naContext c, int type);
 naRef naNewCode(naContext c);
-naRef naNewClosure(naContext c, naRef namespace, naRef next);
 
 int naStr_equal(naRef s1, naRef s2);
 naRef naStr_fromnum(naRef dest, double num);

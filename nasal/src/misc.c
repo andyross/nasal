@@ -92,16 +92,9 @@ naRef naNewFunc(struct Context* c, naRef code)
 {
     naRef func = naNew(c, T_FUNC);
     func.ref.ptr.func->code = code;
-    func.ref.ptr.func->closure = naNil();
+    func.ref.ptr.func->namespace = naNil();
+    func.ref.ptr.func->next = naNil();
     return func;
-}
-
-naRef naNewClosure(struct Context* c, naRef namespace, naRef next)
-{
-    naRef closure = naNew(c, T_CLOSURE);
-    closure.ref.ptr.closure->namespace = namespace;
-    closure.ref.ptr.closure->next = next;
-    return closure;
 }
 
 naRef naNewGhost(naContext c, naGhostType* type, void* ptr)
@@ -170,7 +163,6 @@ int naTypeSize(int type)
     case T_HASH: return sizeof(struct naHash);
     case T_CODE: return sizeof(struct naCode);
     case T_FUNC: return sizeof(struct naFunc);
-    case T_CLOSURE: return sizeof(struct naClosure);
     case T_CCODE: return sizeof(struct naCCode);
     case T_GHOST: return sizeof(struct naGhost);
     };
