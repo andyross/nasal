@@ -28,15 +28,18 @@ static void freeelem(struct naPool* p, struct naObj* o)
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
     switch(o->type) {
-    case TYPE_NASTR:
+    case T_STR:
         naStr_gcclean((struct naStr*)o);
         break;
-    case TYPE_NAVEC:
+    case T_VEC:
         naVec_gcclean((struct naVec*)o);
         break;
-    case TYPE_NAHASH:
+    case T_HASH:
         naHash_gcclean((struct naHash*)o);
         break;
+    case T_CODE:
+    case T_CLOSURE:
+        *(int*)0=0;
     }
 
     // And add it to the free list
@@ -77,11 +80,11 @@ void naGC_mark(naRef r)
 
     r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
-    case TYPE_NAVEC:
+    case T_VEC:
         for(i=0; i<r.ref.ptr.vec->size; i++)
             naGC_mark(r.ref.ptr.vec->array[i]);
         break;
-    case TYPE_NAHASH:
+    case T_HASH:
         if(r.ref.ptr.hash->table == 0)
             break;
         for(i=0; i < (1<<r.ref.ptr.hash->lgalloced); i++) {
@@ -93,6 +96,9 @@ void naGC_mark(naRef r)
             }
         }
         break;
+    case T_CODE:
+    case T_CLOSURE:
+        *(int*)0=0;
     }
 }
 

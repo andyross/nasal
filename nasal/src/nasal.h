@@ -33,15 +33,14 @@ typedef union {
     unsigned char mark; \
     unsigned char type
 
-#define TYPE_NASTR  's'
-#define TYPE_NAVEC  'v'
-#define TYPE_NAHASH 'h'
+enum { T_STR, T_VEC, T_HASH, T_CODE, T_CLOSURE,
+       NUM_NASL_TYPES }; // V. important that this come last!
 
 #define IS_REF(r) ((r).ref.reftag == NASL_REFTAG)
 #define IS_NUM(r) ((r).ref.reftag != NASL_REFTAG)
 #define IS_NIL(r) (IS_REF((r)) && (r).ref.ptr.obj == 0)
-#define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == TYPE_NASTR)
-#define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == TYPE_NASTR)
+#define IS_STR(r) (IS_REF((r)) && (r).ref.ptr.obj->type == T_STR)
+#define IS_SCALAR(r) (IS_NUM((r)) || (r).ref.ptr.obj->type == T_STR)
 
 struct naObj {
     GC_HEADER;
@@ -75,6 +74,16 @@ struct naHash {
     int nextnode;
 };
 
+struct naCode {
+    GC_HEADER;
+    void* dummy;
+};
+
+struct naClosure {
+    GC_HEADER;
+    void* dummy;
+};
+
 struct naPool {
     int           elemsz;
     int           nblocks;
@@ -94,6 +103,8 @@ int naEqual(naRef a, naRef b);
 naRef naNil();
 naRef naNum(double num);
 naRef naObj(int type, struct naObj* o);
+
+int naTypeSize(int type);
 
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
 naRef naStr_tonum(naRef str);

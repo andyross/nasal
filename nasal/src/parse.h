@@ -2,6 +2,7 @@
 #define _PARSE_H
 
 #include "nasl.h"
+#include "code.h"
 
 enum {
     TOK_TOP=1, TOK_AND, TOK_OR, TOK_NOT, TOK_LPAR, TOK_RPAR, TOK_LBRA,
@@ -46,13 +47,19 @@ struct Parser {
 
     // Start of current symbol in the lexer
     int symbolStart;
+
+    // Handle to the NaSL interpreter
+    struct Context* context;
 };
 
 void naParseInit(struct Parser* p);
 void* naParseAlloc(struct Parser* p, int bytes);
 void naParseDestroy(struct Parser* p);
-
 void naLex(struct Parser* p);
+void naCodeGen(struct Parser* p);
+
 void naParse(struct Parser* p);
+
+
 
 #endif // _PARSE_H

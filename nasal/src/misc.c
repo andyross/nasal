@@ -53,4 +53,14 @@ int naEqual(naRef a, naRef b)
     return na == nb;
 }
 
-
+int naTypeSize(int type)
+{
+    switch(type) {
+    case T_STR: return sizeof(struct naStr);
+    case T_VEC: return sizeof(struct naVec);
+    case T_HASH: return sizeof(struct naHash);
+    case T_CODE: return sizeof(struct naCode);
+    case T_CLOSURE: return sizeof(struct naClosure);
+    };
+    return -1;
+}
