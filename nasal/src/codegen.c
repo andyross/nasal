@@ -357,7 +357,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         genLambda(p, t);
         break;
     case TOK_LPAR:
-        if(BINARY(t)) genFuncall(p, t);    // function invocation
+        if(BINARY(t) || !RIGHT(t)) genFuncall(p, t); // function invocation
         else          genExpr(p, LEFT(t)); // simple parenthesis
         break;
     case TOK_LBRA:
