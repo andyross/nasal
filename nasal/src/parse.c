@@ -74,6 +74,8 @@ void naParseDestroy(struct Parser* p)
 
 void* naParseAlloc(struct Parser* p, int bytes)
 {
+    char* result;
+
     // Round up to 8 byte chunks for alignment
     if(bytes & 0x7) bytes = ((bytes>>3) + 1) << 3;
     
@@ -105,7 +107,7 @@ void* naParseAlloc(struct Parser* p, int bytes)
         p->leftInChunk = sz;
     }
 
-    char* result = p->chunks[0] + p->chunkSizes[0] - p->leftInChunk;
+    result = p->chunks[0] + p->chunkSizes[0] - p->leftInChunk;
     p->leftInChunk -= bytes;
     return (void*)result;
 }

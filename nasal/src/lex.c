@@ -63,8 +63,9 @@ static int* findLines(struct Parser* p)
         }
         // Reallocate if necessary
         if(n == sz) {
+            int* nl;
             sz *= 2;
-            int* nl = naParseAlloc(p, sizeof(int) * sz);
+            nl = naParseAlloc(p, sizeof(int) * sz);
             for(j=0; j<n; j++) nl[j] = lines[j];
             lines = nl;
         }

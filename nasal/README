@@ -1,3 +1,7 @@
+NOTE: This is *not* the "NASL" extension language shipped with the
+Nessus project (http://www.nessus.org).  I picked a bad name, and it
+will change.  Send suggestions if you have them.
+
 There is no Makefile.  I build stuff on my home projects using a
 custom dependency/build tool ("plm", which I might get into shape to
 release some day -- bug me if you care).  Just compile all the C
@@ -5,7 +9,7 @@ source together into a binary.  Link in the math library if your
 platform doesn't by default.  On most linux distributions, this is
 sufficient:
 
-     gcc -O2 -o nasl *.c -lm
+     gcc -Wall -O3 -o nasl *.c -lm
 
 The optimizer flag is vaguely important.  Nasl's bytecode interpreter
 makes use of many tiny functions, and benefits greatly from the gcc
@@ -23,6 +27,13 @@ Portability notes: the sample main() routine (not really part of nasl,
 per se) expects a Unix-style stat() syscall to get file sizes.  It
 should hopefully compile under Cygwin, but Windows users may need to
 do some porting work if they want to use the command line interpreter.
+
+Don't use the -ansi switch to gcc.  It turns off preprocessor
+recognition of the "// ..." commenting style, which Nasl uses
+pervasively and is supported by all modern C compilers.  Note that
+-ansi doesn't generate better code, nor find any extra warning
+conditions.  Pedants can take refuge in the fact that Nasl is
+compliant with the emerging ANSI C99 standard. :)
 
 More deeply, there is a byte order dependency in nasl.h -- the naRef
 structure needs to be modified for big endian systems by swapping the

@@ -101,12 +101,13 @@ static void genLambda(struct Parser* p, struct Token* t)
 {
     int idx;
     struct CodeGenerator* cgSave;
+    naRef codeObj;
     if(LEFT(t)->type != TOK_LCURL)
         naParseError(p, "bad function definition", t->line);
 
     // Save off the generator state while we do the new one
     cgSave = p->cg;
-    naRef codeObj = naCodeGen(p, LEFT(LEFT(t)));
+    codeObj = naCodeGen(p, LEFT(LEFT(t)));
     p->cg = cgSave;
 
     idx = newConstant(p, codeObj);
@@ -299,8 +300,8 @@ static void genWhile(struct Parser* p, struct Token* t)
 
 static void genFor(struct Parser* p, struct Token* t)
 {
-    struct Token *h, *init, *test, *body, *update, *label=0;
-    h = LEFT(t)->children;
+    struct Token *init, *test, *body, *update, *label=0;
+    struct Token *h = LEFT(t)->children;
     int semis = countSemis(h);
     if(semis == 3) {
         if(!LEFT(h) || LEFT(h)->type != TOK_SYMBOL)
@@ -322,8 +323,8 @@ static void genFor(struct Parser* p, struct Token* t)
 static void genForEach(struct Parser* p, struct Token* t)
 {
     int loopTop, jumpEnd, assignOp;
-    struct Token *h, *elem, *body, *vec, *label=0;
-    h = LEFT(LEFT(t));
+    struct Token *elem, *body, *vec, *label=0;
+    struct Token *h = LEFT(LEFT(t));
     int semis = countSemis(h);
     if(semis == 2) {
         if(!LEFT(h) || LEFT(h)->type != TOK_SYMBOL)

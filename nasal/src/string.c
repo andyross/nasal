@@ -232,7 +232,8 @@ static int rawprint(double val, unsigned char* s)
         mantissa *= 10.0;
     }
     // Round (i.e. don't floor) the last digit
-    c = rint(mantissa);
+    c = (int)floor(mantissa);
+    if(mantissa - c >= 0.5) c++;
     if(c < 0) c = 0;
     if(c > 9) c = 9;
     s[i] = '0' + c;

@@ -56,9 +56,10 @@ int naVec_append(naRef vec, naRef o)
 
 naRef naVec_removelast(naRef vec)
 {
+    naRef o;
     struct naVec* v = vec.ref.ptr.vec;
     if(v->size == 0) return naNil();
-    naRef o = v->array[v->size - 1];
+    o = v->array[v->size - 1];
     v->size--;
     if(v->size < (v->alloced >> 1))
         realloc(v);
