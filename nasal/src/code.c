@@ -91,8 +91,13 @@ static void initContext(struct Context* c)
 
     c->fTop = c->opTop = c->markTop = 0;
 
-    naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame)); // DEBUG
-    naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef)); // DEBUG
+    naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
+    naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
+
+    // Make sure the args vectors (which are static with the context)
+    // are initialized to nil.
+    for(i=0; i<MAX_RECURSION; i++)
+        c->fStack[i].args = naNil();
 
     // Note we can't use naNewVector() for this; it requires that
     // temps exist first.
@@ -117,11 +122,11 @@ void naGarbageCollect()
     int i;
     struct Context* c = &globalContext; // FIXME: more than one!
     for(i=0; i < c->fTop; i++) {
-        struct Frame* f = &(c->fStack[i]);
-        naGC_mark(f->func);
-        naGC_mark(f->locals);
-        naGC_mark(f->args);
+        naGC_mark(c->fStack[i].func);
+        naGC_mark(c->fStack[i].locals);
     }
+    for(i=0; i < MAX_RECURSION; i++)
+        naGC_mark(c->fStack[i].args); // collect *all* the argument lists
     for(i=0; i < c->opTop; i++)
         naGC_mark(c->opStack[i]);
 
@@ -138,7 +143,6 @@ void naGarbageCollect()
 void setupFuncall(struct Context* ctx, naRef func, naRef args)
 {
     struct Frame* f;
-    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "recursion too deep");
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
     f->ip = 0;
@@ -149,9 +153,12 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     // happens if we enter the GC for locals, but args is still on the
     // C stack!
     f->args = args;
-    f->locals = naNewHash(ctx);
-
-    naHash_set(f->locals, ctx->argRef, args);
+    if(IS_CCODE(func.ref.ptr.func->code)) {
+        f->locals = naNil();
+    } else {
+        f->locals = naNewHash(ctx);
+        naHash_set(f->locals, ctx->argRef, args);
+    }
 }
 
 static naRef evalAndOr(struct Context* ctx, int op, naRef ra, naRef rb)
@@ -274,6 +281,19 @@ static int ARG16(unsigned char* byteCode, struct Frame* f)
     int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
     f->ip += 2;
     return arg;
+}
+
+// Grab the *next* frame's arguments list, empty it, and push it on
+// the stack.
+void handleNextArgs(struct Context* ctx)
+{
+    struct Frame* f;
+    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "recursion too deep");
+    f = &(ctx->fStack[ctx->fTop]);
+    if(IS_NIL(f->args))
+        f->args = naNewVector(ctx);
+    f->args.ref.ptr.vec->size = 0;
+    PUSH(ctx, f->args);
 }
 
 // OP_EACH works like a vector get, except that it leaves the vector
@@ -435,6 +455,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         a = POP(ctx);
         ctx->opTop = f->bp; // restore the correct stack frame!
         ctx->fTop--;
+        ctx->fStack[ctx->fTop].args.ref.ptr.vec->size = 0;
         PUSH(ctx, a);
         break;
     case OP_LINE:
@@ -452,6 +473,9 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
     case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
         ctx->opTop = ctx->markStack[--ctx->markTop];
         break;
+    case OP_NEXTARGS:
+        handleNextArgs(ctx);
+        break;
     default:
         ERR(ctx, "BUG: bad opcode");
     }
@@ -465,6 +489,7 @@ static void nativeCall(struct Context* ctx, struct Frame* f, naRef ccode)
     naCFunction fptr = ccode.ref.ptr.ccode->fptr;
     naRef result = (*fptr)(ctx, f->args);
     ctx->fTop--;
+    ctx->fStack[ctx->fTop].args.ref.ptr.vec->size = 0;
     PUSH(ctx, result);
 }
 
@@ -503,3 +528,4 @@ naRef naCall(struct Context* ctx, naRef code, naRef namespace)
 
     return ctx->opStack[ctx->opTop-1];
 }
+

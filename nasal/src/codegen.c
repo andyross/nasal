@@ -162,7 +162,7 @@ static void genFuncall(struct Parser* p, struct Token* t)
     } else {
         genExpr(p, LEFT(t));
     }
-    emit(p, OP_NEWVEC);
+    emit(p, OP_NEXTARGS);
     if(RIGHT(t)) genList(p, RIGHT(t));
     emit(p, op);
 }
