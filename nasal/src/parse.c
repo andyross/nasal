@@ -268,10 +268,11 @@ static int isBrace(int type)
     return type == TOK_LPAR || type == TOK_LBRA || type == TOK_LCURL;
 }
 
-static int isBlock(int type)
+static int isBlock(int t)
 {
-    return type == TOK_IF || type == TOK_ELSIF || type == TOK_ELSE
-        || type == TOK_FOR || type == TOK_FOREACH || type == TOK_WHILE;
+    return t == TOK_IF  || t == TOK_ELSIF   || t == TOK_ELSE
+        || t == TOK_FOR || t == TOK_FOREACH || t == TOK_WHILE
+        || t == TOK_FUNC;
 }
 
 static void precChildren(struct Parser* p, struct Token* t);
