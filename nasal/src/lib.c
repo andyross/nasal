@@ -1,6 +1,12 @@
-#include <string.h>
-
 #include "nasl.h"
+
+// No need to include <string.h> just for this
+static int strlen(char* s)
+{
+    char* s0 = s;
+    while(*s) s++;
+    return s - s0;
+}
 
 static naRef size(naContext c, naRef args)
 {
@@ -100,8 +106,7 @@ static naRef typeOf(naContext c, naRef args)
     else if(IS_VEC(r)) t = "vector";
     else if(IS_HASH(r)) t = "hash";
     else if(IS_FUNC(r)) t = "func";
-    r = naNewString(c);
-    naStr_fromdata(r, t, strlen(t));
+    r = naStr_fromdata(naNewString(c), t, strlen(t));
     return r;
 }
 
@@ -123,9 +128,9 @@ naRef naStdLib(naContext c)
     naRef namespace = naNewHash(c);
     int i, n = sizeof(funcs)/sizeof(struct func);
     for(i=0; i<n; i++) {
-        naRef name = naNewString(c);
         naRef code = naNewCCode(c, funcs[i].func);
-        naStr_fromdata(name, funcs[i].name, strlen(funcs[i].name));
+        naRef name = naStr_fromdata(naNewString(c),
+                                    funcs[i].name, strlen(funcs[i].name));
         naHash_set(namespace, name, naNewFunc(c, code, naNil()));
     }
     return namespace;

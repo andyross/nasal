@@ -20,12 +20,13 @@ unsigned char* naStr_data(naRef s)
     return s.ref.ptr.str->data;
 }
 
-void naStr_fromdata(naRef dst, unsigned char* data, int len)
+naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
 {
     FREE(dst.ref.ptr.str->data);
     dst.ref.ptr.str->len = len;
     dst.ref.ptr.str->data = ALLOC(len);
     memcpy(dst.ref.ptr.str->data, data, len);
+    return dst;
 }
 
 void naStr_concat(naRef dest, naRef s1, naRef s2)

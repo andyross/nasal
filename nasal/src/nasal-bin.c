@@ -225,7 +225,7 @@ int main(int argc, char** argv)
     struct stat fdat;
     char* buf;
     struct Context *ctx;
-    naRef code, namespace, result, name;
+    naRef code, namespace, result;
 
     if(argc < 2) {
         fprintf(stderr, "nasl: must specify a script to run\n");
@@ -259,15 +259,13 @@ int main(int argc, char** argv)
 
     // Add application-specific functions (in this case, "print") to
     // the namespace if desired.
-    name = naNewString(ctx);
-    naStr_fromdata(name, "print", 5);
     naHash_set(namespace,
-               name,
+               naStr_fromdata(naNewString(ctx), "print", 5),
                naNewFunc(ctx,
                          naNewCCode(ctx, print), // CCODE object
                          naNil())); // function closure (none here)
 
-    // Run it
+    // Run it.  Do something with the result if you like.
     result = naRun(ctx, code, namespace);
     
     free(buf);

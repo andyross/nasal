@@ -75,8 +75,7 @@ static void genScalarConstant(struct Parser* p, struct Token* t)
     int idx;
 
     if(t->str) {
-        c = naNewString(p->context);
-        naStr_fromdata(c, t->str, t->strlen);
+        c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
         naVec_append(p->context->parserTemporaries, c);
     } else {
         c = naNum(t->num);

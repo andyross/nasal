@@ -166,7 +166,7 @@ naRef naNewFunc(naContext c, naRef code, naRef closure);
 naRef naNewCCode(naContext c, naCFunction fptr);
 
 // String utilities:
-void naStr_fromdata(naRef dst, unsigned char* data, int len);
+naRef naStr_fromdata(naRef dst, unsigned char* data, int len);
 int naStr_tonum(naRef str, double* out);
 int naStr_numeric(naRef str);
 int naStr_parsenum(char* str, int len, double* result);

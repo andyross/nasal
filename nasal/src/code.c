@@ -99,13 +99,10 @@ static void initContext(struct Context* c)
 
     c->parserTemporaries = naNewVector(c);
 
-    // Cache pre-calculated "me" and "arg" scalars
-    c->meRef = naNewString(c);
-    naStr_fromdata(c->meRef, "me", 2);
-    c->argRef = naNewString(c);
-    naStr_fromdata(c->argRef, "arg", 3);
-    c->parentsRef = naNewString(c);
-    naStr_fromdata(c->parentsRef, "parents", 7);
+    // Cache pre-calculated "me", "arg" and "parents" scalars
+    c->meRef = naStr_fromdata(naNewString(c), "me", 2);
+    c->argRef = naStr_fromdata(naNewString(c), "arg", 3);
+    c->parentsRef = naStr_fromdata(naNewString(c), "parents", 7);
 }
 
 struct Context* naNewContext()
