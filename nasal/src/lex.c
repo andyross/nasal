@@ -33,6 +33,7 @@ struct Lexeme {
     {"!=", TOK_NEQ},
     {">",  TOK_GT},
     {">=", TOK_GTE},
+    {"nil", TOK_NIL},
     {"if",    TOK_IF},
     {"elsif", TOK_ELSIF},
     {"else",  TOK_ELSE},

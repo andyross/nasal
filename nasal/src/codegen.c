@@ -403,7 +403,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         genScalarConstant(p, RIGHT(t));
         emit(p, OP_MEMBER);
         break;
-    case TOK_EMPTY:
+    case TOK_EMPTY: case TOK_NIL:
         emit(p, OP_PUSHNIL); break; // *NOT* a noop!
     case TOK_AND: case TOK_OR:
         genShortCircuit(p, t);

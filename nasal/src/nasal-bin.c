@@ -49,6 +49,7 @@ char* tokString(int tok)
     case TOK_SYMBOL: return "TOK_SYMBOL";
     case TOK_LITERAL: return "TOK_LITERAL";
     case TOK_EMPTY: return "TOK_EMPTY";
+    case TOK_NIL: return "TOK_NIL";
     }
     return 0;
 }

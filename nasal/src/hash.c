@@ -102,9 +102,6 @@ void naHash_set(naRef hash, naRef key, naRef val)
     unsigned int col;
     struct HashNode* n;
 
-    if(IS_NIL(val))
-        return naHash_delete(hash, key);
-
     if(!IS_SCALAR(key)) ERR("Hash insert by non-scalar illegal");
     n = find(h, key);
     if(n) {
@@ -127,15 +124,17 @@ void naHash_set(naRef hash, naRef key, naRef val)
 void naHash_delete(naRef hash, naRef key)
 {
     struct naHash* h = hash.ref.ptr.hash;
-    struct HashNode* hn = h->table[hashcolumn(h, key)];
-    while(hn->next) {
-        if(naEqual(hn->next->key, key)) {
-            hn->next = hn->next->next;
-            h->size--;
-            if(h->size < 1<<(h->lgalloced - 1))
+    int col = hashcolumn(h, key);
+    struct HashNode *last=0, *hn = h->table[col];
+    while(hn) {
+        if(naEqual(hn->key, key)) {
+            if(last == 0) h->table[col] = hn->next;
+            else last->next = hn->next;
+            if((--h->size) < (1<<(h->lgalloced - 1)))
                 realloc(hash);
             return;
         }
+        last = hn;
         hn = hn->next;
     }
 }

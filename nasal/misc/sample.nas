@@ -65,6 +65,12 @@ abs = func { if(a<0) { -arg[0] } else { arg[0] } };
 #
 
 #
+# Nasl supports a "nil" value for use as a null pointer equivalent.
+# It can be tested for equality, matching only other nils.
+#
+listNode = { data : ["what", "ever"], next : nil };
+
+#
 # Looping constructs are mostly C-like.  The differences are foreach,
 # which takes a local variable name as its first argument and a vector
 # as its second.

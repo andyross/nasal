@@ -418,7 +418,7 @@ static void run1(struct Context* ctx)
         break;
     case OP_SETMEMBER:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c: hash, key, val
-        if(!IS_HASH(c)) ERR("non-objects have no members");
+        if(!IS_HASH(a)) ERR("non-objects have no members");
         naHash_set(a, b, c);
         PUSH(ctx, c);
         break;
