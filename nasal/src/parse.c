@@ -395,19 +395,15 @@ static struct Token* parsePrecedence(struct Parser* p,
         left->next = right;
         left->prev = 0;
         left->parent = top;
-        top->children = left;
-    } else {
-        top->children = right;
     }
+    top->children = left;
 
     if(right) {
         right->next = 0;
         right->prev = left;
         right->parent = top;
-        top->lastChild = right;
-    } else {
-        top->lastChild = left;
     }
+    top->lastChild = right;
 
     top->next = top->prev = 0;
     return top;

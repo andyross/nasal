@@ -7,6 +7,92 @@
 
 #include "parse.h"
 
+char* opStringDEBUG(int op)
+{
+    switch(op) {
+    case OP_AND: return "AND";
+    case OP_OR: return "OR";
+    case OP_NOT: return "NOT";
+    case OP_MUL: return "MUL";
+    case OP_PLUS: return "PLUS";
+    case OP_MINUS: return "MINUS";
+    case OP_DIV: return "DIV";
+    case OP_NEG: return "NEG";
+    case OP_CAT: return "CAT";
+    case OP_LT: return "LT";
+    case OP_LTE: return "LTE";
+    case OP_GT: return "GT";
+    case OP_GTE: return "GTE";
+    case OP_EQ: return "EQ";
+    case OP_NEQ: return "NEQ";
+    case OP_EACH: return "EACH";
+    case OP_JMP: return "JMP";
+    case OP_JIFNOT: return "JIFNOT";
+    case OP_JIFNIL: return "JIFNIL";
+    case OP_FCALL: return "FCALL";
+    case OP_MCALL: return "MCALL";
+    case OP_RETURN: return "RETURN";
+    case OP_PUSHCONST: return "PUSHCONST";
+    case OP_PUSHONE: return "PUSHONE";
+    case OP_PUSHZERO: return "PUSHZERO";
+    case OP_PUSHNIL: return "PUSHNIL";
+    case OP_POP: return "POP";
+    case OP_DUP: return "DUP";
+    case OP_XCHG: return "XCHG";
+    case OP_INSERT: return "INSERT";
+    case OP_EXTRACT: return "EXTRACT";
+    case OP_MEMBER: return "MEMBER";
+    case OP_SETMEMBER: return "SETMEMBER";
+    case OP_LOCAL: return "LOCAL";
+    case OP_SETLOCAL: return "SETLOCAL";
+    case OP_NEWVEC: return "NEWVEC";
+    case OP_VAPPEND: return "VAPPEND";
+    case OP_NEWHASH: return "NEWHASH";
+    case OP_HAPPEND: return "HAPPEND";
+    case OP_LINE: return "LINE";
+    }
+    return "<bad opcode>";
+}
+
+void printOpDEBUG(int ip, int op)
+{
+    printf("IP: %d OP: %s\n", ip, opStringDEBUG(op));
+}
+
+void printRefDEBUG(naRef r)
+{
+    int i;
+    if(IS_NUM(r)) {
+        printf("%f\n", r.num);
+    } else if(IS_NIL(r)) {
+        printf("<nil>\n");
+    } else if(IS_STR(r)) {
+        printf("\"");
+        for(i=0; i<r.ref.ptr.str->len; i++)
+            printf("%c", r.ref.ptr.str->data[i]);
+        printf("\"\n");
+    } else if(IS_VEC(r)) {
+        printf("<vec>\n");
+    } else if(IS_HASH(r)) {
+        printf("<hash>\n");
+    } else if(IS_CLOSURE(r)) {
+        printf("<func>\n");
+    } else if(IS_CODE(r)) {
+        ERR("DEBUG: code object on stack!\n");
+    } else ERR("DEBUG ACK");
+}
+
+void printStackDEBUG(struct Context* ctx)
+{
+    int i;
+    printf("\n");
+    for(i=ctx->opTop-1; i>=0; i--) {
+        printf("] ");
+        printRefDEBUG(ctx->opStack[i]);
+    }
+    printf("\n");
+}
+
 char* tokString(int tok)
 {
     switch(tok) {
@@ -56,8 +142,8 @@ char* tokString(int tok)
 
 void ack()
 {
-    *(int*)0=0;
     printf("ACK!");
+    exit(1);
 }
 
 void checkList(struct Token* start, struct Token* end)
@@ -104,8 +190,6 @@ void dumpTokenList(struct Token* t, int prefix)
 
     while(t) {
         printToken(t, prefstr);
-        if(t->children)
-            checkList(t->children, t->lastChild);
         dumpTokenList(t->children, prefix+1);
         t = t->next;
     }

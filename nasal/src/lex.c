@@ -1,6 +1,3 @@
-#include <stdio.h> // DEBUG
-#include <stdlib.h> // DEBUG
-
 #include "parse.h"
 
 // Static table of recognized lexemes in the language
@@ -90,10 +87,7 @@ static int getLine(struct Parser* p, int index)
 
 static void error(struct Parser* p, char* msg, int index)
 {
-    // FIXME: use a longjmp to a handler in the parser
-    printf("Error: %s at line %d\n", msg, getLine(p, index));
-    exit(1);
-
+    naParseError(p, msg, getLine(p, index));
 }
 
 // End index (the newline character) of the given line
@@ -131,7 +125,7 @@ static int hexc(char c, struct Parser* p, int index)
     if(c >= '0' && c <= '9') return c - '0';
     if(c >= 'A' && c <= 'F') return c - 'a' + 10;
     if(c >= 'a' && c <= 'f') return c - 'a' + 10;
-    error(p, "Bad hex constant", index);
+    error(p, "bad hex constant", index);
     return 0;
 }
 
@@ -141,7 +135,7 @@ static int hexc(char c, struct Parser* p, int index)
 static void sqEscape(char* buf, int len, int index, struct Parser* p,
                      char* cOut, int* eatenOut)
 {
-    if(len < 2) error(p, "Unterminated string", index);
+    if(len < 2) error(p, "unterminated string", index);
     if(buf[1] == '\'') {
         *cOut = '\'';
         *eatenOut = 2;
@@ -155,7 +149,7 @@ static void sqEscape(char* buf, int len, int index, struct Parser* p,
 static void dqEscape(char* buf, int len, int index, struct Parser* p,
                      char* cOut, int* eatenOut)
 {
-    if(len < 2) error(p, "Unterminated string", index);
+    if(len < 2) error(p, "unterminated string", index);
     *eatenOut = 2;
     switch(buf[1]) {
     case '"': *cOut = '"'; break;
@@ -164,7 +158,7 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
     case 't': *cOut = '\t'; break;
     case '\\': *cOut = '\\'; break;
     case 'x':
-        if(len < 4) error(p, "Unterminated string", index);
+        if(len < 4) error(p, "unterminated string", index);
         *cOut = (char)((hexc(buf[2], p, index)<<4) | hexc(buf[3], p, index));
         *eatenOut = 4;
     default:

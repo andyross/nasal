@@ -33,6 +33,8 @@ static void emitImmediate(struct Parser* p, int byte, int arg)
 
 static void genBinOp(int op, struct Parser* p, struct Token* t)
 {
+    if(!LEFT(t) || !RIGHT(t))
+        naParseError(p, "empty subexpression", t->line);
     genExpr(p, LEFT(t));
     genExpr(p, RIGHT(t));
     emit(p, op);
@@ -41,7 +43,7 @@ static void genBinOp(int op, struct Parser* p, struct Token* t)
 static int newConstant(struct Parser* p, naRef c)
 {
     int i = p->nConsts++;
-    if(i > 0xffff) naParseError(p, "Too many constants in code block", 0);
+    if(i > 0xffff) naParseError(p, "too many constants in code block", 0);
     naHash_set(p->consts, naNum(i), c);
     return i;
 }
@@ -180,7 +182,7 @@ static void genFuncall(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
     }
     emit(p, OP_NEWVEC);
-    genList(p, RIGHT(t));
+    if(RIGHT(t)) genList(p, RIGHT(t));
     emit(p, op);
 }
 
@@ -326,7 +328,8 @@ static void genForEach(struct Parser* p, struct Token* t)
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
-    if(t == 0) naParseError(p, "empty expression", t->line);
+    if(t == 0)
+        naParseError(p, "null subexpression", -1); // FIXME, ugly! No line!
     if(t->line != p->lastLine)
         emitImmediate(p, OP_LINE, t->line);
     p->lastLine = t->line;

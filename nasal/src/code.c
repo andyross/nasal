@@ -6,92 +6,10 @@
 // FIXME: need to store a list of all contexts
 struct Context globalContext;
 
-char* opStringDEBUG(int op)
-{
-    switch(op) {
-    case OP_AND: return "AND";
-    case OP_OR: return "OR";
-    case OP_NOT: return "NOT";
-    case OP_MUL: return "MUL";
-    case OP_PLUS: return "PLUS";
-    case OP_MINUS: return "MINUS";
-    case OP_DIV: return "DIV";
-    case OP_NEG: return "NEG";
-    case OP_CAT: return "CAT";
-    case OP_LT: return "LT";
-    case OP_LTE: return "LTE";
-    case OP_GT: return "GT";
-    case OP_GTE: return "GTE";
-    case OP_EQ: return "EQ";
-    case OP_NEQ: return "NEQ";
-    case OP_EACH: return "EACH";
-    case OP_JMP: return "JMP";
-    case OP_JIFNOT: return "JIFNOT";
-    case OP_JIFNIL: return "JIFNIL";
-    case OP_FCALL: return "FCALL";
-    case OP_MCALL: return "MCALL";
-    case OP_RETURN: return "RETURN";
-    case OP_PUSHCONST: return "PUSHCONST";
-    case OP_PUSHONE: return "PUSHONE";
-    case OP_PUSHZERO: return "PUSHZERO";
-    case OP_PUSHNIL: return "PUSHNIL";
-    case OP_POP: return "POP";
-    case OP_DUP: return "DUP";
-    case OP_XCHG: return "XCHG";
-    case OP_INSERT: return "INSERT";
-    case OP_EXTRACT: return "EXTRACT";
-    case OP_MEMBER: return "MEMBER";
-    case OP_SETMEMBER: return "SETMEMBER";
-    case OP_LOCAL: return "LOCAL";
-    case OP_SETLOCAL: return "SETLOCAL";
-    case OP_NEWVEC: return "NEWVEC";
-    case OP_VAPPEND: return "VAPPEND";
-    case OP_NEWHASH: return "NEWHASH";
-    case OP_HAPPEND: return "HAPPEND";
-    case OP_LINE: return "LINE";
-    }
-    return "<bad opcode>";
-}
-
-void printOpDEBUG(ip, op)
-{
-    printf("IP: %d OP: %s\n", ip, opStringDEBUG(op));
-}
-
-void printRefDEBUG(naRef r)
-{
-    int i;
-    if(IS_NUM(r)) {
-        printf("%f\n", r.num);
-    } else if(IS_NIL(r)) {
-        printf("<nil>\n");
-    } else if(IS_STR(r)) {
-        printf("\"");
-        for(i=0; i<r.ref.ptr.str->len; i++)
-            printf("%c", r.ref.ptr.str->data[i]);
-        printf("\"\n");
-    } else if(IS_VEC(r)) {
-        printf("<vec>\n");
-    } else if(IS_HASH(r)) {
-        printf("<hash>\n");
-    } else if(IS_CLOSURE(r)) {
-        printf("<func>\n");
-    } else if(IS_CODE(r)) {
-        printf("ACK: code object on stack!\n");
-        *(int*)0=0;
-    } else *(int*)0=0;
-}
-
-void printStackDEBUG(struct Context* ctx)
-{
-    int i;
-    printf("\n");
-    for(i=ctx->opTop-1; i>=0; i--) {
-        printf("] ");
-        printRefDEBUG(ctx->opStack[i]);
-    }
-    printf("\n");
-}
+char* opStringDEBUG(int op);
+void printOpDEBUG(int ip, int op);
+void printRefDEBUG(naRef r);
+void printStackDEBUG(struct Context* ctx);
 
 static int checkVec(naRef vec, naRef idx)
 {
@@ -175,10 +93,10 @@ void setupFuncall(struct Context* ctx, naRef closure, naRef args)
     struct Frame* f;
 
     // DEBUG
-    if(!IS_CLOSURE(closure)) *(int*)0=0;
-    if(!IS_CODE(closure.ref.ptr.closure->code)) *(int*)0=0;
-    if(!IS_HASH(closure.ref.ptr.closure->namespace)) *(int*)0=0;
-    if(!IS_VEC(args)) *(int*)0=0;
+    if(!IS_CLOSURE(closure)) ERR("DEBUG");
+    if(!IS_CODE(closure.ref.ptr.closure->code)) ERR("DEBUG");
+    if(!IS_HASH(closure.ref.ptr.closure->namespace)) ERR("DEBUG");
+    if(!IS_VEC(args)) ERR("DEBUG");
     // DEBUG
 
     if(ctx->fTop >= MAX_RECURSION) ERR("recursion too deep");

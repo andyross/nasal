@@ -7,7 +7,7 @@
 
 void FREE(void* m) { free(m); }
 void* ALLOC(int n) { return malloc(n); }
-void ERR(char* msg) { fprintf(stderr, "%s\n", msg); *(int*)0=0; }
+void ERR(char* msg) { fprintf(stderr, "%s\n", msg); exit(1); }
 void BZERO(void* m, int n) { bzero(m, n); }
 
 int naTrue(naRef r)
