@@ -30,3 +30,6 @@ structure needs to be modified for big endian systems by swapping the
 fine, but end users will be able to crash the interpreter (or worse)
 by introducing a carefully crafted numeric value that will be
 interpreted as an object.
+
+Feel free to send questions and comments to me at andy@plausible.org
+ - Andy Ross
