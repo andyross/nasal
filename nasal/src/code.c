@@ -122,7 +122,7 @@ void naGarbageCollect()
         naGC_mark(f->locals);
         naGC_mark(f->args);
     }
-    for(i=0; i <= c->opTop-1; i++)
+    for(i=0; i < c->opTop; i++)
         naGC_mark(c->opStack[i]);
 
     naGC_mark(c->temps);
@@ -144,8 +144,13 @@ void setupFuncall(struct Context* ctx, naRef func, naRef args)
     f->ip = 0;
     f->bp = ctx->opTop;
     f->line = 0;
-    f->locals = naNewHash(ctx);
+
+    // These two *must* be in the same order.  Think about what
+    // happens if we enter the GC for locals, but args is still on the
+    // C stack!
     f->args = args;
+    f->locals = naNewHash(ctx);
+
     naHash_set(f->locals, ctx->argRef, args);
 }
 
