@@ -9,10 +9,19 @@ enum {
     OP_RETURN, OP_ASSIGN
 };
 
-struct Context
-{
+struct Frame {
+    naRef func;
+    naRef namespace;
+    naRef* opStack;
+    int opTop;
+    int opDepth;
+};
+
+struct Context {
     struct naPool pools[NUM_NASL_TYPES];
-    naRef opStack; // A naVec object
+    struct Frame* stack;
+    int top;
+    int depth;
 };
 
 #endif // _CODE_H

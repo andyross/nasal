@@ -115,6 +115,7 @@ int main(int argc, char** argv)
     struct stat fdat;
     char* buf;
     struct Parser p;
+    struct Context *ctx;
 
     for(i=1; i<argc; i++) {
         stat(argv[i], &fdat);
@@ -122,6 +123,7 @@ int main(int argc, char** argv)
         f = fopen(argv[i], "r");
         fread(buf, 1, fdat.st_size, f);
 
+        ctx = naNewContext();
         naParseInit(&p);
 
         p.buf = buf;

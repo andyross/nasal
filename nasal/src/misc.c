@@ -3,11 +3,47 @@
 #include <stdlib.h>
 
 #include "nasl.h"
+#include "code.h"
 
 void FREE(void* m) { free(m); }
 void* ALLOC(int n) { return malloc(n); }
 void ERR(char* msg) { fprintf(stderr, "%s\n", msg); *(int*)0=0; }
 void BZERO(void* m, int n) { bzero(m, n); }
+
+naRef naNew(struct Context* c, int type)
+{
+    struct naObj* o;
+    if((o = naGC_get(&(c->pools[type]))) == 0)
+        naGarbageCollect();
+    if((o = naGC_get(&(c->pools[type]))) == 0)
+        ERR("Out of memory");
+    return naObj(type, o);
+}
+
+naRef naNewString(struct Context* c)
+{
+    return naNew(c, T_STR);
+}
+
+naRef naNewVector(struct Context* c)
+{
+    return naNew(c, T_VEC);
+}
+
+naRef naNewHash(struct Context* c)
+{
+    return naNew(c, T_HASH);
+}
+
+naRef naNewCode(struct Context* c)
+{
+    return naNew(c, T_CODE);
+}
+
+naRef naNewClosure(struct Context* c)
+{
+    return naNew(c, T_CLOSURE);
+}
 
 naRef naNil()
 {

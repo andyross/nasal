@@ -76,12 +76,16 @@ struct naHash {
 
 struct naCode {
     GC_HEADER;
-    void* dummy;
+    unsigned char* byteCode;
+    int nBytes;
+    naRef* contstants;
+    int nConstants;
 };
 
 struct naClosure {
     GC_HEADER;
-    void* dummy;
+    struct naCode* code;
+    struct naHash* namespace;
 };
 
 struct naPool {
@@ -99,13 +103,27 @@ void* ALLOC(int n);
 void ERR(char* msg);
 void BZERO(void* m, int n);
 
+// Predicates
 int naEqual(naRef a, naRef b);
 naRef naNil();
-naRef naNum(double num);
-naRef naObj(int type, struct naObj* o);
+
+naRef naObj(int type, struct naObj* o); // Make a naRef from an object pointer
+
+struct Context* naNewContext();
+void naGarbageCollect();
 
 int naTypeSize(int type);
 
+// Allocators/generators:
+naRef naNew(struct Context* c, int type);
+naRef naNum(double num);
+naRef naNewString(struct Context* c);
+naRef naNewVector(struct Context* c);
+naRef naNewHash(struct Context* c);
+naRef naNewCode(struct Context* c);
+naRef naNewClosure(struct Context* c);
+
+// String utilities:
 void naStr_fromdata(naRef dst, unsigned char* data, int len);
 naRef naStr_tonum(naRef str);
 int naStr_numeric(naRef str);
@@ -118,6 +136,7 @@ unsigned char* naStr_data(naRef s);
 int naStr_len(naRef s);
 void naStr_gcclean(struct naStr* s);
 
+// Vector utilities:
 naRef naVec_removelast(naRef vec);
 int naVec_append(naRef vec, naRef o);
 int naVec_size(naRef v);
@@ -125,6 +144,7 @@ void naVec_set(naRef vec, int i, naRef o);
 naRef naVec_get(naRef v, int i);
 void naVec_gcclean(struct naVec* s);
 
+// Hash utilities:
 int naHash_size(naRef h);
 void naHash_keys(naRef dst, naRef hash);
 void naHash_delete(naRef hash, naRef key);
@@ -133,6 +153,7 @@ naRef naHash_get(naRef hash, naRef key);
 void naHash_init(naRef hash);
 void naHash_gcclean(struct naHash* s);
 
+// GC pool utilities:
 void naGC_init(struct naPool* p, int elemsz);
 struct naObj* naGC_get(struct naPool* p);
 void naGC_mark(naRef r);

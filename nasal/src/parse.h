@@ -28,6 +28,9 @@ struct Token {
 };
 
 struct Parser {
+    // Handle to the NaSL interpreter
+    struct Context* context;
+
     // The parse tree ubernode
     struct Token tree;
 
@@ -35,21 +38,18 @@ struct Parser {
     char* buf;
     int   len;
 
-    // Computed line number table for the lexer
-    int* lines;
-    int  nLines;
-
     // Chunk allocator.  Throw away after parsing.
     void** chunks;
     int* chunkSizes;
     int nChunks;
     int leftInChunk;
 
+    // Computed line number table for the lexer
+    int* lines;
+    int  nLines;
+
     // Start of current symbol in the lexer
     int symbolStart;
-
-    // Handle to the NaSL interpreter
-    struct Context* context;
 };
 
 void naParseInit(struct Parser* p);
