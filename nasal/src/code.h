@@ -38,12 +38,6 @@ struct Globals {
     // A hash of symbol names
     naRef symbols;
 
-    // GC-findable reference point for objects that may live on the
-    // processor ("real") stack during execution.  naNew() places them
-    // here, and clears the array each time we return from a C
-    // function.
-    naRef temps;
-
     naRef save;
 
     struct ThreadState* threads;
@@ -62,6 +56,11 @@ struct Context {
     int opTop;
     int markStack[MAX_MARK_DEPTH];
     int markTop;
+
+    // GC-findable reference point for objects that may live on the
+    // processor ("real") stack during execution.  naNew() places them
+    // here, and clears the array each instruction
+    naRef temps;
 
     // Error handling
     jmp_buf jumpHandle;

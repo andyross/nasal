@@ -94,15 +94,18 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 
 static void initContext(struct Context* c)
 {
+    c->globals = globals;
     c->fTop = c->opTop = c->markTop = 0;
+
+    // Chicken and egg, can't use naNew because it requires temps to exist
+    c->temps = naObj(T_VEC, naGC_get(&(c->globals->pools[T_VEC])));
+    naVec_init(c->temps);
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 
     c->dieArg = naNil();
     c->error = 0;
-
-    c->globals = globals;
 }
 
 static void initGlobals()
@@ -114,11 +117,6 @@ static void initGlobals()
     int i;
     for(i=0; i<NUM_NASAL_TYPES; i++)
         naGC_init(&(globals->pools[i]), i);
-
-    // Note we can't use naNewVector() for this; it requires that
-    // temps exist first.
-    globals->temps = naObj(T_VEC, naGC_get(&(globals->pools[T_VEC])));
-    naVec_init(globals->temps);
 
     // Initialize a single context
     globals->freeContexts = 0;
@@ -171,10 +169,10 @@ void naGarbageCollect()
         for(i=0; i < c->opTop; i++)
             naGC_mark(c->opStack[i]);
         naGC_mark(c->dieArg);
+        naGC_mark(c->temps);
         c = c->nextAll;
     }
 
-    naGC_mark(globals->temps);
     naGC_mark(globals->save);
 
     naGC_mark(globals->meRef);
@@ -390,7 +388,7 @@ static naRef run(struct Context* ctx)
 {
     struct Frame* f;
     struct naCode* cd;
-    int* temps = &(globals->temps.ref.ptr.vec->rec->size); // FIXME: not threadsafe!
+    int* temps = &(ctx->temps.ref.ptr.vec->rec->size);
     int op, arg;
     naRef a, b, c;
 
@@ -662,10 +660,10 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
     // C-space arguments.
-    naVec_append(globals->temps, func);
-    naVec_append(globals->temps, args);
-    naVec_append(globals->temps, obj);
-    naVec_append(globals->temps, locals);
+    naVec_append(ctx->temps, func);
+    naVec_append(ctx->temps, args);
+    naVec_append(ctx->temps, obj);
+    naVec_append(ctx->temps, locals);
 
     if(IS_NIL(locals))
         locals = naNewHash(ctx);
