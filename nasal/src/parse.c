@@ -5,16 +5,14 @@
 
 // Static precedence table, from low (loose binding, do first) to high
 // (tight binding, do last).
-enum { PREC_LIST, PREC_BINARY, PREC_PREFIX, PREC_REVERSE, PREC_SUFFIX };
+enum { PREC_BINARY, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };
 
 #define MAX_PREC_TOKS 5
 struct precedence {
     int toks[MAX_PREC_TOKS];
     int rule;
 } PRECEDENCE[] = {
-    { { TOK_SEMI },                            PREC_LIST    },
-    { { TOK_COMMA },                           PREC_LIST    },
-    { { TOK_COLON },                           PREC_BINARY  },
+    { { TOK_SEMI, TOK_COMMA },                 PREC_REVERSE },
     { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
     { { TOK_ASSIGN },                          PREC_REVERSE },
     { { TOK_OR },                              PREC_BINARY  },
