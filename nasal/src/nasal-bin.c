@@ -10,6 +10,7 @@
 char* tokString(int tok)
 {
     switch(tok) {
+    case TOK_EMPTY: return "TOK_EMPTY";
     case TOK_NOT: return "TOK_NOT";
     case TOK_LPAR: return "TOK_LPAR";
     case TOK_RPAR: return "TOK_RPAR";
