@@ -46,13 +46,24 @@ static void garbageCollect()
     // Finally collect all the freed objects
     for(i=0; i<NUM_NASAL_TYPES; i++)
         reap(&(globals->pools[i]));
+
+    // Make enough space for the dead blocks we need to free during
+    // execution.  This works out to 1 spot for every 16 live objects,
+    // which should be limit the number of block-to-free operations
+    // without imposing an undue burden of extra "freeable" memory.
+    if(globals->deadsz < globals->allocCount / 8) {
+        globals->deadsz = globals->allocCount / 8;
+        if(globals->deadsz < 256) globals->deadsz = 256;
+        naFree(globals->deadBlocks);
+        globals->deadBlocks = naAlloc(sizeof(void*) * globals->deadsz);
+    }
 }
 
 static void naCode_gcclean(struct naCode* o)
 {
-    naFree(o->byteCode);  o->byteCode = 0;
-    naFree(o->constants); o->constants = 0;
-    naFree(o->argSyms);   o->argSyms = 0;
+    naFree(o->byteCode);   o->byteCode = 0;
+    naFree(o->constants);  o->constants = 0;
+    naFree(o->argSyms);    o->argSyms = 0;
     naFree(o->optArgSyms); o->argSyms = 0;
 }
 
@@ -251,4 +262,26 @@ static void reap(struct naPool* p)
     p->freetop = p->nfree;
 }
 
+// Must be called with the giant exclusive lock!
+void naGC_freedead()
+{
+    int i;
+    for(i=0; i<globals->ndead; i++)
+        naFree(globals->deadBlocks[i]);
+    globals->ndead = 0;
+}
 
+// Atomically replaces target with a new pointer, and adds the old one
+// to the list of blocks to free the next time something holds the
+// giant lock.
+void naGC_swapfree(void** target, void* val)
+{
+    naLock(globals->threads->bigLock);
+    while(globals->ndead >= globals->deadsz) {
+        naWaitForGC();
+        naGCWakeup();
+    }
+    globals->deadBlocks[globals->ndead++] = *target;
+    *target = val;
+    naUnlock(globals->threads->bigLock);
+}

@@ -10,8 +10,7 @@ static void realloc(struct naVec* v)
     vr->size = oldsz;
     for(i=0; i<oldsz; i++)
         vr->array[i] = old->array[i];
-    naFree(old);
-    v->rec = vr;
+    naGC_swapfree((void**)&(v->rec), vr);
 }
 
 void naVec_init(naRef vec)

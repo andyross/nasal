@@ -145,6 +145,8 @@ void naHash_init(naRef hash);
 
 void naGC_init(struct naPool* p, int type);
 struct naObj** naGC_get(struct naPool* p, int n, int* nout);
+void naGC_swapfree(void** target, void* val);
+void naGC_freedead();
 
 void naStr_gcclean(struct naStr* s);
 void naVec_gcclean(struct naVec* s);

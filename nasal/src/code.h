@@ -36,6 +36,11 @@ struct Globals {
     struct naPool pools[NUM_NASAL_TYPES];
     int allocCount;
 
+    // Dead blocks waiting to be freed when it is safe
+    void** deadBlocks;
+    int deadsz;
+    int ndead;
+    
     // Constants
     naRef meRef;
     naRef argRef;
