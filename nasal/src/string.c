@@ -247,11 +247,15 @@ static int fromnum(double val, unsigned char* s)
     unsigned char* ptr = s;
     int exp, digs, i=0;
 
-    // Exactly an integer is a special case
-    if(val == (int)val) return decprint(val, s);
-
     // Handle negatives
     if(val < 0) { *ptr++ = '-'; val = -val; }
+
+    // Exactly an integer is a special case
+    if(val == (int)val) {
+        ptr += decprint(val, ptr);
+        *ptr = 0;
+        return ptr - s;
+    }
 
     // Get the raw digits
     exp = rawprint(val, raw);
