@@ -230,16 +230,16 @@ static void genShortCircuit(struct Parser* p, struct Token* t)
 static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
 {
     int jumpNext, jumpEnd;
-    emit(p, OP_PUSHNIL); // leave something if the test fails...
     genExpr(p, tif->children); // the test
     jumpNext = emitJump(p, OP_JIFNOT);
-    emit(p, OP_POP); // .. and take it off if it passes
     genExprList(p, tif->children->next->children); // the body
     jumpEnd = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpNext);
     if(telse) {
         if(telse->type == TOK_ELSIF) genIf(p, telse, telse->next);
         else genExprList(p, telse->children->children);
+    } else {
+        emit(p, OP_PUSHNIL);
     }
     fixJumpTarget(p, jumpEnd);
 }
