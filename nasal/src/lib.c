@@ -308,6 +308,23 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int fidx;
+    struct Frame* frame;
+    naRef result, fr = argc ? naNumValue(args[0]) : naNil();
+    if(IS_NIL(fr)) naRuntimeError(ctx, "non numeric argument to caller()");
+    fidx = (int)fr.num;
+    if(fidx > ctx->fTop - 1) return naNil();
+    frame = &ctx->fStack[ctx->fTop - 1 - fidx];
+    result = naNewVector(ctx);
+    naVec_append(result, frame->locals);
+    naVec_append(result, frame->func);
+    naVec_append(result, frame->func.ref.ptr.func->code.ref.ptr.code->srcFile);
+    naVec_append(result, naNum(naGetLine(ctx, fidx)));
+    return result;
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -329,6 +346,7 @@ static struct func funcs[] = {
     { "call", f_call },
     { "die", f_die },
     { "sprintf", f_sprintf },
+    { "caller", f_caller },
 };
 
 naRef naStdLib(naContext c)
