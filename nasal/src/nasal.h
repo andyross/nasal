@@ -50,6 +50,13 @@ naContext naNewContext();
 naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
                   char* buf, int len, int* errLine);
 
+// Binds a bare code object (as returned from naParseCode) with a
+// closure object (a hash) to act as the outer scope / namespace.
+// FIXME: this API is weak.  It should expose the recursive nature of
+// closures, and allow for extracting the closure and namespace
+// information from function objects.
+naRef naBindFunction(naContext ctx, naRef code, naRef closure);
+
 // Call a code or function object with the specifed arguments "on" the
 // specified object and using the specified hash for the local
 // variables.  Any of args, obj or locals may be nil.
@@ -107,8 +114,8 @@ naRef naStringValue(naContext c, naRef n);
 
 // String utilities:
 int naStr_len(naRef s);
-unsigned char* naStr_data(naRef s);
-naRef naStr_fromdata(naRef dst, unsigned char* data, int len);
+char* naStr_data(naRef s);
+naRef naStr_fromdata(naRef dst, char* data, int len);
 naRef naStr_concat(naRef dest, naRef s1, naRef s2);
 naRef naStr_substr(naRef dest, naRef str, int start, int len);
 

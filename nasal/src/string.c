@@ -22,7 +22,7 @@ int naStr_len(naRef s)
     return s.ref.ptr.str->len;
 }
 
-unsigned char* naStr_data(naRef s)
+char* naStr_data(naRef s)
 {
     if(!IS_STR(s)) return 0;
     return s.ref.ptr.str->data;
@@ -42,7 +42,7 @@ static void setlen(struct naStr* s, int sz)
     s->data[s->len] = 0; // nul terminate
 }
 
-naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
+naRef naStr_fromdata(naRef dst, char* data, int len)
 {
     if(!IS_STR(dst)) return naNil();
     setlen(dst.ref.ptr.str, len);

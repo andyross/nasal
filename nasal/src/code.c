@@ -1,20 +1,24 @@
 #include "nasal.h"
 #include "code.h"
 
-// FIXME: need to store a list of all contexts
-struct Context globalContext;
-
-// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
-// Uncomment the DBG macro to print debug stuff (operator/address,
-// stack contents, etc...)
-#define DBG(expr) /* expr */
-#include <stdio.h> // DEBUG
-#include <stdlib.h> // DEBUG
+////////////////////////////////////////////////////////////////////////
+// Debugging stuff. ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+#if !defined(DEBUG_NASAL)
+# define DBG(expr) /* noop */
+#else
+# define DBG(expr) expr
+# include <stdio.h>
+# include <stdlib.h>
+#endif
 char* opStringDEBUG(int op);
 void printOpDEBUG(int ip, int op);
 void printRefDEBUG(naRef r);
 void printStackDEBUG(struct Context* ctx);
-// DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG DEBUG 
+////////////////////////////////////////////////////////////////////////
+
+// FIXME: need to store a list of all contexts
+struct Context globalContext;
 
 #define ERR(c, msg) naRuntimeError((c),(msg))
 void naRuntimeError(struct Context* c, char* msg)
@@ -527,11 +531,18 @@ static naRef run(naContext ctx)
         else               run1(ctx, f, code);
         
         ctx->temps.ref.ptr.vec->size = 0; // Reset the temporaries
-        // DBG(printStackDEBUG(ctx);)
+        DBG(printStackDEBUG(ctx);)
     }
 
-    // DBG(printStackDEBUG(ctx);)
+    DBG(printStackDEBUG(ctx);)
     return ctx->opStack[--ctx->opTop];
+}
+
+naRef naBindFunction(naContext ctx, naRef code, naRef closure)
+{
+    naRef func = naNewFunc(ctx, code);
+    func.ref.ptr.func->closure = naNewClosure(ctx, closure, naNil());
+    return func;
 }
 
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
