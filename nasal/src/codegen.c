@@ -96,7 +96,6 @@ static int genLValue(struct Parser* p, struct Token* t)
     }
 }
 
-
 // Hackish.  Save off the current lambda state and recurse
 static void genLambda(struct Parser* p, struct Token* t)
 {
@@ -173,19 +172,63 @@ static void genFuncall(struct Parser* p, struct Token* t)
     emit(p, op);
 }
 
+// Emit a jump operation, and return the location of the address in
+// the bytecode for future fixup in fixJumpTarget
+static int emitJump(struct Parser* p, int op)
+{
+    int ip;
+    emit(p, op);
+    ip = p->nBytes;
+    emit(p, 0xff); // dummy address
+    emit(p, 0xff);
+    return ip;
+}
+
+// Points a previous jump instruction at the current "end-of-bytecode"
+static void fixJumpTarget(struct Parser* p, int spot)
+{
+    p->byteCode[spot]   = p->nBytes >> 8;
+    p->byteCode[spot+1] = p->nBytes & 0xff;
+}
+
+static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
+{
+    int jumpNext, jumpEnd;
+    genExpr(p, tif->children); // the test
+    emit(p, OP_NOT);
+    jumpNext = emitJump(p, OP_JIF);
+    genExpr(p, tif->children->next->children); // the body
+    jumpEnd = emitJump(p, OP_JMP);
+    fixJumpTarget(p, jumpNext);
+    if(telse) {
+        if(telse->type == TOK_ELSIF) genIf(p, telse, telse->next);
+        else genExpr(p, telse->children->children);
+    }
+    fixJumpTarget(p, jumpEnd);
+}
+
+static void genIfElse(struct Parser* p, struct Token* t)
+{
+    genIf(p, t, t->children->next->next);
+}
+
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
-
+    if(t == 0) ERR("empty expression");
     switch(t->type) {
-    case TOK_IF: break;
+    case TOK_IF:
+        genIfElse(p, t);
+        break;
     case TOK_FOR: break;
     case TOK_FOREACH: break;
     case TOK_WHILE: break;
     case TOK_BREAK: break;
     case TOK_CONTINUE: break;
 
-    case TOK_TOP: genExprList(p, LEFT(t)); break;
+    case TOK_TOP:
+        genExprList(p, LEFT(t));
+        break;
     case TOK_FUNC:
         genLambda(p, t);
         break;
@@ -241,11 +284,12 @@ static void genExpr(struct Parser* p, struct Token* t)
         genScalarConstant(p, RIGHT(t));
         emit(p, OP_MEMBER);
         break;
+    case TOK_EMPTY:
+        emit(p, OP_PUSHNIL); break; // *NOT* a noop!
     case TOK_AND: // FIXME: short-circuit
         genBinOp(OP_AND,    p, t); break;
     case TOK_OR:  // FIXME: short-circuit
         genBinOp(OP_OR,     p, t); break;
-    case TOK_EMPTY: emit(p, OP_PUSHNIL); break; // *NOT* a noop!
     case TOK_MUL:   genBinOp(OP_MUL,    p, t); break;
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;

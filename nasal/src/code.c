@@ -47,9 +47,9 @@ char* opStringDEBUG(int op)
     return "<bad opcode>";
 }
 
-void printOpDEBUG(op)
+void printOpDEBUG(ip, op)
 {
-    printf("OP: %s\n", opStringDEBUG(op));
+    printf("IP: %d OP: %s\n", ip, opStringDEBUG(op));
 }
 
 void printRefDEBUG(naRef r)
@@ -128,7 +128,7 @@ static void initContext(struct Context* c)
     c->meRef = naNewString(c);
     naStr_fromdata(c->meRef, "me", 2);
     c->argRef = naNewString(c);
-    naStr_fromdata(c->meRef, "arg", 3);
+    naStr_fromdata(c->argRef, "arg", 3);
 }
 
 struct Context* naNewContext()
@@ -143,7 +143,7 @@ void naGarbageCollect()
 {
     int i;
     struct Context* c = &globalContext; // FIXME: more than one!
-    for(i=0; i <= c->fTop; i++) {
+    for(i=0; i < c->fTop; i++) {
         struct Frame* f = &(c->fStack[i]);
         naGC_mark(f->code);
         naGC_mark(f->namespace);
@@ -309,9 +309,18 @@ static void run1(struct Context* ctx)
     naRef a, b, c;
     struct Frame* f = &(ctx->fStack[ctx->fTop-1]);
     struct naCode* cd = f->code.ref.ptr.code;
-    int op = cd->byteCode[f->ip++];
+    int op, arg;
 
-    printOpDEBUG(op);
+    if(f->ip >= cd->nBytes) {
+        printf("Done with frame %d\n", ctx->fTop-1);
+        ctx->fTop--;
+        if(ctx->fTop <= 0)
+            ctx->done = 1;
+        return;
+    }
+
+    op = cd->byteCode[f->ip++];
+    printOpDEBUG(f->ip-1, op);
     switch(op) {
     case OP_POP:
         POP(ctx);
@@ -402,27 +411,24 @@ static void run1(struct Context* ctx)
         f->ip = ARG16(cd->byteCode, f);
         break;
     case OP_JIF:
+        arg = ARG16(cd->byteCode, f);
         if(naTrue(POP(ctx)))
-            f->ip = ARG16(cd->byteCode, f);
+            f->ip = arg;
         break;
     case OP_FCALL:
         b = POP(ctx); a = POP(ctx); // a,b = func, args
         setupFuncall(ctx, a, b);
-        f = &(ctx->fStack[ctx->fTop-1]); // Fixup local variables to reflect
-        cd = f->code.ref.ptr.code;       // the change of frame
+        f = &(ctx->fStack[ctx->fTop-1]); // fixup local variable
         break;
     case OP_MCALL:
         c = POP(ctx); b = POP(ctx); a = POP(ctx); // a,b,c = obj, func, args
         setupFuncall(ctx, b, c);
         f = &(ctx->fStack[ctx->fTop-1]); // as above
-        cd = f->code.ref.ptr.code;
         naHash_set(f->locals, ctx->meRef, a);
         break;
     case OP_RETURN:
         ctx->fTop--;
-        if(ctx->fTop < 0) { ctx->done = 1; return; }
         f = &(ctx->fStack[ctx->fTop-1]); // ditto
-        cd = f->code.ref.ptr.code;
         break;
     case OP_LINE:
         f->line = ARG16(cd->byteCode, f);
@@ -432,8 +438,7 @@ static void run1(struct Context* ctx)
         break;
     }
 
-    // Are we done now?
-    if(f->ip >= cd->nBytes)
+    if(ctx->fTop <= 0)
         ctx->done = 1;
 }
 
@@ -448,4 +453,5 @@ void naRun(struct Context* ctx, naRef code)
         run1(ctx);
         printStackDEBUG(ctx); // DEBUG
     }
+    printf("DONE\n");
 }
