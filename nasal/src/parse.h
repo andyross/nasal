@@ -54,9 +54,6 @@ struct Parser {
     int* lines;
     int  nLines;
 
-    // Start of current symbol in the lexer
-    int symbolStart;
-
     // Accumulated byte code array
     unsigned char* byteCode;
     int nBytes;

@@ -36,27 +36,19 @@ static int newConstant(struct Parser* p, naRef c)
     int i = p->nConsts++;
     if(i > 0xffff) naParseError(p, "Too many constants in code block", 0);
     naHash_set(p->consts, naNum(i), c);
-    printf("newConstant (idx %d) = ", i);
-    printRefDEBUG(c);
     return i;
 }
 
 static naRef getConstant(struct Parser* p, int idx)
 {
-    naRef result = naHash_get(p->consts, naNum(idx));
-    printf("getConstant (idx %d) = ", idx);
-    printRefDEBUG(result);
-    return result;
+    return naHash_get(p->consts, naNum(idx));
 }
 
 // Interns a scalar (!) constant and returns its index
 static int internConstant(struct Parser* p, naRef c)
 {
     naRef r = naHash_get(p->interned, c);
-    printf("internConstant ");
-    printRefDEBUG(c);
     if(!IS_NIL(r)) {
-        printf("  -- already there, idx %f\n", r.num);
         return (int)r.num;
     } else {
         int idx = newConstant(p, c);
@@ -108,24 +100,23 @@ static int genLValue(struct Parser* p, struct Token* t)
 static void genLambda(struct Parser* p, struct Token* t)
 {
     int idx;
-
-    unsigned char* byteCode    = p->byteCode;
-    int            nBytes      = p->nBytes;
-    int            codeAlloced = p->codeAlloced;
-    naRef          consts      = p->consts;
-    naRef          interned    = p->interned;
-    int            nConsts     = p->nConsts;
+    unsigned char* byteCode    = p->byteCode; 
+    int            nBytes      = p->nBytes; 
+    int            codeAlloced = p->codeAlloced; 
+    naRef          consts      = p->consts; 
+    naRef          interned    = p->interned; 
+    int            nConsts     = p->nConsts; 
 
     if(LEFT(t)->type != TOK_LCURL)
         naParseError(p, "bad function definition", t->line);
     naRef codeObj = naCodeGen(p, LEFT(LEFT(t)));
 
-    p->byteCode    = byteCode;
-    p->nBytes      = nBytes;
-    p->codeAlloced = codeAlloced;
-    p->consts      = consts;
-    p->interned    = interned;
-    p->nConsts     = nConsts;
+    p->byteCode    = byteCode; 
+    p->nBytes      = nBytes; 
+    p->codeAlloced = codeAlloced; 
+    p->consts      = consts; 
+    p->interned    = interned; 
+    p->nConsts     = nConsts; 
 
     idx = newConstant(p, codeObj);
     emit(p, OP_PUSHCONST);

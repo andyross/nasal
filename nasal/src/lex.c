@@ -102,17 +102,10 @@ static int lineEnd(struct Parser* p, int line)
     return p->lines[line-1];
 }
 
-// Forward reference to permit recursion with newToken
-static void collectSymbol(struct Parser* p, int onePastEnd);
-
 static void newToken(struct Parser* p, int pos, int type,
                      char* str, int slen, double num)
 {
     struct Token* tok;
-
-    // Push an accumulating symbol first
-    if(p->symbolStart >= 0)
-        collectSymbol(p, pos);
 
     tok = naParseAlloc(p, sizeof(struct Token));
     tok->type = type;
@@ -129,14 +122,6 @@ static void newToken(struct Parser* p, int pos, int type,
     if(!p->tree.children) p->tree.children = tok;
     if(p->tree.lastChild) p->tree.lastChild->next = tok;
     p->tree.lastChild = tok;
-}
-
-// Emits a symbol that has been accumulating in the lexer
-static void collectSymbol(struct Parser* p, int onePastEnd)
-{
-    int start = p->symbolStart;
-    p->symbolStart = -1;
-    newToken(p, start, TOK_SYMBOL, p->buf + start, onePastEnd - start, 0);
 }
 
 // Parse a hex nibble
@@ -242,6 +227,17 @@ static int lexNumLiteral(struct Parser* p, int index)
     return i;
 }
 
+static int lexSymbol(struct Parser* p, int start)
+{
+    int i = start;
+    while((p->buf[i] >= 'A' && p->buf[i] <= 'Z') ||
+          (p->buf[i] >= 'a' && p->buf[i] <= 'z') ||
+          (p->buf[i] >= '0' && p->buf[i] <= '9'))
+    { i++; }
+    newToken(p, start, TOK_SYMBOL, p->buf + start, i-start, 0);
+    return i;
+}
+
 // Returns the length of lexeme l if the buffer prefix matches, or
 // else zero.
 static int matchLexeme(char* buf, int len, char* l)
@@ -285,52 +281,40 @@ static int tryLexemes(struct Parser* p, int index)
 
 void naLex(struct Parser* p)
 {
-    int i=0;
-
+    int lexlen, i;
     findLines(p);
-
+    i = 0;
     while(i<p->len) {
+        char c = p->buf[i];
+
+        // Whitespace, comments and string literals have obvious
+        // markers and can be handled by a switch:
         int handled = 1;
-        switch(p->buf[i]) {
+        switch(c) {
         case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
             i++;
-            break; // ignore whitespace
+            break;
         case '#':
             i = lineEnd(p, getLine(p, i));
-            break; // comment to EOL
-        case '\'':
-            i = lexStringLiteral(p, i, 1);
             break;
-        case '"':
-            i = lexStringLiteral(p, i, 0);
-            break;
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            if(p->symbolStart >= 0) {
-                // Ignore numbers when parsing a symbol
-                handled = 0;
-                i++;
-                continue; // NOTE: short circuit!
-            }
-            i = lexNumLiteral(p, i);
+        case '\'': case '"':
+            i = lexStringLiteral(p, i, (c=='"' ? 0 : 1));
             break;
         default:
             handled = 0;
         }
-        if(handled) {
-            if(p->symbolStart >= 0)
-                collectSymbol(p, i-1);
-        } else {
-            int lexlen = tryLexemes(p, i);
-            if(lexlen > 0) {
+
+        // Numbers, lexemes and symbols are a little more complicated
+        if(!handled) {
+            if(c >= '0' && c <= '9') {
+                i = lexNumLiteral(p, i);
+            } else if((lexlen = tryLexemes(p, i)) > 0) {
                 i += lexlen;
+            } else if((c>='A' && c<='Z') || (c>='a' && c<='z')) {
+                i = lexSymbol(p, i);
             } else {
-                if(p->symbolStart < 0)
-                    p->symbolStart = i;
-                i++;
+                error(p, "illegal character", i);
             }
         }
     }
-    if(p->symbolStart >= 0)
-        collectSymbol(p, p->len);
 }

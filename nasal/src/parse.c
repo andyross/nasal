@@ -57,7 +57,6 @@ void naParseInit(struct Parser* p)
     p->chunkSizes = 0;
     p->nChunks = 0;
     p->leftInChunk = 0;
-    p->symbolStart = -1;
 
     p->tree.type = TOK_TOP;
     p->tree.line = 1;
