@@ -26,24 +26,25 @@ unsigned char* naStr_data(naRef s)
     return s.ref.ptr.str->data;
 }
 
-naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
-{
-    naFree(dst.ref.ptr.str->data);
-    dst.ref.ptr.str->len = len;
-    dst.ref.ptr.str->data = naAlloc(len);
-    memcpy(dst.ref.ptr.str->data, data, len);
-    return dst;
-}
-
 static void setlen(struct naStr* s, int sz)
 {
-    int currSz = s->len < MINLEN ? MINLEN : s->len;
-    int waste = currSz - sz; // how much extra if we don't reallocate?
+    int currSz, waste;
+    sz += 1; // Allow for an extra nul terminator
+    currSz = s->len < MINLEN ? MINLEN : s->len;
+    waste = currSz - sz; // how much extra if we don't reallocate?
     if(s->data == 0 || waste < 0 || waste > MINLEN) {
         naFree(s->data);
         s->data = naAlloc(s->len < MINLEN ? MINLEN : s->len);
     }
-    s->len = sz;
+    s->len = sz - 1;
+    s->data[s->len] = 0; // nul terminate
+}
+
+naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
+{
+    setlen(dst.ref.ptr.str, len);
+    memcpy(dst.ref.ptr.str->data, data, len);
+    return dst;
 }
 
 naRef naStr_concat(naRef dest, naRef s1, naRef s2)
