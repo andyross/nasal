@@ -190,12 +190,6 @@ void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args, naRef 
         ERR(ctx, "function/method call invoked on uncallable object");
     }
 
-    // Don't bother with arguments if it's a C function
-    if(!IS_CCODE(func)) {
-        if(IS_NIL(locals)) locals = naNewHash(ctx);
-        naHash_set(locals, ctx->globals->argRef, args);
-    }
-
     struct Frame* f;
     f = &(ctx->fStack[ctx->fTop++]);
     f->func = func;
@@ -205,6 +199,15 @@ void setupFuncall(struct Context* ctx, naRef obj, naRef func, naRef args, naRef 
     f->line = 0;
     f->args = args;
     f->locals = locals;
+
+    // Set up an argument reference (don't bother for C functions).
+    // Be sure to do this *after* setting up the frame above, as the
+    // naNew() call here can invoke the GC, and everything needs to be
+    // findable!
+    if(!IS_CCODE(func)) {
+        if(IS_NIL(f->locals)) f->locals = naNewHash(ctx);
+        naHash_set(f->locals, ctx->globals->argRef, args);
+    }
 
     DBG(printf("Entering frame %d\n", ctx->fTop-1);)
 }
