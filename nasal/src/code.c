@@ -327,8 +327,7 @@ static void run1(struct Context* ctx, struct Frame* f, naRef code)
         break;
     case OP_CAT:
         a = stringify(ctx, POP(ctx)); b = stringify(ctx, POP(ctx));
-        c = naNewString(ctx);
-        naStr_concat(c, b, a);
+        c = naStr_concat(naNewString(ctx), b, a);
         PUSH(ctx, c);
         break;
     case OP_NEG:

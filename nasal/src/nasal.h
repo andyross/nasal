@@ -19,6 +19,7 @@ extern "C" {
 typedef union {
     double num;
     struct {
+        // int reftag; // Big-endian systems need this here!
         union {
             struct naObj* obj;
             struct naStr* str;
@@ -33,22 +34,27 @@ typedef union {
     } ref;
 } naRef;
 
-// All Nasl code runs under the watch of a naContext
 typedef struct Context* naContext;
 
-// naCFunction: the function signature for an extension function
+// The function signature for an extension function:
 typedef naRef (*naCFunction)(naContext ctx, naRef args);
 
-// Top-level stuff
+// All Nasl code runs under the watch of a naContext:
 naContext naNewContext();
-naRef naCall(naContext ctx, naRef code, naRef namespace);
-int naCurrentLine(naContext ctx);
-char* naGetError(naContext ctx);
+
+// Parse a buffer in memory into a code object.
 naRef naParseCode(naContext c, char* buf, int len, int* errLine);
+
+// Call a code object inside of the specified namespace
+naRef naCall(naContext ctx, naRef code, naRef namespace);
 
 // Returns a hash containing functions from the Nasl standard library
 // Useful for passing as a namespace to an initial function call
 naRef naStdLib(naContext c);
+
+// Current line number & error message
+int naCurrentLine(naContext ctx);
+char* naGetError(naContext ctx);
 
 // Type predicates
 int naIsNil(naRef r);
@@ -80,8 +86,8 @@ naRef naStringValue(naContext c, naRef n);
 int naStr_len(naRef s);
 unsigned char* naStr_data(naRef s);
 naRef naStr_fromdata(naRef dst, unsigned char* data, int len);
-void naStr_concat(naRef dest, naRef s1, naRef s2);
-void naStr_substr(naRef dest, naRef str, int start, int len);
+naRef naStr_concat(naRef dest, naRef s1, naRef s2);
+naRef naStr_substr(naRef dest, naRef str, int start, int len);
 
 // Vector utilities:
 int naVec_size(naRef v);

@@ -66,7 +66,6 @@ static naRef streq(naContext c, naRef args)
 
 static naRef substr(naContext c, naRef args)
 {
-    naRef s;
     naRef src = naVec_get(args, 0);
     naRef startR = naVec_get(args, 1);
     naRef lenR = naVec_get(args, 2);
@@ -82,9 +81,7 @@ static naRef substr(naContext c, naRef args)
         if(naIsNil(lenR)) return naNil();
         len = (int)lenR.num;
     }
-    s = naNewString(c);
-    naStr_substr(s, src, start, len);
-    return s;
+    return naStr_substr(naNewString(c), src, start, len);
 }
 
 static naRef contains(naContext c, naRef args)

@@ -30,7 +30,7 @@ naRef naStr_fromdata(naRef dst, unsigned char* data, int len)
     return dst;
 }
 
-void naStr_concat(naRef dest, naRef s1, naRef s2)
+naRef naStr_concat(naRef dest, naRef s1, naRef s2)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* a = s1.ref.ptr.str;
@@ -40,17 +40,19 @@ void naStr_concat(naRef dest, naRef s1, naRef s2)
     dst->data = naAlloc(dst->len);
     memcpy(dst->data, a->data, a->len);
     memcpy(dst->data + a->len, b->data, b->len);
+    return dest;
 }
 
-void naStr_substr(naRef dest, naRef str, int start, int len)
+naRef naStr_substr(naRef dest, naRef str, int start, int len)
 {
     struct naStr* dst = dest.ref.ptr.str;
     struct naStr* s = str.ref.ptr.str;
     naFree(dst->data);
-    if(start + len > s->len) { dst->len = 0; dst->data = 0; return; }
+    if(start + len > s->len) { dst->len = 0; dst->data = 0; return naNil(); }
     dst->len = len;
     dst->data = naAlloc(dst->len);
     memcpy(dst->data, s->data + start, len);
+    return dest;
 }
 
 int naStr_equal(naRef s1, naRef s2)
