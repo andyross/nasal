@@ -117,13 +117,13 @@ static void initGlobals()
     globals->allContexts = 0;
     struct Context* c = naNewContext();
 
+    globals->symbols = naNewHash(c);
+    globals->save = naNewVector(c);
+
     // Cache pre-calculated "me", "arg" and "parents" scalars
     globals->meRef = naInternSymbol(naStr_fromdata(naNewString(c), "me", 2));
     globals->argRef = naInternSymbol(naStr_fromdata(naNewString(c), "arg", 3));
     globals->parentsRef = naInternSymbol(naStr_fromdata(naNewString(c), "parents", 7));
-
-    globals->symbols = naNewHash(c);
-    globals->save = naNewVector(c);
 }
 
 struct Context* naNewContext()
@@ -279,14 +279,33 @@ static int getClosure(struct naFunc* c, naRef sym, naRef* result)
     return 0;
 }
 
-// Get a local symbol, or check the closure list if it isn't there
-static naRef getLocal(struct Context* ctx, struct Frame* f, naRef sym)
+static naRef getLocal2(struct Context* ctx, struct Frame* f, naRef sym)
 {
     naRef result;
     if(!naHash_get(f->locals, sym, &result))
         if(!getClosure(f->func.ref.ptr.func, sym, &result))
             ERR(ctx, "undefined symbol");
     return result;
+}
+
+static void getLocal(struct Context* ctx, struct Frame* f,
+                     naRef* sym, naRef* out)
+{
+    struct naFunc* func;
+    struct naStr* str = sym->ref.ptr.str;
+    if(naHash_sym(f->locals.ref.ptr.hash, str, out))
+        return;
+    func = f->func.ref.ptr.func;
+    while(func && func->namespace.ref.ptr.hash) {
+        if(naHash_sym(func->namespace.ref.ptr.hash, str, out))
+            return;
+        func = func->next.ref.ptr.func;
+    }
+    // Now do it again using the more general naHash_get().  This will
+    // only be necessary if something has created the value in the
+    // namespace using the more generic hash syntax
+    // (e.g. namespace["symbol"] and not namespace.symbol).
+    *out = getLocal2(ctx, f, *sym);
 }
 
 static int setClosure(naRef func, naRef sym, naRef val)
@@ -444,10 +463,8 @@ static naRef run(struct Context* ctx)
             break;
         case OP_LOCAL:
             a = CONSTARG();
-            if(naHash_sym(f->locals.ref.ptr.hash, a.ref.ptr.str, &STK(0)))
-                ctx->opTop++;
-            else
-                PUSH(ctx, getLocal(ctx, f, a));
+            getLocal(ctx, f, &a, &STK(0));
+            ctx->opTop++;
             break;
         case OP_SETLOCAL:
             a = POP(); b = POP();

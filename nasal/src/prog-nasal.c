@@ -69,11 +69,11 @@ int main(int argc, char** argv)
     // environments -- imported libraries, for example -- might be
     // different).
     namespace = naStdLib(ctx);
-    naHash_set(namespace, NASTR("math"), naMathLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
 
     // Add application-specific functions (in this case, "print" and
     // the math library) to the namespace if desired.
-    naHash_set(namespace, NASTR("print"),
+    naHash_set(namespace, naInternSymbol(NASTR("print")),
                naNewFunc(ctx, naNewCCode(ctx, print)));
 
     // Run it.  Do something with the result if you like.

@@ -142,3 +142,37 @@ The Frame object's args field is unused (another relic from past
 optimizations).  Yank it.  Ditto for the obj field.  The line field is
 already going away, so that shrinks a frame down to just
 func/locals/ip/bp.
+
+Now it's on to fib.nas -- the test of function call overhead.  Perl is
+beating nasal by a about 2.2:1 here (15s vs. 6.8s).  My original
+thought was that the loss was caused by GC overhead in the allocation
+of all the arguments vectors and local variable hashes.  Nope.
+Changing GC parameters to make it run less often had almost no effect.
+Running gprof confirms it -- naGarbageCollect makes up only a tiny
+fraction of the run time of the program.  This is actually *good*
+news, because the bytecode interpreter is easier to optimize than the
+garbage collector (which is already about as good as it's going to
+get, IMHO).
+
+The top culprits were numify, PUSH, naVec_append, (hash.c) find, and
+evalBinaryNumeric, followed by setupFuncall.  The PUSH and
+naVec_append calls all have to do with the arguments list, so perhaps
+I should try changing OP_CALL and OP_MCALL to take an immediate
+representing the number of arguments, and copy these directly off of
+the stack.
+
+Also, the naVec_append() calls in setupFuncall are not necessary.  Try
+saving those off in the context object...  Not sure how important this
+is.  Update: Not very.  Changing the "save" operation to a pair of
+naObj* in the context object (hard to imaging a faster way to save
+something than storing two pointers) got only 1% (or 166ms) in
+fib.nas.
+
+The gprof run also produced a weird result: the naHash_get calls
+outnumbered the naHash_sym calls.  Why???  Figured it out: the "fib"
+symbol is not local, it's in the outer namespace.  Which means that
+the _sym call fails, then the first (!) _get call needs to fail before
+the second _get call on the outer scope succeeds.  This is actually a
+performance regression -- it would be faster if we were not using
+naHash_sym().
+ 
