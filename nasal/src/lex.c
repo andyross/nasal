@@ -308,10 +308,10 @@ void naLex(struct Parser* p)
         if(!handled) {
             if(c >= '0' && c <= '9') {
                 i = lexNumLiteral(p, i);
-            } else if((lexlen = tryLexemes(p, i)) > 0) {
-                i += lexlen;
             } else if((c>='A' && c<='Z') || (c>='a' && c<='z')) {
                 i = lexSymbol(p, i);
+            } else if((lexlen = tryLexemes(p, i)) > 0) {
+                i += lexlen;
             } else {
                 error(p, "illegal character", i);
             }
