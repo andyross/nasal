@@ -9,6 +9,15 @@ void naFree(void* m) { free(m); }
 void* naAlloc(int n) { return malloc(n); }
 void naBZero(void* m, int n) { memset(m, 0, n); }
 
+naRef naObj(int type, struct naObj* o)
+{
+    naRef r;
+    r.ref.reftag = NASL_REFTAG;
+    r.ref.ptr.obj = o;
+    o->type = type;
+    return r;
+}
+
 int naTrue(naRef r)
 {
     if(IS_NIL(r)) return 0;
@@ -107,15 +116,6 @@ naRef naNum(double num)
 {
     naRef r;
     r.num = num;
-    return r;
-}
-
-naRef naObj(int type, struct naObj* o)
-{
-    naRef r;
-    r.ref.reftag = NASL_REFTAG;
-    r.ref.ptr.obj = o;
-    o->type = type;
     return r;
 }
 

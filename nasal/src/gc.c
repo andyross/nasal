@@ -3,6 +3,9 @@
 
 #define MIN_BLOCK_SIZE 256
 
+// "type" for an object freed by the collector
+#define T_GCFREED 123 // DEBUG
+
 struct Block {
     int   size;
     char* block;
@@ -40,6 +43,9 @@ static void naCode_gcclean(struct naCode* o)
 
 static void freeelem(struct naPool* p, struct naObj* o)
 {
+    // Mark the object as "freed" for debugging purposes
+    o->type = T_GCFREED; // DEBUG
+
     // Free any intrinsic (i.e. non-garbage collected) storage the
     // object might have
     switch(p->type) {
@@ -137,6 +143,9 @@ void naGC_mark(naRef r)
 
     if(r.ref.ptr.obj->mark == 1)
         return;
+
+    // Verify that the object hasn't been freed incorrectly:
+    if(r.ref.ptr.obj->type == T_GCFREED) *(int*)0=0; // DEBUG
 
     r.ref.ptr.obj->mark = 1;
     switch(r.ref.ptr.obj->type) {
