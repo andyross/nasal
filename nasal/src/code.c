@@ -32,6 +32,7 @@ char* opStringDEBUG(int op)
     case OP_MEMBER: return "MEMBER";
     case OP_POP: return "POP";
     case OP_SYMBOL: return "SYMBOL";
+    case OP_NEG: return "NEG";
     }
     return "<bad opcode>";
 }
@@ -173,7 +174,7 @@ static void run1(struct Context* ctx)
     case OP_POP:
         POP(ctx);
         break;
-    case OP_PLUS: case OP_MINUS: case OP_MUL: case OP_DIV:
+    case OP_PLUS: case OP_MUL: case OP_DIV: case OP_MINUS:
     case OP_LT: case OP_LTE: case OP_GT: case OP_GTE:
         a = POP(ctx); b = POP(ctx);
         PUSH(ctx, evalBinaryNumeric(op, b, a));
@@ -209,6 +210,10 @@ static void run1(struct Context* ctx)
     case OP_SYMBOL:
         a = getSymbol(f, POP(ctx));
         PUSH(ctx, a);
+        break;
+    case OP_NEG:
+        a = POP(ctx);
+        PUSH(ctx, naNum(-numify(a)));
         break;
     }
 

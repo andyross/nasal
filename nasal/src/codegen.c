@@ -137,12 +137,22 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_LITERAL:
         genConstant(p, t);
         break;
+    case TOK_MINUS:
+        if(BINARY(t)) {
+            genBinOp(OP_MINUS,  p, t);  // binary subtraction
+        } else if(RIGHT(t)->type == TOK_LITERAL && !RIGHT(t)->str) {
+            RIGHT(t)->num *= -1;        // Pre-negate constants
+            genConstant(p, RIGHT(t));
+        } else {
+            genExpr(p, RIGHT(t));       // unary negation
+            emit(p, OP_NEG);
+        }
+        break;
     case TOK_EMPTY: emit(p, OP_PUSHNIL); break; // *NOT* a noop!
     case TOK_AND:   genBinOp(OP_AND,    p, t); break;
     case TOK_OR:    genBinOp(OP_OR,     p, t); break;
     case TOK_MUL:   genBinOp(OP_MUL,    p, t); break;
     case TOK_PLUS:  genBinOp(OP_PLUS,   p, t); break;
-    case TOK_MINUS: genBinOp(OP_MINUS,  p, t); break; // FIXME: prefix negate!
     case TOK_DIV:   genBinOp(OP_DIV,    p, t); break;
     case TOK_CAT:   genBinOp(OP_CAT,    p, t); break;
     case TOK_DOT:   genBinOp(OP_MEMBER, p, t); break;

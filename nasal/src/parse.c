@@ -26,7 +26,7 @@ struct precedence {
     { { TOK_AND },                             PREC_BINARY  },
     { { TOK_EQ, TOK_NEQ },                     PREC_BINARY  },
     { { TOK_LT, TOK_LTE, TOK_GT, TOK_GTE },    PREC_BINARY  },
-    { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_BINARY  },
+    { { TOK_PLUS, TOK_MINUS, TOK_CAT },        PREC_REVERSE  },
     { { TOK_MUL, TOK_DIV },                    PREC_BINARY  },
     { { TOK_MINUS, TOK_NOT },                  PREC_PREFIX  },
     { { TOK_DOT },                             PREC_BINARY  },
@@ -322,7 +322,7 @@ static struct Token* parsePrecedence(struct Parser* p,
             c = start->next;
             d = end;
             top = start;
-            left = parsePrecedence(p, a, b, 0);
+            if(a) left = parsePrecedence(p, a, b, 0);
             right = parsePrecedence(p, c, d, level);
         }
         break;
@@ -334,12 +334,12 @@ static struct Token* parsePrecedence(struct Parser* p,
             d = end->lastChild;
             top = end;
             left = parsePrecedence(p, a, b, level);
-            right = parsePrecedence(p, c, d, 0);
+            if(c) right = parsePrecedence(p, c, d, 0);
         }
         break;
     case PREC_BINARY:
-        t = end;
-        while(t) {
+        t = end->prev;
+        while(t->prev) {
             if(tokInLevel(t, level)) {
                 a = t->prev ? start : 0;
                 b = t->prev;
@@ -354,8 +354,8 @@ static struct Token* parsePrecedence(struct Parser* p,
         }
         break;
     case PREC_REVERSE:
-        t = start;
-        while(t) {
+        t = start->next;
+        while(t->next) {
             if(tokInLevel(t, level)) {
                 a = t->prev ? start : 0;
                 b = t->prev;
@@ -375,13 +375,24 @@ static struct Token* parsePrecedence(struct Parser* p,
     if(!top)
         return parsePrecedence(p, start, end, level+1);
 
-    left->next = right;
-    left->prev = 0;
-    right->next = 0;
-    right->prev = left;
-    left->parent = right->parent = top;
-    top->children = left;
-    top->lastChild = right;
+    if(left) {
+        left->next = right;
+        left->prev = 0;
+        left->parent = top;
+        top->children = left;
+    } else {
+        top->children = right;
+    }
+
+    if(right) {
+        right->next = 0;
+        right->prev = left;
+        right->parent = top;
+        top->lastChild = right;
+    } else {
+        top->lastChild = left;
+    }
+
     top->next = top->prev = 0;
     return top;
 }
