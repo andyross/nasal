@@ -130,6 +130,8 @@ static void genList(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
         emit(p, OP_VAPPEND);
         genList(p, RIGHT(t));
+    } else if(t->type == TOK_EMPTY) {
+        return;
     } else {
         genExpr(p, t);
         emit(p, OP_VAPPEND);
@@ -138,6 +140,8 @@ static void genList(struct Parser* p, struct Token* t)
 
 static void genHashElem(struct Parser* p, struct Token* t)
 {
+    if(t->type == TOK_EMPTY)
+        return;
     if(t->type != TOK_COLON)
         naParseError(p, "bad hash/object initializer", t->line);
     if(LEFT(t)->type == TOK_SYMBOL) genScalarConstant(p, LEFT(t));
@@ -382,8 +386,10 @@ static void genExprList(struct Parser* p, struct Token* t)
 {
     if(t->type == TOK_SEMI) {
         genExpr(p, t->children);
-        emit(p, OP_POP);
-        genExprList(p, t->lastChild);
+        if(t->lastChild && t->lastChild->type != TOK_EMPTY) {
+            emit(p, OP_POP);
+            genExprList(p, t->lastChild);
+        }
     } else {
         genExpr(p, t);
     }

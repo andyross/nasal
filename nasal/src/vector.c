@@ -34,7 +34,7 @@ naRef naVec_get(naRef v, int i)
 void naVec_set(naRef vec, int i, naRef o)
 {
     struct naVec* v = vec.ref.ptr.vec;
-    if(i >= v->size) ERR("element set past end of vector");
+    if(i >= v->size) return;
     v->array[i] = o;
 }
 

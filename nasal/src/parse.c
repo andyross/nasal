@@ -314,6 +314,23 @@ static struct Token* parsePrecedence(struct Parser* p,
         return start;
     }
 
+    // A context-sensitivity: we want to parse ';' and ',' as binary
+    // operators, but want them to be legal at the beginning and end
+    // of a list (unlike, say, '+' where we want a parse error).
+    // Generate empties as necessary.
+    if(start->type == TOK_SEMI || start->type == TOK_COMMA) {
+        t = emptyToken(p);
+        start->prev = t;
+        t->next = start;
+        start = t;
+    }
+    if(end->type == TOK_SEMI || end->type == TOK_COMMA) {
+        t = emptyToken(p);
+        end->next = t;
+        t->prev = end;
+        end = t;
+    }
+
     top = left = right = 0;
     rule = PRECEDENCE[level].rule;
     switch(rule) {

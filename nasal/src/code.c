@@ -108,6 +108,8 @@ static void containerSet(naRef box, naRef key, naRef val)
     if(IS_HASH(box)) naHash_set(box, key, val);
     else if(IS_VEC(box)) {
         if(!IS_NUM(key)) ERR("non-numeric index into vector");
+        if((int)key.num >= box.ref.ptr.vec->size)
+            ERR("vector insert out of bounds");
         naVec_set(box, (int)key.num, val);
     } else
         ERR("insert into non-container");
