@@ -31,6 +31,7 @@ void naVec_gcclean(struct naVec* v)
 naRef naVec_get(naRef v, int i)
 {
     if(!IS_VEC(v)) return naNil();
+    if(i >= v.ref.ptr.vec->size) return naNil();
     return v.ref.ptr.vec->array[i];
 }
 

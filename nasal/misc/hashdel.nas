@@ -1,7 +1,7 @@
 key = 0;
 val = "dummy string";
-
-hash = { 0 : val };
+hash = {};
+hash[key] = val;
 while(key < 10000) {
     size0 = size(hash);
     key = key + 1;

@@ -547,6 +547,14 @@ naRef naBindFunction(naContext ctx, naRef code, naRef closure)
 
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
 {
+    // We might have to allocate objects, which can call the GC.  But
+    // the call isn't on the Nasal stack yet, so the GC won't find our
+    // C-space arguments.
+    naVec_append(ctx->temps, func);
+    naVec_append(ctx->temps, args);
+    naVec_append(ctx->temps, obj);
+    naVec_append(ctx->temps, locals);
+
     if(IS_NIL(args))
         args = naNewVector(ctx);
     if(IS_NIL(locals))
