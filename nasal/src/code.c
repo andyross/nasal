@@ -36,6 +36,8 @@ char* opStringDEBUG(int op)
     case OP_LOCAL: return "LOCAL";
     case OP_SETLOCAL: return "SETLOCAL";
     case OP_NEG: return "NEG";
+    case OP_NEWVEC: return "NEWVEC";
+    case OP_VAPPEND: return "VAPPEND";
     }
     return "<bad opcode>";
 }
@@ -196,6 +198,11 @@ static inline naRef POP(struct Context* ctx)
     return ctx->opStack[--ctx->opTop];
 }
 
+static inline naRef TOP(struct Context* ctx)
+{
+    return ctx->opStack[ctx->opTop-1];
+}
+
 static inline int ARG16(unsigned char* byteCode, struct Frame* f)
 {
     int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
@@ -245,6 +252,13 @@ static void run1(struct Context* ctx)
     case OP_PUSHNIL:
         PUSH(ctx, naNil());
         break;
+    case OP_NEWVEC:
+        PUSH(ctx, naNewVector(ctx));
+        break;
+    case OP_VAPPEND:
+        b = POP(ctx); a = TOP(ctx);
+        naVec_append(a, b);
+        break;
     case OP_LOCAL:
         a = getLocal(f, POP(ctx));
         PUSH(ctx, a);
@@ -284,16 +298,23 @@ static void run1(struct Context* ctx)
 
 void printRefDEBUG(naRef r)
 {
+    int i;
     if(IS_NUM(r)) {
         printf("%f\n", r.num);
     } else if(IS_NIL(r)) {
         printf("<nil>\n");
     } else if(IS_STR(r)) {
-        int j;
         printf("\"");
-        for(j=0; j<r.ref.ptr.str->len; j++)
-            printf("%c", r.ref.ptr.str->data[j]);
+        for(i=0; i<r.ref.ptr.str->len; i++)
+            printf("%c", r.ref.ptr.str->data[i]);
         printf("\"\n");
+    } else if(IS_VEC(r)) {
+        printf("[ ");
+        for(i=0; i<r.ref.ptr.vec->size; i++) {
+            printf("  ");
+            printRefDEBUG(r.ref.ptr.vec->array[i]);
+        }
+        printf("]\n");
     } else *(int*)0=0;
 }
 

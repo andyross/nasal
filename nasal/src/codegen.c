@@ -95,7 +95,14 @@ static void genLambda(struct Parser* p, struct Token* t)
 
 static void genList(struct Parser* p, struct Token* t)
 {
-    *(int*)0=0;
+    if(t->type == TOK_COMMA) {
+        genExpr(p, LEFT(t));
+        emit(p, OP_VAPPEND);
+        genList(p, RIGHT(t));
+    } else {
+        genExpr(p, t);
+        emit(p, OP_VAPPEND);
+    }
 }
 
 static void genHash(struct Parser* p, struct Token* t)
@@ -129,8 +136,12 @@ static void genExpr(struct Parser* p, struct Token* t)
         else          genExpr(p, LEFT(t)); // simple parenthesis
         break;
     case TOK_LBRA:
-        if(BINARY(t)) genList(p, t);
-        else          genBinOp(OP_EXTRACT, p, t);
+        if(BINARY(t)) {
+            genBinOp(OP_EXTRACT, p, t); // a[i]
+        } else {
+            emit(p, OP_NEWVEC);
+            genList(p, LEFT(t));
+        }
         break;
     case TOK_LCURL:
         genHash(p, t);
