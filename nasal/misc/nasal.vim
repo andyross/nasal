@@ -3,7 +3,7 @@
 " Maintainer:	Melchior FRANZ <mfranz@aon.at>
 " URL:		http://members.aon.at/mfranz/nasal.vim
 " Last Change:	2004 Feb 16
-" $Id: nasal.vim,v 1.2 2004-02-16 00:26:05 andy Exp $
+" $Id: nasal.vim,v 1.3 2004-12-07 00:32:37 andy Exp $
 "
 " type ":help new-filetype" in vim for installation instructions
 
@@ -43,7 +43,7 @@ syn keyword nasalOperator         or and
 syn keyword nasalConditional      if elsif else
 syn keyword nasalRepeat           while for foreach
 syn keyword nasalBranch           break continue switch case default
-syn keyword nasalStatement        return with append
+syn keyword nasalStatement        return with append call eval
 syn keyword nasalStatement        delete int keys num pop size streq substr typeof
 syn keyword nasalMathStatement    math.sin math.cos math.exp math.ln math.sqrt math.atan
 syn keyword nasalMathStatement    math.e math.pi

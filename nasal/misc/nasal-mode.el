@@ -54,7 +54,7 @@
 		   "while" "return" "break" "continue" "func") 'words)
 
      (list (regexp-opt '("size" "keys" "append" "pop" "int" "streq" "substr"
-			 "contains" "typeof") 'words)
+			 "contains" "typeof" "call" "eval") 'words)
 	   1 'font-lock-builtin-face)
      ))
   "Nasal-specific syntax to be hilighted.")
