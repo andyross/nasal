@@ -10,6 +10,7 @@
 char* tokString(int tok)
 {
     switch(tok) {
+    case TOK_TOP: return "TOK_TOP";
     case TOK_EMPTY: return "TOK_EMPTY";
     case TOK_NOT: return "TOK_NOT";
     case TOK_LPAR: return "TOK_LPAR";
@@ -103,7 +104,7 @@ int main(int argc, char** argv)
 
         naParse(&p);
 
-        dumpTokenList(p.tree.children, 0);
+        dumpTokenList(&p.tree, 0);
 
         naParseDestroy(&p);
     }

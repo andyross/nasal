@@ -303,38 +303,38 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
     rule = PRECEDENCE[level].rule;
     switch(rule) {
     case PREC_PREFIX:
-        if(tokInLevel(start, level)) {
+        if(tokInLevel(start, level) && start->next) {
             left = parsePrecedence(p, start->children, start->lastChild, 0);
             top = start;
             right = parsePrecedence(p, start->next, end, level);
         }
         break;
     case PREC_SUFFIX:
-        if(tokInLevel(end, level)) {
+        if(tokInLevel(end, level) && end->prev) {
             left = parsePrecedence(p, start, end->prev, level);
             top = end;
             right = parsePrecedence(p, end->children, end->lastChild, 0);
         }
         break;
     case PREC_BINARY:
-        t = end->prev;
+        t = end;
         while(t) {
             if(tokInLevel(t, level)) {
-                left = parsePrecedence(p, start, t->prev, level);
+                left = parsePrecedence(p, t->prev?start:0, t->prev, level);
                 top = t;
-                right = parsePrecedence(p, t->next, end, level+1);
+                right = parsePrecedence(p, t->next, t->next?end:0, level+1);
                 break;
             }
             t = t->prev;
         }
         break;
     case PREC_REVERSE:
-        t = start->next;
+        t = start;
         while(t) {
             if(tokInLevel(t, level)) {
-                left = parsePrecedence(p, start, t->prev, level+1);
+                left = parsePrecedence(p, t->prev?start:0, t->prev, level+1);
                 top = t;
-                right = parsePrecedence(p, t->next, end, level);
+                right = parsePrecedence(p, t->next, t->next?end:0, level);
                 break;
             }
             t = t->next;
@@ -355,6 +355,8 @@ static struct Token* parsePrecedence(struct Parser* p, struct Token* start,
     return top;
 }
 
+void dumpTokenList(struct Token* t, int prefix); // DEBUG
+
 void naParse(struct Parser* p)
 {
     struct Token* t;
@@ -363,7 +365,12 @@ void naParse(struct Parser* p)
     braceMatch(p->tree.children);
     fixBlockStructure(p->tree.children);
 
+    dumpTokenList(&p->tree, 0); // DEBUG
+
     t = parsePrecedence(p, p->tree.children, p->tree.lastChild, 0);
+    t->prev = t->next = 0;
     p->tree.children = t;
     p->tree.lastChild = t;
+
+    printf("\n\n"); // DEBUG
 }
