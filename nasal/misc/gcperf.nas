@@ -1,6 +1,6 @@
 
 for(j=0; j<10; j=j+1) {
-    print(j, "/100\n");
+    #print(j, "/10\n");
 
     # Make some tables to store stuff.  This will clobber the contents
     # from the previous loop, making them available for garbage

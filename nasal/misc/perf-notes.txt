@@ -176,3 +176,11 @@ the second _get call on the outer scope succeeds.  This is actually a
 performance regression -- it would be faster if we were not using
 naHash_sym().
  
+Changing the calling conventions to push the object, function, and
+then all the arguments on the stack and then build the frame from
+there (with no interrim VECAPPENDs) was good for 10% in fib.nas, and
+even more when calling functions with more than 1 argument.  Still at
+11.397s vs. perl's 6.773s though.
+
+Go through the bytecode inner loop and strip out all the needless POP
+and PUSH calls, using stuff on the stack where possible.

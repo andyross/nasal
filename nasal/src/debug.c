@@ -53,6 +53,8 @@ char* opStringDEBUG(int op)
     case OP_MARK: return "MARK";
     case OP_UNMARK: return "UNMARK";
     case OP_BREAK: return "BREAK";
+    case OP_FTAIL: return "FTAIL";
+    case OP_MTAIL: return "MTAIL";
     }
     sprintf(buf, "<bad opcode: %d>\n", op);
     return buf;
