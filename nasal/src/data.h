@@ -64,13 +64,17 @@ struct HashNode {
     struct HashNode* next;
 };
 
-struct naHash {
-    GC_HEADER;
+struct HashRec {
     int size;
     int dels;
     int lgalloced;
     struct HashNode* nodes;
-    struct HashNode** table;
+    struct HashNode* table[];
+};
+
+struct naHash {
+    GC_HEADER;
+    struct HashRec* rec;
 };
 
 struct naCode {

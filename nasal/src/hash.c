@@ -1,48 +1,13 @@
 #include "nasal.h"
 #include "data.h"
 
+#define MIN_HASH_SIZE 4
+
 #define EQUAL(a, b) (((a).ref.reftag == (b).ref.reftag \
                       && (a).ref.ptr.obj == (b).ref.ptr.obj) \
                      || naEqual(a, b))
 
 #define HASH_MAGIC 2654435769u
-
-static void realloc(naRef hash)
-{
-    struct naHash* h = hash.ref.ptr.hash;
-    int i, sz, oldsz = h->size;
-    int oldcols = h->table ? 1 << h->lgalloced : 0;
-
-    // Keep a handle to our original objects
-    struct HashNode* oldnodes = h->nodes;
-    struct HashNode** oldtable = h->table;
-
-    // Figure out how big we need to be (start with a minimum size of
-    // 4 entries)
-    for(i=1; 1<<i < oldsz; i++);
-    h->lgalloced = i+1;
-    
-    // Allocate new ones (note that all the records are allocated in a
-    // single chunk, to avoid zillions of tiny node allocations)
-    sz = 1<<h->lgalloced;
-    h->nodes = naAlloc(sz * (sizeof(struct HashNode) + sizeof(void*)));
-    h->table = (struct HashNode**)(((char*)h->nodes) + sz*sizeof(struct HashNode));
-    naBZero(h->table, sz * sizeof(void*));
-    h->size = 0;
-    h->dels = 0;
-
-    // Re-insert everything from scratch
-    for(i=0; i<oldcols; i++) {
-        struct HashNode* hn = oldtable[i];
-        while(hn) {
-            naHash_set(hash, hn->key, hn->val);
-            hn = hn->next;
-        }
-    }
-
-    // Free the old memory
-    naFree(oldnodes);
-}
 
 // Computes a hash code for a given scalar
 static unsigned int hashcode(naRef r)
@@ -68,11 +33,45 @@ static unsigned int hashcode(naRef r)
 }
 
 // Which column in a given hash does the key correspond to.
-static unsigned int hashcolumn(struct naHash* h, naRef key)
+static unsigned int hashcolumn(struct HashRec* h, naRef key)
 {
     // Multiply by a big number, and take the top N bits.  Note
     // assumption that sizeof(unsigned int) == 4.
     return (HASH_MAGIC * hashcode(key)) >> (32 - h->lgalloced);
+}
+
+static struct HashRec* realloc(struct naHash* hash)
+{
+    struct HashRec *h, *h0 = hash->rec;
+    int lga, cols, need = h0 ? h0->size - h0->dels : MIN_HASH_SIZE;
+
+    for(lga=0; 1<<lga <= need; lga++);
+    cols = 1<<lga;
+    h = naAlloc(sizeof(struct HashRec) +
+                cols * (sizeof(struct HashNode*) + sizeof(struct HashNode)));
+    naBZero(h, sizeof(struct HashRec) + cols * sizeof(struct HashNode*));
+
+    h->lgalloced = lga;
+    h->nodes = (struct HashNode*)(((char*)h)
+                                  + sizeof(struct HashRec)
+                                  + cols * sizeof(struct HashNode*));
+    if(h0) {
+        int i;
+        for(i=0; i<(1<<h0->lgalloced); i++) {
+            struct HashNode* hn = h0->table[i];
+            while(hn) {
+                int col = hashcolumn(h, hn->key);
+                struct HashNode* nhn = &h->nodes[h->size++];
+                nhn->key = hn->key;
+                nhn->val = hn->val;
+                nhn->next = h->table[col];
+                h->table[col] = nhn;
+                hn = hn->next;
+            }
+        }
+    }
+    naGC_swapfree((void**)&hash->rec, h);
+    return h;
 }
 
 // Special, optimized version of naHash_get for the express purpose of
@@ -82,9 +81,10 @@ static unsigned int hashcolumn(struct naHash* h, naRef key)
 // required, presumes that the key is a string and has had its
 // hashcode precomputed, checks only for object identity, and inlines
 // the column computation.
-int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out)
+int naHash_sym(struct naHash* hash, struct naStr* sym, naRef* out)
 {
-    if(h->table) {
+    struct HashRec* h = hash->rec;
+    if(h) {
         int col = (HASH_MAGIC * sym->hashcode) >> (32 - h->lgalloced);
         struct HashNode* hn = h->table[col];
         while(hn) {
@@ -98,28 +98,23 @@ int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out)
     return 0;
 }
 
-static struct HashNode* find(struct naHash* h, naRef key)
+static struct HashNode* find(struct naHash* hash, naRef key)
 {
-    struct HashNode* hn;
-    if(h->table == 0)
-        return 0;
-    hn = h->table[hashcolumn(h, key)];
-    while(hn) {
-        if(EQUAL(key, hn->key))
-            return hn;
-        hn = hn->next;
+    struct HashRec* h = hash->rec;
+    if(h) {
+        struct HashNode* hn = h->table[hashcolumn(h, key)];
+        while(hn) {
+            if(EQUAL(key, hn->key))
+                return hn;
+            hn = hn->next;
+        }
     }
     return 0;
 }
 
 void naHash_init(naRef hash)
 {
-    struct naHash* h = hash.ref.ptr.hash;
-    h->size = 0;
-    h->dels = 0;
-    h->lgalloced = 0;
-    h->table = 0;
-    h->nodes = 0;
+    hash.ref.ptr.hash->rec = 0;
 }
 
 // Make a temporary string on the stack
@@ -150,42 +145,35 @@ void naHash_cset(naRef hash, char* key, naRef val)
 
 int naHash_get(naRef hash, naRef key, naRef* out)
 {
-    struct naHash* h = hash.ref.ptr.hash;
-    struct HashNode* n;
-    if(!IS_HASH(hash)) return 0;
-    n = find(h, key);
-    if(n) {
-        *out = n->val;
-        return 1;
-    } else {
-        *out = naNil();
-        return 0;
+    if(IS_HASH(hash)) {
+        struct HashNode* n = find(hash.ref.ptr.hash, key);
+        if(n) { *out = n->val; return 1; }
     }
+    return 0;
 }
 
 // Simpler version.  Don't create a new node if the value isn't there
 int naHash_tryset(naRef hash, naRef key, naRef val)
 {
-    struct HashNode* n;
-    if(!IS_HASH(hash)) return 0;
-    n = find(hash.ref.ptr.hash, key);
-    if(n) n->val = val;
-    return n != 0;
+    if(IS_HASH(hash)) {
+        struct HashNode* n = find(hash.ref.ptr.hash, key);
+        if(n) n->val = val;
+        return n != 0;
+    }
+    return 0;
 }
 
 // Special purpose optimization for use in function call setups.  Sets
 // a value that is known *not* to be present in the hash table.  As
 // for naHash_sym, the key must be a string with a precomputed hash
 // code.
-void naHash_newsym(struct naHash* h, naRef* sym, naRef* val)
+void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
 {
     int col;
+    struct HashRec* h = hash->rec;
     struct HashNode* n;
-    if(h->size+1 >= 1<<h->lgalloced) {
-        naRef hash = naNil();
-        hash.ref.ptr.hash = h;
-        realloc(hash);
-    }
+    if(!h || h->size >= 1<<h->lgalloced)
+        h = realloc(hash);
     col = (HASH_MAGIC * sym->ref.ptr.str->hashcode) >> (32 - h->lgalloced);
     n = h->nodes + h->size++;
     n->key = *sym;
@@ -196,23 +184,20 @@ void naHash_newsym(struct naHash* h, naRef* sym, naRef* val)
 
 void naHash_set(naRef hash, naRef key, naRef val)
 {
-    struct naHash* h = hash.ref.ptr.hash;
-    unsigned int col;
+    struct HashRec* h;
     struct HashNode* n;
+    unsigned int col;
 
     if(!IS_HASH(hash)) return;
-
-    n = find(h, key);
-    if(n) {
+    if((n = find(hash.ref.ptr.hash, key))) {
         n->val = val;
         return;
     }
-
-    if(h->size+1 >= 1<<h->lgalloced)
-        realloc(hash);
-
+    h = hash.ref.ptr.hash->rec;
+    while(!h || h->size >= 1<<h->lgalloced)
+        h = realloc(hash.ref.ptr.hash);
     col = hashcolumn(h, key);
-    n = h->nodes + h->size++;
+    n = &h->nodes[h->size++];
     n->key = key;
     n->val = val;
     n->next = h->table[col];
@@ -221,10 +206,10 @@ void naHash_set(naRef hash, naRef key, naRef val)
 
 void naHash_delete(naRef hash, naRef key)
 {
-    struct naHash* h = hash.ref.ptr.hash;
+    struct HashRec* h = hash.ref.ptr.hash->rec;
     int col;
     struct HashNode *last=0, *hn;
-    if(!IS_HASH(hash)) return;
+    if(!IS_HASH(hash) || !h) return;
     col = hashcolumn(h, key);
     hn = h->table[col];
     while(hn) {
@@ -241,9 +226,9 @@ void naHash_delete(naRef hash, naRef key)
 
 void naHash_keys(naRef dst, naRef hash)
 {
-    struct naHash* h = hash.ref.ptr.hash;
+    struct HashRec* h = hash.ref.ptr.hash->rec;
     int i;
-    if(!IS_HASH(hash) || !h->table) return;
+    if(!IS_HASH(hash) || !h) return;
     for(i=0; i<(1<<h->lgalloced); i++) {
         struct HashNode* hn = h->table[i];
         while(hn) {
@@ -253,18 +238,15 @@ void naHash_keys(naRef dst, naRef hash)
     }
 }
 
-int naHash_size(naRef h)
+int naHash_size(naRef hash)
 {
-    if(!IS_HASH(h)) return 0;
-    return h.ref.ptr.hash->size - h.ref.ptr.hash->dels;
+    struct HashRec* h = hash.ref.ptr.hash->rec;
+    if(!IS_HASH(hash) || !h) return 0;
+    return h->size - h->dels;
 }
 
 void naHash_gcclean(struct naHash* h)
 {
-    naFree(h->nodes);
-    h->nodes = 0;
-    h->size = 0;
-    h->dels = 0;
-    h->lgalloced = 0;
-    h->table = 0;
+    naFree(h->rec);
+    h->rec = 0;
 }

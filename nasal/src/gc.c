@@ -194,10 +194,10 @@ static void mark(naRef r)
                 mark(r.ref.ptr.vec->rec->array[i]);
         break;
     case T_HASH:
-        if(r.ref.ptr.hash->table == 0)
+        if(r.ref.ptr.hash->rec == 0)
             break;
-        for(i=0; i < (1<<r.ref.ptr.hash->lgalloced); i++) {
-            struct HashNode* hn = r.ref.ptr.hash->table[i];
+        for(i=0; i < (1<<r.ref.ptr.hash->rec->lgalloced); i++) {
+            struct HashNode* hn = r.ref.ptr.hash->rec->table[i];
             while(hn) {
                 mark(hn->key);
                 mark(hn->val);
