@@ -329,6 +329,20 @@ static void genIfElse(struct Parser* p, struct Token* t)
     genIf(p, t, t->children->next->next);
 }
 
+static void genQuestion(struct Parser* p, struct Token* t)
+{
+    int jumpNext, jumpEnd;
+    if(!RIGHT(t) || RIGHT(t)->type != TOK_COLON)
+        naParseError(p, "invalid ?: expression", t->line);
+    genExpr(p, LEFT(t)); // the test
+    jumpNext = emitJump(p, OP_JIFNOT);
+    genExpr(p, LEFT(RIGHT(t))); // the "if true" expr
+    jumpEnd = emitJump(p, OP_JMP);
+    fixJumpTarget(p, jumpNext);
+    genExpr(p, RIGHT(RIGHT(t))); // the "else" expr
+    fixJumpTarget(p, jumpEnd);
+}
+
 static int countSemis(struct Token* t)
 {
     if(!t || t->type != TOK_SEMI) return 0;
@@ -495,6 +509,9 @@ static void genExpr(struct Parser* p, struct Token* t)
     switch(t->type) {
     case TOK_IF:
         genIfElse(p, t);
+        break;
+    case TOK_QUESTION:
+        genQuestion(p, t);
         break;
     case TOK_WHILE:
         genWhile(p, t);

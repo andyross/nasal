@@ -41,7 +41,8 @@ struct Lexeme {
     {"break",    TOK_BREAK},
     {"continue", TOK_CONTINUE},
     {"func", TOK_FUNC},
-    {"...", TOK_ELLIPSIS}
+    {"...", TOK_ELLIPSIS},
+    {"?", TOK_QUESTION},
 };
 
 // Build a table of where each line ending is
