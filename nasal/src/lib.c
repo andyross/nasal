@@ -10,6 +10,8 @@
 #include "nasal.h"
 #include "code.h"
 
+#define NEWSTR(c, s, l) naStr_fromdata(naNewString(c), s, l)
+
 static naRef size(naContext c, naRef me, int argc, naRef* args)
 {
     if(argc == 0) return naNil();
@@ -135,7 +137,7 @@ static naRef f_chr(naContext c, naRef me, int argc, naRef* args)
     naRef cr = argc ? naNumValue(args[0]) : naNil();
     if(IS_NIL(cr)) naRuntimeError(c, "chr argument not string");
     chr[0] = (char)cr.num;
-    return naStr_fromdata(naNewString(c), chr, 1);
+    return NEWSTR(c, chr, 1);
 }
 
 static naRef contains(naContext c, naRef me, int argc, naRef* args)
@@ -158,7 +160,7 @@ static naRef typeOf(naContext c, naRef me, int argc, naRef* args)
     else if(naIsHash(r)) t = "hash";
     else if(naIsFunc(r)) t = "func";
     else if(naIsGhost(r)) t = "ghost";
-    r = naStr_fromdata(naNewString(c), t, strlen(t));
+    r = NEWSTR(c, t, strlen(t));
     return r;
 }
 
@@ -168,7 +170,7 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     naRef script, code, fname;
     script = argc > 0 ? args[0] : naNil();
     if(!naIsString(script)) return naNil();
-    fname = naStr_fromdata(naNewString(c), "<compile>", 4);
+    fname = NEWSTR(c, "<compile>", 9);
     code = naParseCode(c, fname, 1,
                        naStr_data(script), naStr_len(script), &errLine);
     if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
@@ -257,7 +259,6 @@ static char* nextFormat(naContext ctx, char* f, char** out, int* len, char* type
     return f;
 }
 
-#define NEWSTR(s, l) naStr_fromdata(naNewString(ctx), s, l)
 #define ERR(m) naRuntimeError(ctx, m)
 #define APPEND(r) result = naStr_concat(naNewString(ctx), result, r)
 static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
@@ -272,9 +273,9 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
     s = naStr_data(format);
                                
     while((next = nextFormat(ctx, s, &fstr, &flen, &t))) {
-        APPEND(NEWSTR(s, fstr-s)); // stuff before the format string
+        APPEND(NEWSTR(ctx, s, fstr-s)); // stuff before the format string
         if(flen == 2 && fstr[1] == '%') {
-            APPEND(NEWSTR("%", 1));
+            APPEND(NEWSTR(ctx, "%", 1));
             s = next;
             continue;
         }
@@ -300,11 +301,11 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
                 ERR("invalid sprintf format type");
         }
         fstr[flen] = nultmp;
-        APPEND(NEWSTR(fout, strlen(fout)));
+        APPEND(NEWSTR(ctx, fout, strlen(fout)));
         naFree(fout);
         s = next;
     }
-    APPEND(NEWSTR(s, strlen(s)));
+    APPEND(NEWSTR(ctx, s, strlen(s)));
     return result;
 }
 
@@ -341,6 +342,37 @@ static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
     return f->namespace;
 }
 
+static int match(char* a, char* b, int l)
+{
+    int i;
+    for(i=0; i<l; i++)
+        if(a[i] != b[i]) return 0;
+    return 1;
+}
+
+// FIXME, this has a bug with repeated delimeters (split("a", "1aa1"))
+static naRef f_split(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int sl, dl, i;
+    char *s, *d, *s0;
+    naRef result;
+    if(argc < 2 || !IS_STR(args[0]) || !IS_STR(args[1]))
+        naRuntimeError(ctx, "bad/missing argument to split");
+    d = naStr_data(args[0]); dl = naStr_len(args[0]);
+    s = naStr_data(args[1]); sl = naStr_len(args[1]);
+    s0 = s;
+    result = naNewVector(ctx);
+    for(i=0; i <= sl-dl; i++) {
+        if(match(s+i, d, dl)) {
+            naVec_append(result, NEWSTR(ctx, s0, s+i-s0));
+            i += dl;
+            s0 = s + i;
+        }
+    }
+    naVec_append(result, NEWSTR(ctx, s0, s+sl-s0));
+    return result;
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -364,6 +396,7 @@ static struct func funcs[] = {
     { "sprintf", f_sprintf },
     { "caller", f_caller },
     { "closure", f_closure },
+    { "split", f_split },
 };
 
 naRef naStdLib(naContext c)
@@ -372,8 +405,7 @@ naRef naStdLib(naContext c)
     int i, n = sizeof(funcs)/sizeof(struct func);
     for(i=0; i<n; i++) {
         naRef code = naNewCCode(c, funcs[i].func);
-        naRef name = naStr_fromdata(naNewString(c),
-                                    funcs[i].name, strlen(funcs[i].name));
+        naRef name = NEWSTR(c, funcs[i].name, strlen(funcs[i].name));
         name = naInternSymbol(name);
         naHash_set(namespace, name, naNewFunc(c, code));
     }
