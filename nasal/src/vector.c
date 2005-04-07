@@ -13,11 +13,6 @@ static void realloc(struct naVec* v)
     naGC_swapfree((void**)&(v->rec), vr);
 }
 
-void naVec_init(naRef vec)
-{
-    vec.ref.ptr.vec->rec = 0;
-}
-
 void naVec_gcclean(struct naVec* v)
 {
     naFree(v->rec);

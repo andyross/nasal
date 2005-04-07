@@ -69,14 +69,14 @@ naRef naNewString(struct Context* c)
 naRef naNewVector(struct Context* c)
 {
     naRef r = naNew(c, T_VEC);
-    naVec_init(r);
+    r.ref.ptr.vec->rec = 0;
     return r;
 }
 
 naRef naNewHash(struct Context* c)
 {
     naRef r = naNew(c, T_HASH);
-    naHash_init(r);
+    r.ref.ptr.hash->rec = 0;
     return r;
 }
 

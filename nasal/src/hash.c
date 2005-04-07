@@ -112,25 +112,21 @@ static struct HashNode* find(struct naHash* hash, naRef key)
     return 0;
 }
 
-void naHash_init(naRef hash)
-{
-    hash.ref.ptr.hash->rec = 0;
-}
-
 // Make a temporary string on the stack
-static naRef tmpStr(struct naStr* str, char* key)
+static void tmpStr(naRef* out, struct naStr* str, char* key)
 {
-    char* p = key;
-    while(*p) { p++; }
-    str->len = p - key;
+    str->len = 0;
     str->data = key;
-    return naObj(T_STR, (struct naObj*)str);
+    while(key[str->len]) str->len++;
+    *out = naNil();
+    out->ref.ptr.str = str;
 }
 
 naRef naHash_cget(naRef hash, char* key)
 {
     struct naStr str;
-    naRef result, key2 = tmpStr(&str, key);
+    naRef result, key2;
+    tmpStr(&key2, &str, key);
     if(naHash_get(hash, key2, &result))
         return result;
     return naNil();
@@ -139,7 +135,8 @@ naRef naHash_cget(naRef hash, char* key)
 void naHash_cset(naRef hash, char* key, naRef val)
 {
     struct naStr str;
-    naRef key2 = tmpStr(&str, key);
+    naRef key2;
+    tmpStr(&key2, &str, key);
     naHash_tryset(hash, key2, val);
 }
 

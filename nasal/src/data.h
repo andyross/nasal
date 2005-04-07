@@ -138,12 +138,9 @@ int naStr_numeric(naRef str);
 int naStr_parsenum(char* str, int len, double* result);
 int naStr_tonum(naRef str, double* out);
 
-void naVec_init(naRef vec);
-
 int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
 int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out);
 void naHash_newsym(struct naHash* h, naRef* sym, naRef* val);
-void naHash_init(naRef hash);
 
 void naGC_init(struct naPool* p, int type);
 struct naObj** naGC_get(struct naPool* p, int n, int* nout);

@@ -102,7 +102,7 @@ static void initContext(struct Context* c)
 
     // Chicken and egg, can't use naNew because it requires temps to exist
     c->temps = naObj(T_VEC, (naGC_get(&c->globals->pools[T_VEC], 1, &i))[0]);
-    naVec_init(c->temps);
+    c->temps.ref.ptr.vec->rec = 0;
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
