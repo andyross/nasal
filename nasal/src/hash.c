@@ -183,10 +183,8 @@ void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
 static void chkcycle(struct HashNode* node, int count)
 {
     struct HashNode* hn = node;
-    while(hn) {
-        hn = hn->next;
+    while((hn = hn->next) != 0)
         if(count-- <= 0) { node->next = 0; return; }
-    }
 }
 
 void naHash_set(naRef hash, naRef key, naRef val)
