@@ -174,8 +174,24 @@ void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
     INSERT(h, *sym, *val, col);
 }
 
+// The cycle check is an integrity requirement for multithreading,
+// where raced inserts can potentially cause cycles.  This ensures
+// that the "last" thread to hold a reference to an inserted node
+// breaks any cycles that might have happened (at the expense of
+// potentially dropping items out of the hash).  Under normal
+// circumstances, chains will be very short and this will be fast.
+static void chkcycle(struct HashNode* node, int count)
+{
+    struct HashNode* hn = node;
+    while(hn) {
+        hn = hn->next;
+        if(count-- <= 0) { node->next = 0; return; }
+    }
+}
+
 void naHash_set(naRef hash, naRef key, naRef val)
 {
+    int col;
     struct HashRec* h;
     struct HashNode* n;
     if(!IS_HASH(hash)) return;
@@ -183,7 +199,9 @@ void naHash_set(naRef hash, naRef key, naRef val)
     h = hash.ref.ptr.hash->rec;
     while(!h || h->size >= 1<<h->lgalloced)
         h = realloc(hash.ref.ptr.hash);
+    col = hashcolumn(h, key);
     INSERT(h, key, val, hashcolumn(h, key));
+    chkcycle(h->table[col], h->size - h->dels);
 }
 
 void naHash_delete(naRef hash, naRef key)
