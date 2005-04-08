@@ -653,6 +653,7 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
     p->cg = &cg;
 
     genExprList(p, block);
+    emit(p, OP_RETURN);
 
     // Now make a code object
     codeObj = naNewCode(p->context);

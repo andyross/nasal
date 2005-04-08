@@ -367,7 +367,8 @@ static void evalEach(struct Context* ctx)
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
 #define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
                    cd = f->func.ref.ptr.func->code.ref.ptr.code;
-#define POPFRAME() do { if(--ctx->fTop) { FIXFRAME(); } } while(0)
+#define POPFRAME() do { if(--ctx->fTop > 0) { FIXFRAME(); }     \
+                        else return ctx->opStack[ctx->opTop-1]; } while(0)
 static naRef run(struct Context* ctx)
 {
     struct Frame* f;
@@ -378,13 +379,7 @@ static naRef run(struct Context* ctx)
 
     FIXFRAME();
 
-    while(ctx->fTop > 0) {
-        if(f->ip >= cd->nBytes) {
-            DBG(printf("Done with frame %d\n", ctx->fTop-1);)
-            POPFRAME();
-            continue;
-        }
-        
+    while(1) {
         op = cd->byteCode[f->ip++];
         DBG(printf("Stack Depth: %d\n", ctx->opTop));
         DBG(printOpDEBUG(f->ip-1, op));
@@ -570,8 +565,7 @@ static naRef run(struct Context* ctx)
         *temps = 0; // reset GC temp vector
         DBG(printStackDEBUG(ctx);)
     }
-    // Return what's left on the top of the stack
-    return ctx->opStack[ctx->opTop-1];
+    return naNil(); // unreachable
 }
 #undef POP
 #undef TOP
