@@ -345,12 +345,26 @@ static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
 static int match(char* a, char* b, int l)
 {
     int i;
-    for(i=0; i<l; i++)
-        if(a[i] != b[i]) return 0;
+    for(i=0; i<l; i++) if(a[i] != b[i]) return 0;
     return 1;
 }
 
-// FIXME, this has a bug with repeated delimeters (split("a", "1aa1"))
+static int find(char* a, int al, char* s, int sl)
+{
+    int i;
+    if(al == 0) return 0;
+    for(i=0; i<sl-al+1; i++) if(match(a, s+i, al)) return i;
+    return -1;
+}
+
+static naRef f_find(naContext ctx, naRef me, int argc, naRef* args)
+{
+    if(argc < 2 || !IS_STR(args[0]) || !IS_STR(args[1]))
+        naRuntimeError(ctx, "bad/missing argument to split");
+    return naNum(find(args[0].ref.ptr.str->data, args[0].ref.ptr.str->len,
+                      args[1].ref.ptr.str->data, args[1].ref.ptr.str->len));
+}
+
 static naRef f_split(naContext ctx, naRef me, int argc, naRef* args)
 {
     int sl, dl, i;
@@ -360,16 +374,20 @@ static naRef f_split(naContext ctx, naRef me, int argc, naRef* args)
         naRuntimeError(ctx, "bad/missing argument to split");
     d = naStr_data(args[0]); dl = naStr_len(args[0]);
     s = naStr_data(args[1]); sl = naStr_len(args[1]);
-    s0 = s;
     result = naNewVector(ctx);
+    if(dl == 0) { // special case zero-length delimiter
+        for(i=0; i<sl; i++) naVec_append(result, NEWSTR(ctx, s+i, 1));
+        return result;
+    }
+    s0 = s;
     for(i=0; i <= sl-dl; i++) {
         if(match(s+i, d, dl)) {
             naVec_append(result, NEWSTR(ctx, s0, s+i-s0));
-            i += dl;
-            s0 = s + i;
+            s0 = s + i + dl;
+            i += dl - 1;
         }
     }
-    naVec_append(result, NEWSTR(ctx, s0, s+sl-s0));
+    if(s0 - s <= sl) naVec_append(result, NEWSTR(ctx, s0, s+sl-s0));
     return result;
 }
 
@@ -396,6 +414,7 @@ static struct func funcs[] = {
     { "sprintf", f_sprintf },
     { "caller", f_caller },
     { "closure", f_closure },
+    { "find", f_find },
     { "split", f_split },
 };
 
