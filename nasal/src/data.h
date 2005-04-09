@@ -82,9 +82,9 @@ struct naCode {
     unsigned char nOptArgs;
     unsigned char needArgVector;
     unsigned short nConstants;
-    unsigned short nBytes;
     unsigned short nLines;
-    unsigned char* byteCode;
+    unsigned short codesz;
+    unsigned short* byteCode;
     naRef* constants;
     int* argSyms; // indices into constants
     int* optArgSyms;

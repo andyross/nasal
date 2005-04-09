@@ -66,8 +66,8 @@ struct CodeGenerator {
     int lastLine;
 
     // Accumulated byte code array
-    unsigned char* byteCode;
-    int nBytes;
+    unsigned short* byteCode;
+    int codesz;
     int codeAlloced;
 
     // Inst. -> line table, stores pairs of {ip, line}

@@ -338,13 +338,6 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
     return 0;
 }
 
-static int ARG16(unsigned char* byteCode, struct Frame* f)
-{
-    int arg = byteCode[f->ip]<<8 | byteCode[f->ip+1];
-    f->ip += 2;
-    return arg;
-}
-
 // OP_EACH works like a vector get, except that it leaves the vector
 // and index on the stack, increments the index after use, and pops
 // the arguments and pushes a nil if the index is beyond the end.
@@ -361,8 +354,9 @@ static void evalEach(struct Context* ctx)
     PUSH(naVec_get(vec, idx));
 }
 
+#define ARG() cd->byteCode[f->ip++]
+#define CONSTARG() cd->constants[ARG()]
 #define POP() ctx->opStack[--ctx->opTop]
-#define CONSTARG() cd->constants[ARG16(cd->byteCode, f)]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
 #define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
                    cd = f->func.ref.ptr.func->code.ref.ptr.code;
@@ -497,15 +491,15 @@ static naRef run(struct Context* ctx)
         case OP_JMPLOOP:
             // Identical to JMP, except for locking
             naCheckGCLock();
-            f->ip = ARG16(cd->byteCode, f);
+            f->ip = cd->byteCode[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
         case OP_JMP:
-            f->ip = ARG16(cd->byteCode, f);
+            f->ip = cd->byteCode[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
         case OP_JIFNIL:
-            arg = ARG16(cd->byteCode, f);
+            arg = ARG();
             if(IS_NIL(STK(1))) {
                 ctx->opTop--; // Pops **ONLY** if it's nil!
                 f->ip = arg;
@@ -513,26 +507,26 @@ static naRef run(struct Context* ctx)
             }
             break;
         case OP_JIFNOT:
-            arg = ARG16(cd->byteCode, f);
+            arg = ARG();
             if(!boolify(ctx, POP())) {
                 f->ip = arg;
                 DBG(printf("   [Jump to: %d]\n", f->ip);)
             }
             break;
         case OP_FCALL:
-            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 0, 0);
+            f = setupFuncall(ctx, ARG(), 0, 0);
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_FTAIL:
-            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 0, 1);
+            f = setupFuncall(ctx, ARG(), 0, 1);
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_MCALL:
-            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 1, 0);
+            f = setupFuncall(ctx, ARG(), 1, 0);
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_MTAIL:
-            f = setupFuncall(ctx, ARG16(cd->byteCode, f), 1, 1);
+            f = setupFuncall(ctx, ARG(), 1, 1);
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_RETURN:

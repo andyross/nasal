@@ -12,23 +12,22 @@
 static void genExpr(struct Parser* p, struct Token* t);
 static void genExprList(struct Parser* p, struct Token* t);
 
-static void emit(struct Parser* p, int byte)
+static void emit(struct Parser* p, int val)
 {
-    if(p->cg->nBytes >= p->cg->codeAlloced) {
+    if(p->cg->codesz >= p->cg->codeAlloced) {
         int i, sz = p->cg->codeAlloced * 2;
-        unsigned char* buf = naParseAlloc(p, sz);
+        unsigned short* buf = naParseAlloc(p, sz*sizeof(unsigned short));
         for(i=0; i<p->cg->codeAlloced; i++) buf[i] = p->cg->byteCode[i];
         p->cg->byteCode = buf;
         p->cg->codeAlloced = sz;
     }
-    p->cg->byteCode[p->cg->nBytes++] = (unsigned char)byte;
+    p->cg->byteCode[p->cg->codesz++] = (unsigned short)val;
 }
 
-static void emitImmediate(struct Parser* p, int byte, int arg)
+static void emitImmediate(struct Parser* p, int val, int arg)
 {
-    emit(p, byte);
-    emit(p, arg >> 8);
-    emit(p, arg & 0xff);
+    emit(p, val);
+    emit(p, arg);
 }
 
 static void genBinOp(int op, struct Parser* p, struct Token* t)
@@ -293,17 +292,15 @@ static int emitJump(struct Parser* p, int op)
 {
     int ip;
     emit(p, op);
-    ip = p->cg->nBytes;
-    emit(p, 0xff); // dummy address
-    emit(p, 0xff);
+    ip = p->cg->codesz;
+    emit(p, 0xffff); // dummy address
     return ip;
 }
 
 // Points a previous jump instruction at the current "end-of-bytecode"
 static void fixJumpTarget(struct Parser* p, int spot)
 {
-    p->cg->byteCode[spot]   = p->cg->nBytes >> 8;
-    p->cg->byteCode[spot+1] = p->cg->nBytes & 0xff;
+    p->cg->byteCode[spot] = p->cg->codesz;
 }
 
 static void genShortCircuit(struct Parser* p, struct Token* t)
@@ -371,7 +368,7 @@ static void genLoop(struct Parser* p, struct Token* body,
     p->cg->loops[p->cg->loopTop-1].breakIP = jumpEnd-1;
 
     jumpOverContinue = emitJump(p, OP_JMP);
-    p->cg->loops[p->cg->loopTop-1].contIP = p->cg->nBytes;
+    p->cg->loops[p->cg->loopTop-1].contIP = p->cg->codesz;
     cont = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpOverContinue);
 
@@ -392,7 +389,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
     int loopTop, jumpEnd;
     if(init) { genExpr(p, init); emit(p, OP_POP); }
     pushLoop(p, label);
-    loopTop = p->cg->nBytes;
+    loopTop = p->cg->codesz;
     genExpr(p, test);
     jumpEnd = emitJump(p, OP_JIFNOT);
     genLoop(p, body, update, label, loopTop, jumpEnd);
@@ -457,7 +454,7 @@ static void genForEach(struct Parser* p, struct Token* t)
     pushLoop(p, label);
     genExpr(p, vec);
     emit(p, OP_PUSHZERO);
-    loopTop = p->cg->nBytes;
+    loopTop = p->cg->codesz;
     emit(p, OP_EACH);
     jumpEnd = emitJump(p, OP_JIFNIL);
     assignOp = genLValue(p, elem);
@@ -509,7 +506,7 @@ static void newLineEntry(struct Parser* p, int line)
         p->cg->lineIps = n;
         p->cg->nLineIps = nsz;
     }
-    p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) p->cg->nBytes;
+    p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) p->cg->codesz;
     p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) line;
 }
 
@@ -643,8 +640,8 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
 
     cg.lastLine = 0;
     cg.codeAlloced = 1024; // Start fairly big, this is a cheap allocation
-    cg.byteCode = naParseAlloc(p, cg.codeAlloced);
-    cg.nBytes = 0;
+    cg.byteCode = naParseAlloc(p, cg.codeAlloced *sizeof(unsigned short));
+    cg.codesz = 0;
     cg.consts = naNewVector(p->context);
     cg.loopTop = 0;
     cg.lineIps = 0;
@@ -687,9 +684,9 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
         } else code->optArgSyms = code->optArgVals = 0;
     }
 
-    code->nBytes = cg.nBytes;
-    code->byteCode = naAlloc(cg.nBytes);
-    for(i=0; i < cg.nBytes; i++)
+    code->codesz = cg.codesz;
+    code->byteCode = naAlloc(cg.codesz * sizeof(unsigned short));
+    for(i=0; i < cg.codesz; i++)
         code->byteCode[i] = cg.byteCode[i];
     code->nConstants = naVec_size(cg.consts);
     code->constants = naAlloc(code->nConstants * sizeof(naRef));
