@@ -362,7 +362,6 @@ static void evalEach(struct Context* ctx)
 }
 
 #define POP() ctx->opStack[--ctx->opTop]
-#define TOP() ctx->opStack[ctx->opTop-1]
 #define CONSTARG() cd->constants[ARG16(cd->byteCode, f)]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
 #define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
@@ -413,12 +412,12 @@ static naRef run(struct Context* ctx)
 #undef BINOP
 
         case OP_EQ: case OP_NEQ:
-            a = POP(); b = POP();
-            PUSH(evalEquality(op, b, a));
+            STK(2) = evalEquality(op, STK(2), STK(1));
+            ctx->opTop--;
             break;
         case OP_AND: case OP_OR:
-            a = POP(); b = POP();
-            PUSH(evalAndOr(ctx, op, a, b));
+            STK(2) = evalAndOr(ctx, op, STK(2), STK(1));
+            ctx->opTop--;
             break;
         case OP_CAT:
             // stringify can call the GC, so don't take stuff of the stack!
@@ -429,12 +428,10 @@ static naRef run(struct Context* ctx)
             PUSH(c);
             break;
         case OP_NEG:
-            a = POP();
-            PUSH(naNum(-numify(ctx, a)));
+            STK(1) = naNum(-numify(ctx, STK(1)));
             break;
         case OP_NOT:
-            a = POP();
-            PUSH(naNum(boolify(ctx, a) ? 0 : 1));
+            STK(1) = naNum(boolify(ctx, STK(1)) ? 0 : 1);
             break;
         case OP_PUSHCONST:
             a = CONSTARG();
@@ -454,24 +451,24 @@ static naRef run(struct Context* ctx)
             PUSH(naNewVector(ctx));
             break;
         case OP_VAPPEND:
-            b = POP(); a = TOP();
-            naVec_append(a, b);
+            naVec_append(STK(2), STK(1));
+            ctx->opTop--;
             break;
         case OP_NEWHASH:
             PUSH(naNewHash(ctx));
             break;
         case OP_HAPPEND:
-            c = POP(); b = POP(); a = TOP(); // a,b,c: hash, key, val
-            naHash_set(a, b, c);
+            naHash_set(STK(3), STK(2), STK(1));
+            ctx->opTop -= 2;
             break;
         case OP_LOCAL:
             a = CONSTARG();
-            getLocal(ctx, f, &a, &STK(0));
-            ctx->opTop++;
+            getLocal(ctx, f, &a, &b);
+            PUSH(b);
             break;
         case OP_SETSYM:
-            a = POP(); b = POP();
-            PUSH(setSymbol(f, b, a));
+            STK(2) = setSymbol(f, STK(2), STK(1));
+            ctx->opTop--;
             break;
         case OP_SETLOCAL:
             naHash_set(f->locals, STK(2), STK(1));
@@ -479,25 +476,23 @@ static naRef run(struct Context* ctx)
             ctx->opTop--;
             break;
         case OP_MEMBER:
-            a = POP();
-            if(!getMember(ctx, a, CONSTARG(), &b, 64))
+            if(!getMember(ctx, STK(1), CONSTARG(), &STK(1), 64))
                 ERR(ctx, "no such member");
-            PUSH(b);
             break;
         case OP_SETMEMBER:
-            c = POP(); b = POP(); a = POP(); // a,b,c: hash, key, val
-            if(!IS_HASH(a)) ERR(ctx, "non-objects have no members");
-            naHash_set(a, b, c);
-            PUSH(c);
+            if(!IS_HASH(STK(3))) ERR(ctx, "non-objects have no members");
+            naHash_set(STK(3), STK(2), STK(1));
+            STK(3) = STK(1); // FIXME: fix arg order instead
+            ctx->opTop -= 2;
             break;
         case OP_INSERT:
-            c = POP(); b = POP(); a = POP(); // a,b,c: box, key, val
-            containerSet(ctx, a, b, c);
-            PUSH(c);
+            containerSet(ctx, STK(3), STK(2), STK(1));
+            STK(3) = STK(1); // FIXME: codegen order again...
+            ctx->opTop -= 2;
             break;
         case OP_EXTRACT:
-            b = POP(); a = POP(); // a,b: box, key
-            PUSH(containerGet(ctx, a, b));
+            STK(2) = containerGet(ctx, STK(2), STK(1));
+            ctx->opTop--;
             break;
         case OP_JMPLOOP:
             // Identical to JMP, except for locking
@@ -511,9 +506,8 @@ static naRef run(struct Context* ctx)
             break;
         case OP_JIFNIL:
             arg = ARG16(cd->byteCode, f);
-            a = TOP();
-            if(IS_NIL(a)) {
-                POP(); // Pops **ONLY** if it's nil!
+            if(IS_NIL(STK(1))) {
+                ctx->opTop--; // Pops **ONLY** if it's nil!
                 f->ip = arg;
                 DBG(printf("   [Jump to: %d]\n", f->ip);)
             }
@@ -542,10 +536,11 @@ static naRef run(struct Context* ctx)
             cd = f->func.ref.ptr.func->code.ref.ptr.code;
             break;
         case OP_RETURN:
-            a = TOP();
+            a = STK(1);
             ctx->opTop = f->bp; // restore the correct opstack frame!
             POPFRAME();
-            PUSH(a);
+            STK(0) = a;
+            ctx->opTop++;
             break;
         case OP_EACH:
             evalEach(ctx);
@@ -568,7 +563,6 @@ static naRef run(struct Context* ctx)
     return naNil(); // unreachable
 }
 #undef POP
-#undef TOP
 #undef CONSTARG
 #undef STK
 #undef FIXFRAME
