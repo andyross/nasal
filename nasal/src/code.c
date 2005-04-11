@@ -107,6 +107,9 @@ static void initContext(struct Context* c)
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 
+    c->callParent = 0;
+    c->callChild = 0;
+
     c->dieArg = naNil();
     c->error = 0;
 }
@@ -567,11 +570,13 @@ void naSave(struct Context* ctx, naRef obj)
     naVec_append(globals->save, obj);
 }
 
+// FIXME: handle ctx->callParent
 int naStackDepth(struct Context* ctx)
 {
     return ctx->fTop;
 }
 
+// FIXME: handle ctx->callParent
 int naGetLine(struct Context* ctx, int frame)
 {
     struct Frame* f = &ctx->fStack[ctx->fTop-1-frame];
@@ -587,6 +592,7 @@ int naGetLine(struct Context* ctx, int frame)
     return -1;
 }
 
+// FIXME: handle ctx->callParent
 naRef naGetSourceFile(struct Context* ctx, int frame)
 {
     naRef f = ctx->fStack[ctx->fTop-1-frame].func;
@@ -621,7 +627,7 @@ naRef naBindToContext(naContext ctx, naRef code)
 naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
 {
     naRef result;
-    naModLock(ctx);
+    if(!ctx->callParent) naModLock(ctx);
 
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
@@ -662,7 +668,7 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
         result = (*fp)(ctx, obj, av->rec->size, av->rec->array);
     } else
         result = run(ctx);
-    naModUnlock(ctx);
+    if(!ctx->callParent) naModUnlock(ctx);
     return result;
 }
 

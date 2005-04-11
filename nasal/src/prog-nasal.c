@@ -3,9 +3,40 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
+#include <pthread.h>
+#endif
 
 #include "nasal.h"
+
+#ifdef _WIN32
+int WINAPI threadtop(void* param)
+#else
+void* threadtop(void* param)
+#endif
+{
+    naContext ctx = naNewContext();
+    naRef func = naNil();
+    func.ref.ptr.func = param;
+    naCall(ctx, func, naNil(), naNil(), naNil());
+    naFreeContext(ctx);
+    return 0;
+}
+
+static naRef newthread(naContext c, naRef me, int argc, naRef* args)
+{
+#ifdef _WIN32
+    CreateThread(0, 0, threadtop, args[0].ref.ptr.obj, 0, 0);
+#else
+    pthread_t th;
+    pthread_create(&th, 0, threadtop, args[0].ref.ptr.obj);
+#endif
+    return naNil();
+}
 
 // A Nasal extension function (prints its argument list to stdout)
 static naRef print(naContext c, naRef me, int argc, naRef* args)
@@ -74,6 +105,8 @@ int main(int argc, char** argv)
     // the math library) to the namespace if desired.
     naHash_set(namespace, naInternSymbol(NASTR("print")),
                naNewFunc(ctx, naNewCCode(ctx, print)));
+    naHash_set(namespace, naInternSymbol(NASTR("thread")),
+               naNewFunc(ctx, naNewCCode(ctx, newthread)));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);

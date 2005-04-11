@@ -190,7 +190,10 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     else if(!naIsVector(callargs)) naRuntimeError(c, "call() args not vector");
     if(!naIsHash(callme)) callme = naNil();
     subc = naNewContext();
+    subc->callParent = c;
+    c->callChild = subc;
     result = naCall(subc, args[0], callargs, callme, naNil());
+    c->callChild = 0;
     if(argc > 2 && !IS_NIL(subc->dieArg))
         if(naIsVector(args[argc-1]))
             naVec_append(args[argc-1], subc->dieArg);
@@ -309,6 +312,7 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+// FIXME: handle ctx->callParent frames too!
 static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
 {
     int fidx;

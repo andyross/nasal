@@ -4,6 +4,8 @@
 #include "data.h"
 #include "thread.h"
 
+#include <stdio.h> // DEBUG
+
 void* naNewLock()
 {
     pthread_mutex_t* lock = naAlloc(sizeof(pthread_mutex_t));

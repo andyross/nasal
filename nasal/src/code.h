@@ -82,6 +82,10 @@ struct Context {
     char* error;
     naRef dieArg;
 
+    // Sub-call lists
+    struct Context* callParent;
+    struct Context* callChild;
+
     // Linked list pointers in globals
     struct Context* nextFree;
     struct Context* nextAll;
