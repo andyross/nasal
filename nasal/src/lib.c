@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -395,6 +396,23 @@ static naRef f_split(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+// This is a comparatively weak RNG, based on the C library's rand()
+// function, which is usually not threadsafe and often of limited
+// precision.  The 5x loop guarantees that we get a full double worth
+// of precision even for 15 bit (Win32...) rand() implementations.
+static naRef f_rand(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int i;
+    double r = 0;
+    if(argc) {
+        if(!IS_NUM(args[0])) naRuntimeError(ctx, "rand() seed not number");
+        srand((unsigned int)args[0].num);
+        return naNil();
+    }
+    for(i=0; i<5; i++) r = (r + rand()) * (1.0/(RAND_MAX+1.0));
+    return naNum(r);
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "size", size },
@@ -420,6 +438,7 @@ static struct func funcs[] = {
     { "closure", f_closure },
     { "find", f_find },
     { "split", f_split },
+    { "rand", f_rand },
 };
 
 naRef naStdLib(naContext c)
