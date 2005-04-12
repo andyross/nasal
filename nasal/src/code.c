@@ -133,7 +133,6 @@ static void initGlobals()
     globals->freeContexts = 0;
     globals->allContexts = 0;
     struct Context* c = naNewContext();
-    naFreeContext(c);
 
     globals->symbols = naNewHash(c);
     globals->save = naNewVector(c);
@@ -142,6 +141,8 @@ static void initGlobals()
     globals->meRef = naInternSymbol(naStr_fromdata(naNewString(c), "me", 2));
     globals->argRef = naInternSymbol(naStr_fromdata(naNewString(c), "arg", 3));
     globals->parentsRef = naInternSymbol(naStr_fromdata(naNewString(c), "parents", 7));
+
+    naFreeContext(c);
 }
 
 struct Context* naNewContext()
@@ -167,6 +168,7 @@ struct Context* naNewContext()
 
 void naFreeContext(struct Context* c)
 {
+    naVec_setsize(c->temps, 0);
     c->nextFree = globals->freeContexts;
     globals->freeContexts = c;
 }
