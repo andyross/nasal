@@ -363,8 +363,6 @@ static void evalEach(struct Context* ctx)
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
 #define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
                    cd = f->func.ref.ptr.func->code.ref.ptr.code;
-#define POPFRAME() do { if(--ctx->fTop > 0) { FIXFRAME(); }     \
-                        else return ctx->opStack[ctx->opTop-1]; } while(0)
 static naRef run(struct Context* ctx)
 {
     struct Frame* f;
@@ -533,10 +531,10 @@ static naRef run(struct Context* ctx)
             break;
         case OP_RETURN:
             a = STK(1);
-            ctx->opTop = f->bp; // restore the correct opstack frame!
-            POPFRAME();
-            STK(0) = a;
-            ctx->opTop++;
+            if(--ctx->fTop <= 0) return a;
+            ctx->opTop = f->bp + 1; // restore the correct opstack frame!
+            STK(1) = a;
+            FIXFRAME();
             break;
         case OP_EACH:
             evalEach(ctx);
@@ -562,7 +560,6 @@ static naRef run(struct Context* ctx)
 #undef CONSTARG
 #undef STK
 #undef FIXFRAME
-#undef POPFRAME
 
 void naSave(struct Context* ctx, naRef obj)
 {
