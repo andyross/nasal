@@ -48,9 +48,9 @@ void naSemDown(void* sh)
 {
     struct naSem* sem = (struct naSem*)sh;
     pthread_mutex_lock(&sem->lock);
-    sem->count--;
-    if(sem->count <= 0)
+    while(sem->count <= 0)
         pthread_cond_wait(&sem->cvar, &sem->lock);
+    sem->count--;
     pthread_mutex_unlock(&sem->lock);
 }
 
@@ -59,16 +59,15 @@ void naSemUp(void* sh)
     struct naSem* sem = (struct naSem*)sh;
     pthread_mutex_lock(&sem->lock);
     sem->count++;
-    if(sem->count > 0)
-        pthread_cond_signal(&sem->cvar);
+    pthread_cond_signal(&sem->cvar);
     pthread_mutex_unlock(&sem->lock);
 }
 
-void naSemUpAll(void* sh)
+void naSemUpAll(void* sh, int count)
 {
     struct naSem* sem = (struct naSem*)sh;
     pthread_mutex_lock(&sem->lock);
-    sem->count = 0;
+    sem->count = count;
     pthread_cond_broadcast(&sem->cvar);
     pthread_mutex_unlock(&sem->lock);
 }

@@ -58,6 +58,7 @@ static void garbageCollect()
         naFree(globals->deadBlocks);
         globals->deadBlocks = naAlloc(sizeof(void*) * globals->deadsz);
     }
+    naGCWakeup();
 }
 
 static void naCode_gcclean(struct naCode* o)
