@@ -369,7 +369,6 @@ static naRef run(struct Context* ctx)
 {
     struct Frame* f;
     struct naCode* cd;
-    int* temps = &(ctx->temps.ref.ptr.vec->rec->size);
     int op, arg;
     naRef a, b, c;
 
@@ -554,7 +553,7 @@ static naRef run(struct Context* ctx)
         default:
             ERR(ctx, "BUG: bad opcode");
         }
-        *temps = 0; // reset GC temp vector
+        ctx->temps.ref.ptr.vec->rec->size = 0; // reset GC temp vector
         DBG(printStackDEBUG(ctx);)
     }
     return naNil(); // unreachable
