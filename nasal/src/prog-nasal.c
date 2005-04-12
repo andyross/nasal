@@ -14,7 +14,7 @@
 #include "nasal.h"
 
 #ifdef _WIN32
-int WINAPI threadtop(void* param)
+DWORD WINAPI threadtop(LPVOID param)
 #else
 void* threadtop(void* param)
 #endif
