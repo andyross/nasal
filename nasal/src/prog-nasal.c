@@ -13,6 +13,22 @@
 
 #include "nasal.h"
 
+void checkError(naContext ctx)
+{
+    int i;
+    if(naGetError(ctx)) {
+        fprintf(stderr, "Runtime error: %s\n  at %s, line %d\n",
+                naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
+                naGetLine(ctx, 0));
+
+        for(i=1; i<naStackDepth(ctx); i++)
+            fprintf(stderr, "  called from: %s, line %d\n",
+                    naStr_data(naGetSourceFile(ctx, i)),
+                    naGetLine(ctx, i));
+        exit(1);
+    }
+}
+
 #ifdef _WIN32
 DWORD WINAPI threadtop(LPVOID param)
 #else
@@ -23,12 +39,14 @@ void* threadtop(void* param)
     naRef func = naNil();
     func.ref.ptr.func = param;
     naCall(ctx, func, naNil(), naNil(), naNil());
+    checkError(ctx);
     naFreeContext(ctx);
     return 0;
 }
 
 static naRef newthread(naContext c, naRef me, int argc, naRef* args)
 {
+    naSave(c, args[0]);
 #ifdef _WIN32
     CreateThread(0, 0, threadtop, args[0].ref.ptr.obj, 0, 0);
 #else
@@ -58,7 +76,7 @@ int main(int argc, char** argv)
     char *buf, *script;
     struct Context *ctx;
     naRef code, namespace, result;
-    int errLine, i;
+    int errLine;
 
     if(argc < 2) {
         fprintf(stderr, "nasal: must specify a script to run\n");
@@ -111,20 +129,7 @@ int main(int argc, char** argv)
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);
 
-    // Did it fail? Print a nice warning, with stack trace
-    // information.
-    if(naGetError(ctx)) {
-        fprintf(stderr, "Runtime error: %s\n  at %s, line %d\n",
-                naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
-                naGetLine(ctx, 0));
-
-        for(i=1; i<naStackDepth(ctx); i++)
-            fprintf(stderr, "  called from: %s, line %d\n",
-                    naStr_data(naGetSourceFile(ctx, i)),
-                    naGetLine(ctx, i));
-        exit(1);
-    }
-    
+    checkError(ctx);
     return 0;
 }
 #undef NASTR
