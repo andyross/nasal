@@ -93,12 +93,10 @@ void naModUnlock()
 static void bottleneck()
 {
     globals->waitCount++;
-    if(globals->waitCount || globals->needGC) {
-        while(globals->waitCount && globals->waitCount < globals->nThreads) {
-            UNLOCK();
-            naSemDown(globals->sem);
-            LOCK();
-        }
+    while(globals->waitCount && globals->waitCount < globals->nThreads) {
+        UNLOCK();
+        naSemDown(globals->sem);
+        LOCK();
     }
     if(globals->waitCount >= globals->nThreads) {
         freeDead();
