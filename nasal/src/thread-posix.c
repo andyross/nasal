@@ -1,10 +1,7 @@
 #ifndef _WIN32
 
 #include <pthread.h>
-#include "data.h"
-#include "thread.h"
-
-#include <stdio.h> // DEBUG
+#include "code.h"
 
 void* naNewLock()
 {

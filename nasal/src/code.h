@@ -41,6 +41,13 @@ struct Globals {
     int deadsz;
     int ndead;
     
+    // Threading stuff
+    int nThreads;
+    int waitCount;
+    int needGC;
+    void* sem;
+    void* lock;
+
     // Constants
     naRef meRef;
     naRef argRef;
@@ -50,8 +57,6 @@ struct Globals {
     naRef symbols;
 
     naRef save;
-
-    struct ThreadState* threads;
 
     struct Context* freeContexts;
     struct Context* allContexts;
@@ -94,5 +99,18 @@ struct Context {
 extern struct Globals* globals;
 
 void printRefDEBUG(naRef r);
+
+// Threading low-level functions
+void* naNewLock();
+void naLock(void* lock);
+void naUnlock(void* lock);
+void* naNewSem();
+void naSemDown(void* sem);
+void naSemUpAll(void* sem, int count);
+
+void naCheckBottleneck();
+
+#define LOCK() naLock(globals->lock)
+#define UNLOCK() naUnlock(globals->lock)
 
 #endif // _CODE_H

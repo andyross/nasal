@@ -1,6 +1,5 @@
 #include "nasal.h"
 #include "code.h"
-#include "thread.h"
 
 ////////////////////////////////////////////////////////////////////////
 // Debugging stuff. ////////////////////////////////////////////////////
@@ -119,7 +118,8 @@ static void initGlobals()
     globals = (struct Globals*)naAlloc(sizeof(struct Globals));
     naBZero(globals, sizeof(struct Globals));
 
-    naInitThreads();
+    globals->sem = naNewSem();
+    globals->lock = naNewLock();
 
     int i;
     globals->allocCount = 256; // reasonable starting value
@@ -492,7 +492,7 @@ static naRef run(struct Context* ctx)
             break;
         case OP_JMPLOOP:
             // Identical to JMP, except for locking
-            naCheckGCLock();
+            naCheckBottleneck();
             f->ip = cd->byteCode[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;

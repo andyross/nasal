@@ -189,6 +189,20 @@ naGhostType* naGhost_type(naRef ghost);
 void*        naGhost_ptr(naRef ghost);
 int          naIsGhost(naRef r);
 
+// Acquires a "modification lock" on a context, allowing the C code to
+// modify Nasal data without fear that such data may be "lost" by the
+// garbage collector (the C stack is not examined in GC!).  This
+// disallows garbage collection until the current thread can be
+// blocked.  The lock should be acquired whenever modifications to
+// Nasal objects are made.  It need not be acquired when only read
+// access is needed.  It MUST NOT be acquired by naCFunction's, as
+// those are called with the lock already held; acquiring two locks
+// for the same thread will cause a deadlock when the GC is invoked.
+// It should be UNLOCKED by naCFunction's when they are about to do
+// any long term non-nasal processing and/or blocking I/O.
+void naModLock();
+void naModUnlock();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

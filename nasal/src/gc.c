@@ -1,7 +1,6 @@
 #include "nasal.h"
 #include "data.h"
 #include "code.h"
-#include "thread.h"
 
 #define MIN_BLOCK_SIZE 256
 
@@ -17,12 +16,22 @@ struct Block {
     struct Block* next;
 };
 
-// Must be called with the bigLock!
+// Must be called with the giant exclusive lock!
+static void freeDead()
+{
+    int i;
+    for(i=0; i<globals->ndead; i++)
+        naFree(globals->deadBlocks[i]);
+    globals->ndead = 0;
+}
+
+
+// Must be called with the big lock!
 static void garbageCollect()
 {
     int i;
     struct Context* c;
-    naWaitForGC();
+    globals->allocCount = 0;
     c = globals->allContexts;
     while(c) {
         for(i=0; i<NUM_NASAL_TYPES; i++)
@@ -58,7 +67,55 @@ static void garbageCollect()
         naFree(globals->deadBlocks);
         globals->deadBlocks = naAlloc(sizeof(void*) * globals->deadsz);
     }
-    naGCWakeup();
+    globals->needGC = 0;
+}
+
+void naModLock()
+{
+    naCheckBottleneck();
+    LOCK();
+    globals->nThreads++;
+    UNLOCK();
+}
+
+void naModUnlock()
+{
+    LOCK();
+    globals->nThreads--;
+    UNLOCK();
+}
+
+// Must be called with the main lock.  Engages the "bottleneck", where
+// all threads will block so that one (the last one to call this
+// function) can run alone.  This is done for GC, and also to free the
+// list of "dead" blocks when it gets full (which is part of GC, if
+// you think about it).
+static void bottleneck()
+{
+    globals->waitCount++;
+    if(globals->waitCount || globals->needGC) {
+        while(globals->waitCount && globals->waitCount < globals->nThreads) {
+            UNLOCK();
+            naSemDown(globals->sem);
+            LOCK();
+        }
+    }
+    if(globals->waitCount >= globals->nThreads) {
+        freeDead();
+        if(globals->needGC)
+            garbageCollect();
+        naSemUpAll(globals->sem, globals->waitCount - 1);
+        globals->waitCount = 0;
+    }
+}
+
+void naCheckBottleneck()
+{
+    if(globals->waitCount || globals->needGC) {
+        LOCK();
+        bottleneck();
+        UNLOCK();
+    }
 }
 
 static void naCode_gcclean(struct naCode* o)
@@ -150,11 +207,11 @@ static int poolsize(struct naPool* p)
 struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 {
     struct naObj** result;
+    naCheckBottleneck();
     LOCK();
-    naCheckGCLockWithLock();
-    if(globals->allocCount < 0 || (p->nfree == 0 && p->freetop >= p->freesz)) {
-        globals->allocCount = 0;
-        garbageCollect();
+    while(globals->allocCount < 0 || (p->nfree == 0 && p->freetop >= p->freesz)) {
+        globals->needGC = 1;
+        bottleneck();
     }
     if(p->nfree == 0)
         newBlock(p, poolsize(p)/8);
@@ -222,7 +279,7 @@ static void reap(struct naPool* p)
     int elem, freesz, total = poolsize(p);
     p->nfree = 0;
     freesz = total < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : total;
-    freesz = (3 * freesz / 2) + (globals->threads->nThreads * OBJ_CACHE_SZ);
+    freesz = (3 * freesz / 2) + (globals->nThreads * OBJ_CACHE_SZ);
     if(p->freesz < freesz) {
         naFree(p->free0);
         p->freesz = freesz;
@@ -252,25 +309,14 @@ static void reap(struct naPool* p)
     p->freetop = p->nfree;
 }
 
-// Must be called with the giant exclusive lock!
-void naGC_freedead()
-{
-    int i;
-    for(i=0; i<globals->ndead; i++)
-        naFree(globals->deadBlocks[i]);
-    globals->ndead = 0;
-}
-
 // Atomically replaces target with a new pointer, and adds the old one
 // to the list of blocks to free the next time something holds the
 // giant lock.
 void naGC_swapfree(void** target, void* val)
 {
     LOCK();
-    while(globals->ndead >= globals->deadsz) {
-        naWaitForGC();
-        naGCWakeup();
-    }
+    while(globals->ndead >= globals->deadsz)
+        bottleneck();
     globals->deadBlocks[globals->ndead++] = *target;
     *target = val;
     UNLOCK();
