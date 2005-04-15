@@ -92,28 +92,24 @@ void naModUnlock()
 // you think about it).
 static void bottleneck()
 {
-    globals->waitCount++;
-    while(globals->waitCount && globals->waitCount < globals->nThreads) {
-        UNLOCK();
-        naSemDown(globals->sem);
-        LOCK();
+    struct Globals* g = globals;
+    g->bottleneck = 1;
+    while(g->bottleneck && g->waitCount < g->nThreads - 1) {
+        g->waitCount++;
+        UNLOCK(); naSemDown(g->sem); LOCK();
+        g->waitCount--;
     }
-    if(globals->waitCount >= globals->nThreads) {
+    if(g->waitCount >= g->nThreads - 1) {
         freeDead();
-        if(globals->needGC)
-            garbageCollect();
-        naSemUpAll(globals->sem, globals->waitCount - 1);
-        globals->waitCount = 0;
+        if(g->needGC) garbageCollect();
+        if(g->waitCount) naSemUpAll(g->sem, g->waitCount);
+        g->bottleneck = 0;
     }
 }
 
 void naCheckBottleneck()
 {
-    if(globals->waitCount || globals->needGC) {
-        LOCK();
-        bottleneck();
-        UNLOCK();
-    }
+    if(globals->bottleneck) { LOCK(); bottleneck(); UNLOCK(); }
 }
 
 static void naCode_gcclean(struct naCode* o)

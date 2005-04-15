@@ -45,6 +45,7 @@ struct Globals {
     int nThreads;
     int waitCount;
     int needGC;
+    int bottleneck;
     void* sem;
     void* lock;
 
