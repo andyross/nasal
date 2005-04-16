@@ -14,7 +14,6 @@
 #endif
 char* opStringDEBUG(int op);
 void printOpDEBUG(int ip, int op);
-void printRefDEBUG(naRef r);
 void printStackDEBUG(struct Context* ctx);
 ////////////////////////////////////////////////////////////////////////
 
@@ -94,16 +93,12 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
 static void initContext(struct Context* c)
 {
     int i;
-    c->globals = globals;
     c->fTop = c->opTop = c->markTop = 0;
     for(i=0; i<NUM_NASAL_TYPES; i++)
         c->nfree[i] = 0;
-
-    naVec_setsize(c->temps, 8);
-
+    naVec_setsize(c->temps, 4);
     c->callParent = 0;
     c->callChild = 0;
-
     c->dieArg = naNil();
     c->error = 0;
 }
@@ -142,6 +137,7 @@ static void initGlobals()
 
 struct Context* naNewContext()
 {
+    int dummy;
     if(globals == 0)
         initGlobals();
 
@@ -153,9 +149,9 @@ struct Context* naNewContext()
         UNLOCK();
         initContext(c);
     } else {
-        int dummy;
         UNLOCK();
         c = (struct Context*)naAlloc(sizeof(struct Context));
+        c->globals = globals;
         // Chicken and egg, can't use naNew because it requires temps to exist
         c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &dummy))[0]);
         initContext(c);
@@ -213,8 +209,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     // which will now (after fTop++) see the *old* reference as a
     // markable value!
     f = &(ctx->fStack[ctx->fTop++]);
-    f->locals = naNil();
-    f->func = naNil();
+    f->locals = f->func = naNil();
     f->locals = naNewHash(ctx);
     f->func = frame[0];
     f->ip = 0;

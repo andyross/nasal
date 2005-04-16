@@ -10,12 +10,6 @@ void* naNewLock()
     return lock;
 }
 
-void naFreeLock(void* lock)
-{
-    pthread_mutex_destroy((pthread_mutex_t*)lock);
-    naFree(lock);
-}
-
 void naLock(void* lock)
 {
     pthread_mutex_lock((pthread_mutex_t*)lock);
@@ -51,15 +45,6 @@ void naSemDown(void* sh)
     pthread_mutex_unlock(&sem->lock);
 }
 
-void naSemUp(void* sh)
-{
-    struct naSem* sem = (struct naSem*)sh;
-    pthread_mutex_lock(&sem->lock);
-    sem->count++;
-    pthread_cond_signal(&sem->cvar);
-    pthread_mutex_unlock(&sem->lock);
-}
-
 void naSemUpAll(void* sh, int count)
 {
     struct naSem* sem = (struct naSem*)sh;
@@ -67,14 +52,6 @@ void naSemUpAll(void* sh, int count)
     sem->count = count;
     pthread_cond_broadcast(&sem->cvar);
     pthread_mutex_unlock(&sem->lock);
-}
-
-void naFreeSem(void* sh)
-{
-    struct naSem* sem = (struct naSem*)sh;
-    pthread_mutex_destroy(&sem->lock);
-    pthread_cond_destroy(&sem->cvar);
-    naFree(sh);
 }
 
 #endif

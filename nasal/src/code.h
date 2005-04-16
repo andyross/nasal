@@ -99,8 +99,6 @@ struct Context {
 
 extern struct Globals* globals;
 
-void printRefDEBUG(naRef r);
-
 // Threading low-level functions
 void* naNewLock();
 void naLock(void* lock);
