@@ -100,8 +100,8 @@ static void initContext(struct Context* c)
         c->nfree[i] = 0;
 
     // Chicken and egg, can't use naNew because it requires temps to exist
-    c->temps = naObj(T_VEC, (naGC_get(&c->globals->pools[T_VEC], 1, &i))[0]);
-    c->temps.ref.ptr.vec->rec = 0;
+    c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &i))[0]);
+    naVec_setsize(c->temps, 8);
 
     naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
     naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
@@ -173,8 +173,10 @@ struct Context* naNewContext()
 void naFreeContext(struct Context* c)
 {
     naVec_setsize(c->temps, 0);
+    LOCK();
     c->nextFree = globals->freeContexts;
     globals->freeContexts = c;
+    UNLOCK();
 }
 
 #define PUSH(r) do { \
