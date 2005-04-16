@@ -34,9 +34,10 @@ static naRef keys(naContext c, naRef me, int argc, naRef* args)
 
 static naRef append(naContext c, naRef me, int argc, naRef* args)
 {
+    int i;
     if(argc < 2) return naNil();
     if(!naIsVector(args[0])) return naNil();
-    naVec_append(args[0], args[1]);
+    for(i=1; i<argc; i++) naVec_append(args[0], args[i]);
     return args[0];
 }
 
