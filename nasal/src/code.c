@@ -99,12 +99,7 @@ static void initContext(struct Context* c)
     for(i=0; i<NUM_NASAL_TYPES; i++)
         c->nfree[i] = 0;
 
-    // Chicken and egg, can't use naNew because it requires temps to exist
-    c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &i))[0]);
     naVec_setsize(c->temps, 8);
-
-    naBZero(c->fStack, MAX_RECURSION * sizeof(struct Frame));
-    naBZero(c->opStack, MAX_STACK_DEPTH * sizeof(naRef));
 
     c->callParent = 0;
     c->callChild = 0;
@@ -158,8 +153,11 @@ struct Context* naNewContext()
         UNLOCK();
         initContext(c);
     } else {
+        int dummy;
         UNLOCK();
         c = (struct Context*)naAlloc(sizeof(struct Context));
+        // Chicken and egg, can't use naNew because it requires temps to exist
+        c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &dummy))[0]);
         initContext(c);
         LOCK();
         c->nextAll = globals->allContexts;
@@ -211,7 +209,12 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
     if(tail) ctx->fTop--;
     else if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
 
+    // Note: assign nil first, otherwise the naNew() can cause a GC,
+    // which will now (after fTop++) see the *old* reference as a
+    // markable value!
     f = &(ctx->fStack[ctx->fTop++]);
+    f->locals = naNil();
+    f->func = naNil();
     f->locals = naNewHash(ctx);
     f->func = frame[0];
     f->ip = 0;
