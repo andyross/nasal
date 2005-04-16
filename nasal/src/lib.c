@@ -19,6 +19,7 @@ static naRef size(naContext c, naRef me, int argc, naRef* args)
     if(naIsString(args[0])) return naNum(naStr_len(args[0]));
     if(naIsVector(args[0])) return naNum(naVec_size(args[0]));
     if(naIsHash(args[0])) return naNum(naHash_size(args[0]));
+    naRuntimeError(c, "object has no size()");
     return naNil();
 }
 

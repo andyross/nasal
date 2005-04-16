@@ -7,7 +7,7 @@
 
 #define MAX_STACK_DEPTH 512
 #define MAX_RECURSION 128
-#define MAX_MARK_DEPTH 16
+#define MAX_MARK_DEPTH 128
 
 // Number of objects (per pool per thread) asked for using naGC_get().
 // Testing with fib.nas shows that this gives the best performance,

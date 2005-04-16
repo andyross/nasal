@@ -354,7 +354,8 @@ static void evalEach(struct Context* ctx)
 {
     int idx = (int)(ctx->opStack[ctx->opTop-1].num);
     naRef vec = ctx->opStack[ctx->opTop-2];
-    if(idx >= vec.ref.ptr.vec->rec->size) {
+    if(!IS_VEC(vec)) naRuntimeError(ctx, "foreach enumeration of non-vector");
+    if(!vec.ref.ptr.vec->rec || idx >= vec.ref.ptr.vec->rec->size) {
         ctx->opTop -= 2; // pop two values
         PUSH(naNil());
         return;
@@ -546,6 +547,8 @@ static naRef run(struct Context* ctx)
             evalEach(ctx);
             break;
         case OP_MARK: // save stack state (e.g. "setjmp")
+            if(ctx->markTop >= MAX_MARK_DEPTH)
+                naRuntimeError(ctx, "mark stack overflow");
             ctx->markStack[ctx->markTop++] = ctx->opTop;
             break;
         case OP_UNMARK: // pop stack state set by mark
