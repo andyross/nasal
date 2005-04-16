@@ -565,6 +565,7 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_RETURN:
         if(RIGHT(t)) genExpr(p, RIGHT(t));
         else emit(p, OP_PUSHNIL);
+        for(i=0; i<p->cg->loopTop; i++) emit(p, OP_UNMARK);
         emit(p, OP_RETURN);
         break;
     case TOK_NOT:
