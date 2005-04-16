@@ -152,17 +152,21 @@ struct Context* naNewContext()
 
     LOCK();
     struct Context* c = globals->freeContexts;
-    if(!c) {
-        c = (struct Context*)naAlloc(sizeof(struct Context));
-        c->nextAll = globals->allContexts;
-        globals->allContexts = c;
-    } else {
+    if(c) {
         globals->freeContexts = c->nextFree;
+        c->nextFree = 0;
+        UNLOCK();
+        initContext(c);
+    } else {
+        UNLOCK();
+        c = (struct Context*)naAlloc(sizeof(struct Context));
+        initContext(c);
+        LOCK();
+        c->nextAll = globals->allContexts;
+        c->nextFree = 0;
+        globals->allContexts = c;
+        UNLOCK();
     }
-    c->nextFree = 0;
-    UNLOCK();
-
-    initContext(c);
     return c;
 }
 
