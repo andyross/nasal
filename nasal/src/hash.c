@@ -9,13 +9,14 @@
 
 #define HASH_MAGIC 2654435769u
 
-#define INSERT(hh, hkey, hval, hcol) do {                  \
-        unsigned int cc = (hcol);                          \
-        struct HashNode* hnn = &(hh)->nodes[(hh)->size++]; \
-        hnn->key = (hkey); hnn->val = (hval);              \
-        hnn->next = (hh)->table[cc];                       \
-        (hh)->table[cc] = hnn;                             \
-    } while(0)
+#define INSERT(hh, hkey, hval, hcol) do {                       \
+        unsigned int cc = (hcol), iidx=(hh)->size++;            \
+        if(iidx < (1<<(hh)->lgalloced)) {                       \
+            struct HashNode* hnn = &(hh)->nodes[(hh)->size++];  \
+            hnn->key = (hkey); hnn->val = (hval);               \
+            hnn->next = (hh)->table[cc];                        \
+            (hh)->table[cc] = hnn;                              \
+        }} while(0)
 
 // Computes a hash code for a given scalar
 static unsigned int hashcode(naRef r)

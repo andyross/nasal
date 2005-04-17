@@ -6,6 +6,7 @@ static void realloc(struct naVec* v)
     struct VecRec* old = v->rec;
     int i, oldsz = old ? old->size : 0, newsz = 1 + ((oldsz*3)>>1);
     struct VecRec* vr = naAlloc(sizeof(struct VecRec) + sizeof(naRef) * newsz);
+    if(oldsz > newsz) oldsz = newsz; // race protection
     vr->alloced = newsz;
     vr->size = oldsz;
     for(i=0; i<oldsz; i++)
