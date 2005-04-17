@@ -12,7 +12,7 @@
 #define INSERT(hh, hkey, hval, hcol) do {                       \
         unsigned int cc = (hcol), iidx=(hh)->size++;            \
         if(iidx < (1<<(hh)->lgalloced)) {                       \
-            struct HashNode* hnn = &(hh)->nodes[(hh)->size++];  \
+            struct HashNode* hnn = &(hh)->nodes[iidx];  \
             hnn->key = (hkey); hnn->val = (hval);               \
             hnn->next = (hh)->table[cc];                        \
             (hh)->table[cc] = hnn;                              \
@@ -184,7 +184,7 @@ void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
 static void chkcycle(struct HashNode* node, int count)
 {
     struct HashNode* hn = node;
-    while((hn = hn->next) != 0)
+    while(hn && (hn = hn->next) != 0)
         if(count-- <= 0) { node->next = 0; return; }
 }
 

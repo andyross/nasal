@@ -59,10 +59,9 @@ static int internConstant(struct Parser* p, naRef c)
     int i, n = naVec_size(p->cg->consts);
     for(i=0; i<n; i++) {
         naRef b = naVec_get(p->cg->consts, i);
-        if(IS_NUM(b) && IS_NUM(c) && b.num == c.num)
-            return i;
-        else if(naStrEqual(b, c))
-            return i;
+        if(IS_NUM(b) && IS_NUM(c) && b.num == c.num) return i;
+        else if(IS_NIL(b) && IS_NIL(c)) return i;
+        else if(naStrEqual(b, c)) return i;
     }
     return newConstant(p, c);
 }
@@ -79,7 +78,8 @@ naRef naInternSymbol(naRef sym)
 static int findConstantIndex(struct Parser* p, struct Token* t)
 {
     naRef c = naNil();
-    if(t->str) {
+    if(t->type == TOK_NIL) { // noop
+    } else if(t->str) {
         c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
         if(t->type == TOK_SYMBOL)
             c = naInternSymbol(c);

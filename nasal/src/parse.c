@@ -215,8 +215,11 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
         case TOK_FUNC:
             // Slurp an optional paren block containing an arglist, then
             // fall through to parse the curlies...
-            if(t->next && t->next->type == TOK_LPAR)
-                addNewChild(t, t->next);
+            if(t->next && t->next->type == TOK_LPAR) {
+                c = t->next;
+                addNewChild(t, c);
+                fixBlockStructure(p, c);
+            }
         case TOK_ELSE: // and TOK_FUNC!
             // These guys precede a single curly block
             if(!t->next || t->next->type != TOK_LCURL) oops(p, t);

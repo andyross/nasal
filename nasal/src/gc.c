@@ -58,11 +58,11 @@ static void garbageCollect()
         reap(&(globals->pools[i]));
 
     // Make enough space for the dead blocks we need to free during
-    // execution.  This works out to 1 spot for every 16 live objects,
-    // which should be limit the number of block-to-free operations
+    // execution.  This works out to 1 spot for every 2 live objects,
+    // which should be limit the number of bottleneck operations
     // without imposing an undue burden of extra "freeable" memory.
-    if(globals->deadsz < globals->allocCount / 8) {
-        globals->deadsz = globals->allocCount / 8;
+    if(globals->deadsz < globals->allocCount) {
+        globals->deadsz = globals->allocCount;
         if(globals->deadsz < 256) globals->deadsz = 256;
         naFree(globals->deadBlocks);
         globals->deadBlocks = naAlloc(sizeof(void*) * globals->deadsz);
@@ -241,14 +241,15 @@ static void mark(naRef r)
                 mark(r.ref.ptr.vec->rec->array[i]);
         break;
     case T_HASH:
-        if(r.ref.ptr.hash->rec == 0)
-            break;
-        for(i=0; i < (1<<r.ref.ptr.hash->rec->lgalloced); i++) {
-            struct HashNode* hn = r.ref.ptr.hash->rec->table[i];
-            while(hn) {
-                mark(hn->key);
-                mark(hn->val);
-                hn = hn->next;
+        if(r.ref.ptr.hash->rec != 0) {
+            struct HashRec* hr = r.ref.ptr.hash->rec;
+            for(i=0; i < (1<<hr->lgalloced); i++) {
+                struct HashNode* hn = hr->table[i];
+                while(hn) {
+                    mark(hn->key);
+                    mark(hn->val);
+                    hn = hn->next;
+                }
             }
         }
         break;
