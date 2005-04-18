@@ -153,7 +153,6 @@ struct Context* naNewContext()
     } else {
         UNLOCK();
         c = (struct Context*)naAlloc(sizeof(struct Context));
-        c->globals = globals;
         // Chicken and egg, can't use naNew because it requires temps to exist
         c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &dummy))[0]);
         initContext(c);

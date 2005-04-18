@@ -64,8 +64,6 @@ struct Globals {
 };
 
 struct Context {
-    struct Globals* globals;
-
     // Stack(s)
     struct Frame fStack[MAX_RECURSION];
     int fTop;
@@ -97,6 +95,7 @@ struct Context {
     struct Context* nextAll;
 };
 
+#define globals nasal_globals
 extern struct Globals* globals;
 
 // Threading low-level functions
