@@ -11,6 +11,7 @@
 // Forward references for recursion
 static void genExpr(struct Parser* p, struct Token* t);
 static void genExprList(struct Parser* p, struct Token* t);
+static naRef newLambda(struct Parser* p, struct Token* t);
 
 static void emit(struct Parser* p, int val)
 {
@@ -57,6 +58,7 @@ static naRef getConstant(struct Parser* p, int idx)
 static int internConstant(struct Parser* p, naRef c)
 {
     int i, n = naVec_size(p->cg->consts);
+    if(IS_CODE(c)) return newConstant(p, c);
     for(i=0; i<n; i++) {
         naRef b = naVec_get(p->cg->consts, i);
         if(IS_NUM(b) && IS_NUM(c) && b.num == c.num) return i;
@@ -77,15 +79,14 @@ naRef naInternSymbol(naRef sym)
 
 static int findConstantIndex(struct Parser* p, struct Token* t)
 {
-    naRef c = naNil();
-    if(t->type == TOK_NIL) { // noop
-    } else if(t->str) {
+    naRef c;
+    if(t->type == TOK_NIL) c = naNil();
+    else if(t->str) {
         c = naStr_fromdata(naNewString(p->context), t->str, t->strlen);
-        if(t->type == TOK_SYMBOL)
-            c = naInternSymbol(c);
-    } else {
-        c = naNum(t->num);
-    }
+        if(t->type == TOK_SYMBOL) c = naInternSymbol(c);
+    } else if(t->type == TOK_FUNC) c = newLambda(p, t);
+    else if(t->type == TOK_LITERAL) c = naNum(t->num);
+    else naParseError(p, "invalid/non-constant constant", t->line);
     return internConstant(p, c);
 }
 
@@ -163,6 +164,12 @@ static int genLValue(struct Parser* p, struct Token* t)
     }
 }
 
+static int defArg(struct Parser* p, struct Token* t)
+{
+    if(t->type == TOK_LPAR) return defArg(p, RIGHT(t));
+    return findConstantIndex(p, t);
+}
+
 static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
 {
     naRef sym;
@@ -179,10 +186,8 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
     } else if(t->type == TOK_ASSIGN) {
         if(LEFT(t)->type != TOK_SYMBOL)
             naParseError(p, "bad function argument expression", t->line);
-        if(RIGHT(t)->type != TOK_LITERAL && RIGHT(t)->type != TOK_NIL)
-            naParseError(p, "default argument not scalar constant", t->line);
         c->optArgSyms[c->nOptArgs] = findConstantIndex(p, LEFT(t));
-        c->optArgVals[c->nOptArgs++] = findConstantIndex(p, RIGHT(t));
+        c->optArgVals[c->nOptArgs++] = defArg(p, RIGHT(t));
     } else if(t->type == TOK_SYMBOL) {
         if(c->nOptArgs)
             naParseError(p, "optional arguments must be last", t->line);
@@ -196,7 +201,7 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
         naParseError(p, "bad function argument expression", t->line);
 }
 
-static void genLambda(struct Parser* p, struct Token* t)
+static naRef newLambda(struct Parser* p, struct Token* t)
 {
     struct CodeGenerator* cgSave;
     naRef codeObj;
@@ -209,8 +214,12 @@ static void genLambda(struct Parser* p, struct Token* t)
     arglist = LEFT(t)->type == TOK_LPAR ? LEFT(LEFT(t)) : 0;
     codeObj = naCodeGen(p, LEFT(RIGHT(t)), arglist);
     p->cg = cgSave;
+    return codeObj;
+}
 
-    emitImmediate(p, OP_PUSHCONST, newConstant(p, codeObj));
+static void genLambda(struct Parser* p, struct Token* t)
+{
+    emitImmediate(p, OP_PUSHCONST, newConstant(p, newLambda(p, t)));
 }
 
 static int genList(struct Parser* p, struct Token* t, int doAppend)

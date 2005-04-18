@@ -19,6 +19,8 @@ void printStackDEBUG(struct Context* ctx);
 
 struct Globals* globals = 0;
 
+static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code);
+
 #define ERR(c, msg) naRuntimeError((c),(msg))
 void naRuntimeError(struct Context* c, char* msg)
 { 
@@ -226,9 +228,13 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
                       &c->constants[c->argSyms[i]], &frame[i]);
     frame += c->nArgs;
     nargs -= c->nArgs;
-    for(i=0; i<c->nOptArgs; i++, nargs--)
+    for(i=0; i<c->nOptArgs; i++, nargs--) {
+        naRef val = nargs > 0 ? frame[i] : c->constants[c->optArgVals[i]];
+        if(IS_CODE(val))
+            val = bindFunction(ctx, &ctx->fStack[ctx->fTop-2], val);
         naHash_newsym(f->locals.ref.ptr.hash, &c->constants[c->optArgSyms[i]], 
-                   nargs > 0 ? &frame[i] : &c->constants[c->optArgVals[i]]);
+                      &val);
+    }
     if(c->needArgVector || nargs > 0)
     {
         naRef args = naNewVector(ctx);
