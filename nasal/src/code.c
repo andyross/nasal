@@ -397,6 +397,10 @@ static naRef run(struct Context* ctx)
         case OP_DUP:
             PUSH(ctx->opStack[ctx->opTop-1]);
             break;
+        case OP_DUP2:
+            PUSH(ctx->opStack[ctx->opTop-2]);
+            PUSH(ctx->opStack[ctx->opTop-2]);
+            break;
         case OP_XCHG:
             a = STK(1); STK(1) = STK(2); STK(2) = a;
             break;

@@ -6,7 +6,7 @@
 // (tight binding, do last).
 enum { PREC_BINARY, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };
 
-#define MAX_PREC_TOKS 5
+#define MAX_PREC_TOKS 6
 struct precedence {
     int toks[MAX_PREC_TOKS];
     int rule;
@@ -14,7 +14,8 @@ struct precedence {
     { { TOK_SEMI, TOK_COMMA },                 PREC_REVERSE },
     { { TOK_ELLIPSIS },                        PREC_SUFFIX  },
     { { TOK_RETURN, TOK_BREAK, TOK_CONTINUE }, PREC_PREFIX  },
-    { { TOK_ASSIGN },                          PREC_REVERSE },
+    { { TOK_ASSIGN, TOK_PLUSEQ, TOK_MINUSEQ,
+        TOK_MULEQ, TOK_DIVEQ, TOK_CATEQ     }, PREC_REVERSE },
     { { TOK_COLON, TOK_QUESTION },             PREC_REVERSE },
     { { TOK_VAR },                             PREC_PREFIX  },
     { { TOK_OR },                              PREC_BINARY  },
