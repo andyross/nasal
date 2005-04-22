@@ -483,7 +483,7 @@ static void genForEach(struct Parser* p, struct Token* t)
     genExpr(p, vec);
     emit(p, OP_PUSHZERO);
     loopTop = p->cg->codesz;
-    emit(p, OP_EACH);
+    emit(p, t->type == TOK_FOREACH ? OP_EACH : OP_INDEX);
     jumpEnd = emitJump(p, OP_JIFNIL);
     assignOp = genLValue(p, elem, &dummy);
     emit(p, OP_XCHG);
@@ -558,6 +558,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         genFor(p, t);
         break;
     case TOK_FOREACH:
+    case TOK_FORINDEX:
         genForEach(p, t);
         break;
     case TOK_BREAK: case TOK_CONTINUE:

@@ -49,6 +49,7 @@ struct Lexeme {
     {"*=", TOK_MULEQ},
     {"/=", TOK_DIVEQ},
     {"~=", TOK_CATEQ},
+    {"forindex", TOK_FORINDEX},
 };
 
 // Build a table of where each line ending is

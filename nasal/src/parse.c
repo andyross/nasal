@@ -228,7 +228,7 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
             addNewChild(t, c);
             fixBlockStructure(p, c);
             break;
-        case TOK_FOR: case TOK_FOREACH: case TOK_WHILE:
+        case TOK_FOR: case TOK_FOREACH: case TOK_FORINDEX: case TOK_WHILE:
         case TOK_IF: case TOK_ELSIF:
             // Expect a paren and then a curly
             if(!t->next || t->next->type != TOK_LPAR) oops(p, t);
@@ -279,7 +279,7 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
                || t->prev->type == TOK_LCURL)
                 addSemi = 1;
             break;
-        case TOK_FOR: case TOK_FOREACH: case TOK_WHILE:
+        case TOK_FOR: case TOK_FOREACH: case TOK_FORINDEX: case TOK_WHILE:
             addSemi = 1;
             break;
         case TOK_FUNC:
@@ -324,7 +324,7 @@ static int isBlock(int t)
 {
     return t == TOK_IF  || t == TOK_ELSIF   || t == TOK_ELSE
         || t == TOK_FOR || t == TOK_FOREACH || t == TOK_WHILE
-        || t == TOK_FUNC;
+        || t == TOK_FUNC || t == TOK_FORINDEX;
 }
 
 static void precChildren(struct Parser* p, struct Token* t);
