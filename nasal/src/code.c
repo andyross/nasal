@@ -64,8 +64,16 @@ static naRef stringify(struct Context* ctx, naRef r)
 static int checkVec(struct Context* ctx, naRef vec, naRef idx)
 {
     int i = (int)numify(ctx, idx);
-    if(i < 0 || i >= vec.ref.ptr.vec->rec->size)
-        ERR(ctx, "vector index out of bounds");
+    if(i < 0) i += naVec_size(vec);
+    if(i < 0 || i >= naVec_size(vec)) ERR(ctx, "vector index out of bounds");
+    return i;
+}
+
+static int checkStr(struct Context* ctx, naRef str, naRef idx)
+{
+    int i = (int)numify(ctx, idx);
+    if(i < 0) i += naStr_len(str);
+    if(i < 0 || i >= naStr_len(str)) ERR(ctx, "string index out of bounds");
     return i;
 }
 
@@ -78,6 +86,8 @@ static naRef containerGet(struct Context* ctx, naRef box, naRef key)
             ERR(ctx, "undefined value in container");
     } else if(IS_VEC(box)) {
         result = naVec_get(box, checkVec(ctx, box, key));
+    } else if(IS_STR(box)) {
+        result = naNum((unsigned char)naStr_data(box)[checkStr(ctx, box, key)]);
     } else {
         ERR(ctx, "extract from non-container");
     }
@@ -89,7 +99,11 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
     if(!IS_SCALAR(key))   ERR(ctx, "container index not scalar");
     else if(IS_HASH(box)) naHash_set(box, key, val);
     else if(IS_VEC(box))  naVec_set(box, checkVec(ctx, box, key), val);
-    else                  ERR(ctx, "insert into non-container");
+    else if(IS_STR(box)) {
+        if(box.ref.ptr.str->hashcode)
+            ERR(ctx, "cannot change immutable string");
+        naStr_data(box)[checkStr(ctx, box, key)] = (char)numify(ctx, val);
+    } else ERR(ctx, "insert into non-container");
 }
 
 static void initContext(struct Context* c)

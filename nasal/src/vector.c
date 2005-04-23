@@ -24,7 +24,10 @@ naRef naVec_get(naRef v, int i)
 {
     if(IS_VEC(v)) {
         struct VecRec* r = v.ref.ptr.vec->rec;
-        if(r && i < r->size) return r->array[i];
+        if(r) {
+            if(i < 0) i += r->size;
+            if(i >= 0 && i < r->size) return r->array[i];
+        }
     }
     return naNil();
 }

@@ -187,52 +187,13 @@ int naTypeSize(int type)
     return 0x7fffffff; // Make sure the answer is nonsense :)
 }
 
-int naIsNil(naRef r)
-{
-    return IS_NIL(r);
-}
-
-int naIsNum(naRef r)
-{
-    return IS_NUM(r);
-}
-
-int naIsString(naRef r)
-{
-    return (!IS_NIL(r))&&IS_STR(r);
-}
-
-int naIsScalar(naRef r)
-{
-    return IS_SCALAR(r);
-}
-
-int naIsVector(naRef r)
-{
-    return (!IS_NIL(r))&&IS_VEC(r);
-}
-
-int naIsHash(naRef r)
-{
-    return (!IS_NIL(r))&&IS_HASH(r);
-}
-
-int naIsFunc(naRef r)
-{
-    return (!IS_NIL(r))&&IS_FUNC(r);
-}
-
-int naIsCode(naRef r)
-{
-    return IS_CODE(r);
-}
-
-int naIsCCode(naRef r)
-{
-    return IS_CCODE(r);
-}
-
-int naIsGhost(naRef r)
-{
-    return IS_GHOST(r);
-}
+int naIsNil(naRef r)    { return IS_NIL(r); }
+int naIsNum(naRef r)    { return IS_NUM(r); }
+int naIsString(naRef r) { return IS_STR(r); }
+int naIsScalar(naRef r) { return IS_SCALAR(r); }
+int naIsVector(naRef r) { return IS_VEC(r); }
+int naIsHash(naRef r)   { return IS_HASH(r); }
+int naIsFunc(naRef r)   { return IS_FUNC(r); }
+int naIsCode(naRef r)   { return IS_CODE(r); }
+int naIsCCode(naRef r)  { return IS_CCODE(r); }
+int naIsGhost(naRef r)  { return IS_GHOST(r); }

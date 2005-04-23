@@ -12,6 +12,7 @@
 #include "code.h"
 
 #define NEWSTR(c, s, l) naStr_fromdata(naNewString(c), s, l)
+#define NEWCSTR(c, s) NEWSTR(c, s, strlen(s))
 
 static naRef size(naContext c, naRef me, int argc, naRef* args)
 {
@@ -164,7 +165,7 @@ static naRef typeOf(naContext c, naRef me, int argc, naRef* args)
     else if(naIsHash(r)) t = "hash";
     else if(naIsFunc(r)) t = "func";
     else if(naIsGhost(r)) t = "ghost";
-    r = NEWSTR(c, t, strlen(t));
+    r = NEWCSTR(c, t);
     return r;
 }
 
@@ -198,9 +199,11 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     c->callChild = subc;
     result = naCall(subc, args[0], callargs, callme, naNil());
     c->callChild = 0;
-    if(argc > 2 && !IS_NIL(subc->dieArg))
-        if(naIsVector(args[argc-1]))
-            naVec_append(args[argc-1], subc->dieArg);
+    if(argc > 1 && naIsVector(args[argc-1])) {
+        if(!IS_NIL(subc->dieArg)) naVec_append(args[argc-1], subc->dieArg);
+        else if(naGetError(subc))
+            naVec_append(args[argc-1], NEWCSTR(subc, naGetError(subc)));
+    }
     naFreeContext(subc);
     return result;
 }
