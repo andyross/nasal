@@ -136,14 +136,19 @@ static void newToken(struct Parser* p, int pos, int type,
     p->tree.lastChild = tok;
 }
 
-// Parse a hex nibble
-static int hexc(char c, struct Parser* p, int index)
+static int hex(char c)
 {
     if(c >= '0' && c <= '9') return c - '0';
     if(c >= 'A' && c <= 'F') return c - 'A' + 10;
     if(c >= 'a' && c <= 'f') return c - 'a' + 10;
-    error(p, "bad hex constant", index);
-    return 0;
+    return -1;
+}
+
+static int hexc(char c, struct Parser* p, int index)
+{
+    int n = hex(c);
+    if(n < 0) error(p, "bad hex constant", index);
+    return n;
 }
 
 // Escape and returns a single backslashed expression in a single
@@ -223,11 +228,25 @@ static int lexStringLiteral(struct Parser* p, int index, char q)
     return i+1;
 }
 
+static int lexHexLiteral(struct Parser* p, int index)
+{
+    int nib, i = index;
+    double d = 0;
+    while(i < p->len && (nib = hex(p->buf[i])) >= 0) {
+        d = d*16 + nib;
+        i++;
+    }
+    newToken(p, index, TOK_LITERAL, 0, 0, d);
+    return i;
+}
+
 static int lexNumLiteral(struct Parser* p, int index)
 {
     int len = p->len, i = index;
     unsigned char* buf = p->buf;
     double d;
+
+    if(i+1<len && buf[i+1] == 'x') return lexHexLiteral(p, index+2);
 
     while(i<len && buf[i] >= '0' && buf[i] <= '9') i++;
     if(i<len && buf[i] == '.') {
