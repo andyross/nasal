@@ -186,13 +186,19 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
     }
 }
 
+// FIXME: should handle UTF8 too
+static void charLiteral(struct Parser* p, int index, char* s, int len)
+{
+    if(len != 1) error(p, "character constant not single character", index);
+    newToken(p, index, TOK_LITERAL, 0, 0, *s);
+}
+
 // Read in a string literal
-static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
+static int lexStringLiteral(struct Parser* p, int index, char q)
 {
     int i, j, len, iteration;
     char* out = 0;
     char* buf = p->buf;
-    char endMark = singleQuote ? '\'' : '"';
 
     for(iteration = 0; iteration<2; iteration++) {
         i = index+1;
@@ -200,11 +206,10 @@ static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
         while(i < p->len) {
             char c = buf[i];
             int eaten = 1;
-            if(c == endMark)
-                break;
+            if(c == q) break;
             if(c == '\\') {
-                if(singleQuote) sqEscape(buf+i, p->len-i, i, p, &c, &eaten);
-                else            dqEscape(buf+i, p->len-i, i, p, &c, &eaten);
+                if(q == '\'') sqEscape(buf+i, p->len-i, i, p, &c, &eaten);
+                else          dqEscape(buf+i, p->len-i, i, p, &c, &eaten);
             }
             if(iteration == 1) out[j++] = c;
             i += eaten;
@@ -213,7 +218,8 @@ static int lexStringLiteral(struct Parser* p, int index, int singleQuote)
         // Finished stage one -- allocate the buffer for stage two
         if(iteration == 0) out = naParseAlloc(p, len);
     }
-    newToken(p, index, TOK_LITERAL, out, len, 0);
+    if(q == '`') charLiteral(p, index, out, len);
+    else         newToken(p, index, TOK_LITERAL, out, len, 0);
     return i+1;
 }
 
@@ -309,12 +315,12 @@ void naLex(struct Parser* p)
         case '#':
             i = lineEnd(p, getLine(p, i));
             break;
-        case '\'': case '"':
-            i = lexStringLiteral(p, i, (c=='"' ? 0 : 1));
+        case '\'': case '"': case '`':
+            i = lexStringLiteral(p, i, c);
             break;
         default:
             if(c >= '0' && c <= '9') i = lexNumLiteral(p, i);
-            else                     handled = 0;
+            else handled = 0;
         }
 
         // Lexemes and symbols are a little more complicated.  Pick
