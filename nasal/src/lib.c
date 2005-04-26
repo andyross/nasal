@@ -124,18 +124,6 @@ static naRef substr(naContext c, naRef me, int argc, naRef* args)
     return naStr_substr(naNewString(c), src, start, len);
 }
 
-static naRef f_strc(naContext c, naRef me, int argc, naRef* args)
-{
-    int idx;
-    struct naStr* str = args[0].ref.ptr.str;
-    naRef idr = argc > 1 ? naNumValue(args[1]) : naNum(0);
-    if(argc < 1 || IS_NIL(idr) || !IS_STR(args[0]))
-        naRuntimeError(c, "bad arguments to strc");
-    idx = (int)naNumValue(idr).num;
-    if(idx > str->len) naRuntimeError(c, "strc index out of bounds");
-    return naNum(str->data[idx]);
-}
-
 static naRef f_chr(naContext c, naRef me, int argc, naRef* args)
 {
     char chr[1];

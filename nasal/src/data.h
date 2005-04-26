@@ -3,10 +3,6 @@
 
 #include "nasal.h"
 
-// Notes: A CODE object is a compiled set of bytecode instructions.
-// What actually gets executed at runtime is a bound FUNC object,
-// which combines the raw code with a namespace and a pointer to
-// parent function in the lexical closure.
 enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
        NUM_NASAL_TYPES }; // V. important that this come last!
 
