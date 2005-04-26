@@ -6,8 +6,6 @@
 // that beyond what is representable in the double result, but
 // requires portability work.
 
-#define MUTABLE(r) (IS_STR(r) && (r).ref.ptr.str->hashcode == 0)
-
 #define BIT(s,l,n) s[l-1-((n)>>3)] & (1<<((n)&7))
 #define CLRB(s,l,n) s[l-1-((n)>>3)] &= ~(1<<((n)&7))
 #define SETB(s,l,n) s[l-1-((n)>>3)] |= 1<<((n)&7)

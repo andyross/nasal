@@ -23,6 +23,8 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 #define IDENTICAL(a, b) (IS_REF(a) && IS_REF(b) \
                          && a.ref.ptr.obj == b.ref.ptr.obj)
 
+#define MUTABLE(r) (IS_STR(r) && (r).ref.ptr.str->hashcode == 0)
+
 // This is a macro instead of a separate struct to allow compilers to
 // avoid padding.  GCC on x86, at least, will always padd the size of
 // an embedded struct up to 32 bits.  Doing it this way allows the
@@ -121,6 +123,7 @@ struct naPool {
 
 void naFree(void* m);
 void* naAlloc(int n);
+void* naRealloc(void* buf, int sz);
 void naBZero(void* m, int n);
 
 int naTypeSize(int type);

@@ -7,6 +7,7 @@
 
 void naFree(void* m) { free(m); }
 void* naAlloc(int n) { return malloc(n); }
+void* naRealloc(void* b, int n) { return realloc(b, n); }
 void naBZero(void* m, int n) { memset(m, 0, n); }
 
 naRef naObj(int type, struct naObj* o)

@@ -122,6 +122,7 @@ naRef naStdLib(naContext c);
 // Ditto, for other core libraries
 naRef naMathLib(naContext c);
 naRef naBitsLib(naContext c);
+naRef naIOLib(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

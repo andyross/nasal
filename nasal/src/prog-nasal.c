@@ -128,6 +128,7 @@ int main(int argc, char** argv)
     // Add extra libraries as needed.
     naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);
