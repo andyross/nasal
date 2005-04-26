@@ -133,6 +133,7 @@ naRef naStr_fromnum(naRef dest, double num);
 int naStr_numeric(naRef str);
 int naStr_parsenum(char* str, int len, double* result);
 int naStr_tonum(naRef str, double* out);
+naRef naStr_buf(naRef str, int len);
 
 int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
 int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out);

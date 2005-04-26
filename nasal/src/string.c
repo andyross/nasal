@@ -31,6 +31,13 @@ static void setlen(struct naStr* s, int sz)
     s->data[sz] = 0; // nul terminate
 }
 
+naRef naStr_buf(naRef dst, int len)
+{
+    setlen(dst.ref.ptr.str, len);
+    naBZero(dst.ref.ptr.str->data, len);
+    return dst;
+}
+
 naRef naStr_fromdata(naRef dst, char* data, int len)
 {
     if(!IS_STR(dst)) return naNil();

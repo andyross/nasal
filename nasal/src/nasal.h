@@ -119,8 +119,9 @@ naRef naMethod(naContext ctx, naRef func, naRef object);
 // Useful for passing as a namespace to an initial function call
 naRef naStdLib(naContext c);
 
-// Ditto, with math functions
+// Ditto, for other core libraries
 naRef naMathLib(naContext c);
+naRef naBitsLib(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

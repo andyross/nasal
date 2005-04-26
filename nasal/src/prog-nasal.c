@@ -117,7 +117,6 @@ int main(int argc, char** argv)
     // environments -- imported libraries, for example -- might be
     // different).
     namespace = naStdLib(ctx);
-    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
 
     // Add application-specific functions (in this case, "print" and
     // the math library) to the namespace if desired.
@@ -125,6 +124,10 @@ int main(int argc, char** argv)
                naNewFunc(ctx, naNewCCode(ctx, print)));
     naHash_set(namespace, naInternSymbol(NASTR("thread")),
                naNewFunc(ctx, naNewCCode(ctx, newthread)));
+
+    // Add extra libraries as needed.
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);

@@ -436,7 +436,6 @@ static struct func funcs[] = {
     { "num", num },
     { "streq", streq },
     { "substr", substr },
-    { "strc", f_strc },
     { "chr", f_chr },
     { "contains", contains },
     { "typeof", typeOf },
