@@ -163,7 +163,7 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     naRef script, code, fname;
     script = argc > 0 ? args[0] : naNil();
     if(!naIsString(script)) return naNil();
-    fname = NEWSTR(c, "<compile>", 9);
+    fname = NEWCSTR(c, "<compile>");
     code = naParseCode(c, fname, 1,
                        naStr_data(script), naStr_len(script), &errLine);
     if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
@@ -175,19 +175,21 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
 static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;
-    naRef callargs, callme, result;
+    naRef callargs, callme, callns, result;
     callargs = argc > 1 ? args[1] : naNil();
     callme = argc > 2 ? args[2] : naNil(); // Might be nil, that's OK
-    if(!naIsFunc(args[0])) naRuntimeError(c, "call() on non-function");
-    if(naIsNil(callargs)) callargs = naNewVector(c);
-    else if(!naIsVector(callargs)) naRuntimeError(c, "call() args not vector");
-    if(!naIsHash(callme)) callme = naNil();
+    callns = argc > 3 ? args[3] : naNil(); // ditto
+    if(IS_NIL(callargs)) callargs = naNewVector(c);
+    if(!IS_HASH(callme)) callme = naNil();
+    if(!IS_HASH(callns)) callns = naNil();
+    if(!IS_FUNC(args[0]) || !IS_VEC(callargs))
+        naRuntimeError(c, "bad argument to call()");
     subc = naNewContext();
     subc->callParent = c;
     c->callChild = subc;
-    result = naCall(subc, args[0], callargs, callme, naNil());
+    result = naCall(subc, args[0], callargs, callme, callns);
     c->callChild = 0;
-    if(argc > 1 && naIsVector(args[argc-1])) {
+    if(argc > 2 && IS_VEC(args[argc-1])) {
         if(!IS_NIL(subc->dieArg)) naVec_append(args[argc-1], subc->dieArg);
         else if(naGetError(subc))
             naVec_append(args[argc-1], NEWCSTR(subc, naGetError(subc)));

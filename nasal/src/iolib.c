@@ -101,14 +101,16 @@ static void ioclose(naContext c, void* f)
 
 static int ioread(naContext c, void* f, char* buf, unsigned int len)
 {
-    int n = fread(buf, 1, len, f);
+    int n;
+    naModUnlock(); n = fread(buf, 1, len, f); naModLock();
     if(n < len && !feof(f)) naRuntimeError(c, strerror(errno));
     return n;
 }
 
 static int iowrite(naContext c, void* f, char* buf, unsigned int len)
 {
-    int n = fwrite(buf, 1, len, f);
+    int n;
+    naModUnlock(); n = fwrite(buf, 1, len, f); naModLock();
     if(ferror(f)) naRuntimeError(c, strerror(errno));
     return n;
 }
@@ -156,7 +158,8 @@ static naRef f_open(naContext c, naRef me, int argc, naRef* args)
 // frees buffer before tossing an error
 static int getcguard(naContext ctx, FILE* f, void* buf)
 {
-    char c = fgetc(f);
+    char c;
+    naModUnlock(); c = fgetc(f); naModLock();
     if(ferror(f)) {
         naFree(buf);
         naRuntimeError(ctx, strerror(errno));
@@ -203,7 +206,7 @@ static struct func { char* name; naCFunction func; } funcs[] = {
     { "readln", f_readln },
 };
 
-void setsym(naContext c, naRef hash, char* sym, naRef val)
+static void setsym(naContext c, naRef hash, char* sym, naRef val)
 {
     naRef name = naStr_fromdata(naNewString(c), sym, strlen(sym));
     naHash_set(hash, naInternSymbol(name), val);
