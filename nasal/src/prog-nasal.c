@@ -29,6 +29,7 @@ void checkError(naContext ctx)
     }
 }
 
+
 #ifdef _WIN32
 DWORD WINAPI threadtop(LPVOID param)
 #else
@@ -44,14 +45,17 @@ void* threadtop(void* param)
     return 0;
 }
 
+// A brutally simple "create a thread" API, taking a single function.
+// Useful for test purposes, but for little else.
 static naRef newthread(naContext c, naRef me, int argc, naRef* args)
 {
-    naSave(c, args[0]);
-#ifdef _WIN32
-    CreateThread(0, 0, threadtop, args[0].ref.ptr.obj, 0, 0);
-#else
+#ifndef _WIN32
     pthread_t th;
+    naSave(c, args[0]);
     pthread_create(&th, 0, threadtop, args[0].ref.ptr.obj);
+#else
+    naSave(c, args[0]);
+    CreateThread(0, 0, threadtop, args[0].ref.ptr.obj, 0, 0);
 #endif
     return naNil();
 }
@@ -129,6 +133,7 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);

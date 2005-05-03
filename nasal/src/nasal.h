@@ -123,6 +123,7 @@ naRef naStdLib(naContext c);
 naRef naMathLib(naContext c);
 naRef naBitsLib(naContext c);
 naRef naIOLib(naContext c);
+naRef naRegexLib(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);
