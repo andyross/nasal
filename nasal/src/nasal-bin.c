@@ -89,8 +89,6 @@ int main(int argc, char** argv)
     script = argv[1];
 
     // Read the contents of the file into a buffer in memory.
-    // Unix-only stat() call; use cygwin if you're in windows, I
-    // guess.  Does the C library provide a way to do this at all?
     f = fopen(script, "r");
     if(!f) {
         fprintf(stderr, "nasal: could not open input file: %s\n", script);

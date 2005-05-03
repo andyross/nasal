@@ -1,6 +1,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "data.h"
 
 // Note use of 32 bit ints, should fix at some point to use
@@ -196,6 +198,23 @@ static naRef f_readln(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+static naRef f_stat(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int n=0;
+    struct stat s;
+    naRef result, path = argc > 0 ? naStringValue(ctx, args[0]) : naNil();
+    if(!IS_STR(path)) naRuntimeError(ctx, "bad argument to stat()");
+    if(stat(path.ref.ptr.str->data, &s) != 0)
+        naRuntimeError(ctx, strerror(errno));
+    result = naNewVector(ctx);
+    naVec_setsize(result, 11);
+#define FLD(x) naVec_set(result, n++, naNum(s.st_##x));
+    FLD(dev);  FLD(ino);  FLD(mode);  FLD(nlink);  FLD(uid);  FLD(gid);
+    FLD(rdev); FLD(size); FLD(atime); FLD(mtime);  FLD(ctime);
+#undef FLD
+    return result;
+}
+
 static struct func { char* name; naCFunction func; } funcs[] = {
     { "close", f_close },
     { "read", f_read },
@@ -204,6 +223,7 @@ static struct func { char* name; naCFunction func; } funcs[] = {
     { "tell", f_tell },
     { "open", f_open },
     { "readln", f_readln },
+    { "stat", f_stat },
 };
 
 static void setsym(naContext c, naRef hash, char* sym, naRef val)
