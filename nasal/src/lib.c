@@ -170,8 +170,6 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     return naBindToContext(c, code);
 }
 
-// Funcation metacall API.  Allows user code to generate an arg vector
-// at runtime and/or call function references on arbitrary objects.
 static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;

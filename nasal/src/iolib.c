@@ -105,7 +105,7 @@ static int ioread(naContext c, void* f, char* buf, unsigned int len)
 {
     int n;
     naModUnlock(); n = fread(buf, 1, len, f); naModLock();
-    if(n < len && !feof(f)) naRuntimeError(c, strerror(errno));
+    if(n < len && !feof((FILE*)f)) naRuntimeError(c, strerror(errno));
     return n;
 }
 
@@ -113,7 +113,7 @@ static int iowrite(naContext c, void* f, char* buf, unsigned int len)
 {
     int n;
     naModUnlock(); n = fwrite(buf, 1, len, f); naModLock();
-    if(ferror(f)) naRuntimeError(c, strerror(errno));
+    if(ferror((FILE*)f)) naRuntimeError(c, strerror(errno));
     return n;
 }
 
