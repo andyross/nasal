@@ -360,7 +360,7 @@ static naRef f_find(naContext ctx, naRef me, int argc, naRef* args)
 {
     int start = 0;
     if(argc < 2 || !IS_STR(args[0]) || !IS_STR(args[1]))
-        naRuntimeError(ctx, "bad/missing argument to split");
+        naRuntimeError(ctx, "bad/missing argument to find");
     if(argc > 2) start = (int)(naNumValue(args[2]).num);
     return naNum(find(args[0].ref.ptr.str->data, args[0].ref.ptr.str->len,
                       args[1].ref.ptr.str->data, args[1].ref.ptr.str->len,

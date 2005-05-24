@@ -132,6 +132,7 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
 
     // Run it.  Do something with the result if you like.
     result = naCall(ctx, code, naNil(), naNil(), namespace);

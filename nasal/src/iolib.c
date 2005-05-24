@@ -4,26 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "data.h"
-
-// Note use of 32 bit ints, should fix at some point to use
-// platform-dependent fpos_t/size_t or just punt and use int64_t
-// everywhere...
-
-// The naContext is passed in for error reporting via
-// naRuntimeError().
-struct naIOType {
-    void (*close)(naContext c, void* f);
-    int  (*read) (naContext c, void* f, char* buf, unsigned int len);
-    int  (*write)(naContext c, void* f, char* buf, unsigned int len);
-    void (*seek) (naContext c, void* f, unsigned int off, int whence);
-    int  (*tell) (naContext c, void* f);
-    void (*destroy)(void* f);
-};
-
-struct naIOGhost {
-    struct naIOType* type;
-    void* handle; // descriptor, FILE*, HANDLE, etc...
-};
+#include "iolib.h"
 
 static void ghostDestroy(void* g);
 naGhostType naIOGhostType = { ghostDestroy };
@@ -134,13 +115,13 @@ static void iodestroy(void* f)
     ioclose(0, f);
 }
 
-static struct naIOType StdIOType = { ioclose, ioread, iowrite, ioseek,
-                                     iotell, iodestroy };
+struct naIOType naStdIOType = { ioclose, ioread, iowrite, ioseek,
+                                iotell, iodestroy };
 
-static naRef newGhost(naContext c, FILE* f)
+naRef naIOGhost(naContext c, FILE* f)
 {
     struct naIOGhost* ghost = naAlloc(sizeof(struct naIOGhost));
-    ghost->type = &StdIOType;
+    ghost->type = &naStdIOType;
     ghost->handle = f;
     return naNewGhost(c, &naIOGhostType, ghost);
 }
@@ -154,7 +135,7 @@ static naRef f_open(naContext c, naRef me, int argc, naRef* args)
     f = fopen(file.ref.ptr.str->data,
               IS_STR(mode) ? (const char*)mode.ref.ptr.str->data : "r");
     if(!f) naRuntimeError(c, strerror(errno));
-    return newGhost(c, f);
+    return naIOGhost(c, f);
 }
 
 // frees buffer before tossing an error
@@ -178,7 +159,7 @@ static naRef f_readln(naContext ctx, naRef me, int argc, naRef* args)
     struct naIOGhost* g = argc==1 ? ioghost(args[0]) : 0;
     int i=0, sz = 128;
     char* buf;
-    if(!g || g->type != &StdIOType)
+    if(!g || g->type != &naStdIOType)
         naRuntimeError(ctx, "bad argument to readln()");
     buf = naAlloc(sz);
     while(1) {
@@ -204,8 +185,10 @@ static naRef f_stat(naContext ctx, naRef me, int argc, naRef* args)
     struct stat s;
     naRef result, path = argc > 0 ? naStringValue(ctx, args[0]) : naNil();
     if(!IS_STR(path)) naRuntimeError(ctx, "bad argument to stat()");
-    if(stat(path.ref.ptr.str->data, &s) != 0)
+    if(stat(path.ref.ptr.str->data, &s) < 0) {
+        if(errno == ENOENT) return naNil();
         naRuntimeError(ctx, strerror(errno));
+    }
     result = naNewVector(ctx);
     naVec_setsize(result, 11);
 #define FLD(x) naVec_set(result, n++, naNum(s.st_##x));
@@ -242,8 +225,8 @@ naRef naIOLib(naContext c)
     setsym(c, ns, "SEEK_SET", naNum(SEEK_SET));
     setsym(c, ns, "SEEK_CUR", naNum(SEEK_CUR));
     setsym(c, ns, "SEEK_END", naNum(SEEK_END));
-    setsym(c, ns, "stdin", newGhost(c, stdin));
-    setsym(c, ns, "stdout", newGhost(c, stdout));
-    setsym(c, ns, "stderr", newGhost(c, stderr));
+    setsym(c, ns, "stdin", naIOGhost(c, stdin));
+    setsym(c, ns, "stdout", naIOGhost(c, stdout));
+    setsym(c, ns, "stderr", naIOGhost(c, stderr));
     return ns;
 }
