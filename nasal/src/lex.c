@@ -243,7 +243,7 @@ static int lexHexLiteral(struct Parser* p, int index)
 static int lexNumLiteral(struct Parser* p, int index)
 {
     int len = p->len, i = index;
-    unsigned char* buf = p->buf;
+    unsigned char* buf = (unsigned char*)p->buf;
     double d;
 
     if(i+1<len && buf[i+1] == 'x') return lexHexLiteral(p, index+2);

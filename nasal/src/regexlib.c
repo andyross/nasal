@@ -34,9 +34,9 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     naRef optr = argc > 1 ? args[1] : naNil();
     if(!IS_STR(pat) || (!IS_NIL(optr) && !IS_STR(optr)))
         naRuntimeError(c, "bad arg to regex.compile");
-    if(IS_STR(optr)) opts = parseOpts(c, optr.ref.ptr.str->data);
+    if(IS_STR(optr)) opts = parseOpts(c, (char*)optr.ref.ptr.str->data);
     regex = naAlloc(sizeof(struct Regex));
-    regex->re = pcre_compile(pat.ref.ptr.str->data, opts, &errptr, &erroff, 0);
+    regex->re = pcre_compile((char*)pat.ref.ptr.str->data, opts, &errptr, &erroff, 0);
     if(regex->re == 0) {
         naFree(regex);
         naRuntimeError(c, "bad regex"); // FIXME: expose errptr/erroff
@@ -53,7 +53,7 @@ static naRef f_exec(naContext c, naRef me, int argc, naRef* args)
     naRef start = argc > 2 ? naNumValue(args[2]) : naNum(0);
     if(!r || naGhost_type(args[0]) != &naRegexGhostType || !IS_NUM(start))
         naRuntimeError(c, "bad argument to regex.study");
-    n = pcre_exec(r->re, r->extra, str.ref.ptr.str->data,
+    n = pcre_exec(r->re, r->extra, (char*)str.ref.ptr.str->data,
                   str.ref.ptr.str->len, (int)start.num, 0, ovector, 30);
     result = naNewVector(c);
     if(n > 0) {

@@ -341,14 +341,14 @@ static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
     return f->namespace;
 }
 
-static int match(char* a, char* b, int l)
+static int match(unsigned char* a, unsigned char* b, int l)
 {
     int i;
     for(i=0; i<l; i++) if(a[i] != b[i]) return 0;
     return 1;
 }
 
-static int find(char* a, int al, char* s, int sl, int start)
+static int find(unsigned char* a, int al, unsigned char* s, int sl, int start)
 {
     int i;
     if(al == 0) return 0;
@@ -383,7 +383,7 @@ static naRef f_split(naContext ctx, naRef me, int argc, naRef* args)
     }
     s0 = s;
     for(i=0; i <= sl-dl; i++) {
-        if(match(s+i, d, dl)) {
+        if(match((unsigned char*)(s+i), (unsigned char*)d, dl)) {
             naVec_append(result, NEWSTR(ctx, s0, s+i-s0));
             s0 = s + i + dl;
             i += dl - 1;

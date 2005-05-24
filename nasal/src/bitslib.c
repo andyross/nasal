@@ -10,7 +10,8 @@
 #define CLRB(s,l,n) s[l-1-((n)>>3)] &= ~(1<<((n)&7))
 #define SETB(s,l,n) s[l-1-((n)>>3)] |= 1<<((n)&7)
 
-static unsigned int fld(naContext c, char* s, int slen, int bit, int flen)
+static unsigned int fld(naContext c, unsigned char* s,
+                        int slen, int bit, int flen)
 {
     int i;
     unsigned int fld = 0;
@@ -19,7 +20,7 @@ static unsigned int fld(naContext c, char* s, int slen, int bit, int flen)
     return fld;
 }
 
-static void setfld(naContext c, char* s, int slen,
+static void setfld(naContext c, unsigned char* s, int slen,
                    int bit, int flen, unsigned int fld)
 {
     int i;

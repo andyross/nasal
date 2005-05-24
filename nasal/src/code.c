@@ -636,7 +636,7 @@ naRef naGetSourceFile(struct Context* ctx, int frame)
 char* naGetError(struct Context* ctx)
 {
     if(IS_STR(ctx->dieArg))
-        return ctx->dieArg.ref.ptr.str->data;
+        return (char*)ctx->dieArg.ref.ptr.str->data;
     return ctx->error;
 }
 

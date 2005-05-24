@@ -20,7 +20,7 @@ int naStr_len(naRef s)
 char* naStr_data(naRef s)
 {
     if(!IS_STR(s)) return 0;
-    return s.ref.ptr.str->data;
+    return (char*)s.ref.ptr.str->data;
 }
 
 static void setlen(struct naStr* s, int sz)
@@ -90,7 +90,7 @@ naRef naStr_fromnum(naRef dest, double num)
 
 int naStr_parsenum(char* str, int len, double* result)
 {
-    return tonum(str, len, result);
+    return tonum((unsigned char*)str, len, result);
 }
 
 int naStr_tonum(naRef str, double* out)

@@ -118,7 +118,7 @@ static struct HashNode* find(struct naHash* hash, naRef key)
 static void tmpStr(naRef* out, struct naStr* str, char* key)
 {
     str->len = 0;
-    str->data = key;
+    str->data = (unsigned char*)key;
     while(key[str->len]) str->len++;
     *out = naNil();
     out->ref.ptr.str = str;
