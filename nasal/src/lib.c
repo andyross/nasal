@@ -107,15 +107,15 @@ static naRef streq(naContext c, naRef me, int argc, naRef* args)
 static naRef substr(naContext c, naRef me, int argc, naRef* args)
 {
     naRef src = argc > 1 ? args[0] : naNil();
-    naRef startR = argc > 1 ? args[1] : naNil();
-    naRef lenR = argc > 2 ? args[2] : naNil();
+    naRef startR = argc > 1 ? naNumValue(args[1]) : naNil();
+    naRef lenR = argc > 2 ? naNumValue(args[2]) : naNil();
     int start, len;
     if(!naIsString(src)) return naNil();
-    startR = naNumValue(startR);
     if(naIsNil(startR)) return naNil();
     start = (int)startR.num;
     if(naIsNil(lenR)) {
         len = naStr_len(src) - start;
+        if(len < 0) return naNil();
     } else {
         lenR = naNumValue(lenR);
         if(naIsNil(lenR)) return naNil();
