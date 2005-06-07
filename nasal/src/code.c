@@ -250,6 +250,7 @@ struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
         naHash_newsym(f->locals.ref.ptr.hash, &c->constants[c->optArgSyms[i]], 
                       &val);
     }
+    frame += c->nOptArgs;
     if(c->needArgVector || nargs > 0)
     {
         naRef args = naNewVector(ctx);
