@@ -19,9 +19,9 @@ static struct naIOGhost* ioghost(naRef r)
 static naRef f_close(naContext c, naRef me, int argc, naRef* args)
 {
     struct naIOGhost* g = argc==1 ? ioghost(args[0]) : 0;
-    if(!g)
-        naRuntimeError(c, "bad argument to close()");
-    g->type->close(c, g->handle);
+    if(!g) naRuntimeError(c, "bad argument to close()");
+    if(g->handle) g->type->close(c, g->handle);
+    g->handle = 0;
     return naNil();
 }
 
