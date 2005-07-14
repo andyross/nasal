@@ -104,6 +104,25 @@ static naRef streq(naContext c, naRef me, int argc, naRef* args)
     return argc > 1 ? naNum(naStrEqual(args[0], args[1])) : naNil();
 }
 
+static naRef f_cmp(naContext c, naRef me, int argc, naRef* args)
+{
+    char *a, *b;
+    int i, len;
+    if(argc < 2 || !naIsString(args[0]) || !naIsString(args[1]))
+        naRuntimeError(c, "bad argument to cmp");
+    a = naStr_data(args[0]);
+    b = naStr_data(args[1]);
+    len = naStr_len(args[0]);
+    if(naStr_len(args[1]) < len)
+        len = naStr_len(args[1]);
+    for(i=0; i<len; i++) {
+        int diff = a - b;
+        if(diff < 0) return naNum(-1);
+        else if(diff > 0) return naNum(1);
+    }
+    return naNum(0);
+}
+
 static naRef substr(naContext c, naRef me, int argc, naRef* args)
 {
     naRef src = argc > 1 ? args[0] : naNil();
@@ -435,6 +454,7 @@ static struct func funcs[] = {
     { "int", intf },
     { "num", num },
     { "streq", streq },
+    { "cmp", f_cmp },
     { "substr", substr },
     { "chr", f_chr },
     { "contains", contains },
