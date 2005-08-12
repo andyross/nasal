@@ -349,7 +349,7 @@ void naLex(struct Parser* p)
         // symbol (e.g. "orchid").  If neither match, we have a bad
         // character in the mix.
         if(!handled) {
-            int symlen=0, lexlen=0, lexeme;
+            int symlen=0, lexlen=0, lexeme=-1;
             lexlen = tryLexemes(p, i, &lexeme);
             if((c>='A' && c<='Z') || (c>='a' && c<='z') || (c=='_'))
                 symlen = trySymbol(p, i);

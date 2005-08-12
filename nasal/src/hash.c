@@ -170,7 +170,7 @@ void naHash_newsym(struct naHash* hash, naRef* sym, naRef* val)
 {
     int col;
     struct HashRec* h = hash->rec;
-    if(!h || h->size >= 1<<h->lgalloced)
+    while(!h || h->size >= 1<<h->lgalloced)
         h = realloc(hash);
     col = (HASH_MAGIC * sym->ref.ptr.str->hashcode) >> (32 - h->lgalloced);
     INSERT(h, *sym, *val, col);

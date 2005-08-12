@@ -106,13 +106,25 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
     } else ERR(ctx, "insert into non-container");
 }
 
+static void initTemps(struct Context* c)
+{
+    c->tempsz = 4;
+    c->temps = naAlloc(c->tempsz * sizeof(struct naObj*));
+    c->ntemps = 0;
+}
+
 static void initContext(struct Context* c)
 {
     int i;
     c->fTop = c->opTop = c->markTop = 0;
     for(i=0; i<NUM_NASAL_TYPES; i++)
         c->nfree[i] = 0;
-    naVec_setsize(c->temps, 4);
+
+    if(c->tempsz > 32) {
+        naFree(c->temps);
+        initTemps(c);
+    }
+
     c->callParent = 0;
     c->callChild = 0;
     c->dieArg = naNil();
@@ -154,7 +166,6 @@ static void initGlobals()
 
 struct Context* naNewContext()
 {
-    int dummy;
     struct Context* c;
     if(globals == 0)
         initGlobals();
@@ -169,8 +180,7 @@ struct Context* naNewContext()
     } else {
         UNLOCK();
         c = (struct Context*)naAlloc(sizeof(struct Context));
-        // Chicken and egg, can't use naNew because it requires temps to exist
-        c->temps = naObj(T_VEC, (naGC_get(&globals->pools[T_VEC], 1, &dummy))[0]);
+        initTemps(c);
         initContext(c);
         LOCK();
         c->nextAll = globals->allContexts;
@@ -183,7 +193,7 @@ struct Context* naNewContext()
 
 void naFreeContext(struct Context* c)
 {
-    naVec_setsize(c->temps, 0);
+    c->ntemps = 0;
     LOCK();
     c->nextFree = globals->freeContexts;
     globals->freeContexts = c;
@@ -589,7 +599,7 @@ static naRef run(struct Context* ctx)
         default:
             ERR(ctx, "BUG: bad opcode");
         }
-        ctx->temps.ref.ptr.vec->rec->size = 0; // reset GC temp vector
+        ctx->ntemps = 0; // reset GC temp vector
         DBG(printStackDEBUG(ctx);)
     }
     return naNil(); // unreachable
@@ -666,10 +676,10 @@ naRef naCall(naContext ctx, naRef func, naRef args, naRef obj, naRef locals)
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
     // C-space arguments.
-    naVec_append(ctx->temps, func);
-    naVec_append(ctx->temps, args);
-    naVec_append(ctx->temps, obj);
-    naVec_append(ctx->temps, locals);
+    naTempSave(ctx, func);
+    naTempSave(ctx, args);
+    naTempSave(ctx, obj);
+    naTempSave(ctx, locals);
 
     if(IS_NIL(locals))
         locals = naNewHash(ctx);
