@@ -39,7 +39,7 @@ void* threadtop(void* param)
     naContext ctx = naNewContext();
     naRef func = naNil();
     func.ref.ptr.func = param;
-    naCall(ctx, func, naNil(), naNil(), naNil());
+    naCall(ctx, func, 0, 0, naNil(), naNil());
     checkError(ctx);
     naFreeContext(ctx);
     return 0;
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
 
     // Run it.  Do something with the result if you like.
-    result = naCall(ctx, code, naNil(), naNil(), namespace);
+    result = naCall(ctx, code, 0, 0, naNil(), namespace);
 
     checkError(ctx);
     return 0;
