@@ -123,7 +123,9 @@ static void naCode_gcclean(struct naCode* o)
     naFree(o->byteCode);   o->byteCode = 0;
     naFree(o->constants);  o->constants = 0;
     naFree(o->argSyms);    o->argSyms = 0;
-    naFree(o->optArgSyms); o->argSyms = 0;
+    naFree(o->optArgSyms); o->optArgSyms = 0;
+    naFree(o->optArgVals); o->optArgVals = 0;
+    naFree(o->lineIps);    o->lineIps = 0;
 }
 
 static void naGhost_gcclean(struct naGhost* g)
@@ -134,28 +136,15 @@ static void naGhost_gcclean(struct naGhost* g)
 
 static void freeelem(struct naPool* p, struct naObj* o)
 {
-    // Free any intrinsic (i.e. non-garbage collected) storage the
-    // object might have
+    // Clean up any intrinsic storage the object might have...
     switch(p->type) {
-    case T_STR:
-        naStr_gcclean((struct naStr*)o);
-        break;
-    case T_VEC:
-        naVec_gcclean((struct naVec*)o);
-        break;
-    case T_HASH:
-        naHash_gcclean((struct naHash*)o);
-        break;
-    case T_CODE:
-        naCode_gcclean((struct naCode*)o);
-        break;
-    case T_GHOST:
-        naGhost_gcclean((struct naGhost*)o);
-        break;
+    case T_STR:   naStr_gcclean  ((struct naStr*)  o); break;
+    case T_VEC:   naVec_gcclean  ((struct naVec*)  o); break;
+    case T_HASH:  naHash_gcclean ((struct naHash*) o); break;
+    case T_CODE:  naCode_gcclean ((struct naCode*) o); break;
+    case T_GHOST: naGhost_gcclean((struct naGhost*)o); break;
     }
-
-    // And add it to the free list
-    p->free[p->nfree++] = o;
+    p->free[p->nfree++] = o;  // ...and add it to the free list
 }
 
 static void newBlock(struct naPool* p, int need)
