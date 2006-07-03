@@ -1,3 +1,21 @@
+Nasal 1.0, 2006 Jul 03
+----------------------
+
+Bug Fixes: Too many to list.
+
+New Features:
+
+The interpreter itself is now threadsafe, although writing Nasal code
+  without race conditions will require locking primitives supplied by
+  the application.
+Many performance enhancements.
+Declared function arguments, including default arguments and "rest"
+  syntax:  func(a, b=nil, other_args...) { }
+Ternary operator as in C: a==nil ? nil : a.b;
+Indexable and mutable bytes in a string: string[123] = 0;
+ASCII character constants using backquotes: `A` == 65
+Lots of new library features (see lib.html)
+  	
 Nasal 0.9.2, 2004 Dec 06
 ------------------------
 

@@ -185,6 +185,39 @@ Class2 = {
     }
 };
 
+#
+# Advanced strings: Nasal strings are always arrays of bytes (never
+# characters: see the utf8 library if you want character-based
+# equivalents of substr() et. al.).  They can be indexed just like in
+# C (although note that there is no nul termination -- get the length
+# with size()):
+#
+string = "abcdefghijklmnopqrstuvwxyz";
+var ascii_sum = 0;
+for(var i=0; i<size(string); i+=1) { ascii_sum += string[i]; }
+
+#
+# You can use backquotes to write single-byte ASCII character constants
+#
+if(`A` != 65) { print("ASCII violation bug!\n"); }
+
+#
+# And you can mutate strings by assigning to their indices, as long as
+# they are not constants.  You
+# can make a mutable string either with the append operator or the
+# bits.buf() function.
+#
+ascii_lc = func(string) {
+    var mutable = string ~ "";
+    for(var i=0; i<size(mutable); i+=1) {
+        if(mutable[i] >= `A` and mutable[i] <= `Z`) {
+            mutable[i] += (`a` - `A`);
+        }
+    }
+    return mutable;
+}
+print(ascii_lc("ABCDEFG"), "\n"); # prints "abcdefg"
+
 ###
 ### Now some fun examples:
 ###
