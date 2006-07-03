@@ -200,9 +200,13 @@ void naFreeContext(struct Context* c)
     UNLOCK();
 }
 
+// Note that opTop is incremented separately, to avoid situations
+// where the "r" expression also references opTop.  The SGI compiler
+// is known to have issues with such code.
 #define PUSH(r) do { \
     if(ctx->opTop >= MAX_STACK_DEPTH) ERR(ctx, "stack overflow"); \
-    ctx->opStack[ctx->opTop++] = r; \
+    ctx->opStack[ctx->opTop] = r; \
+    ctx->opTop++;                 \
     } while(0)
 
 static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)

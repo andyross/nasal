@@ -101,7 +101,7 @@ abs = func(n) { if(n<0) { -n } else { n } }
 # But for those who don't like typing, the ternary operator works like
 # you expect:
 #
-abs  func(n) { n < 0 ? -n : n }
+abs = func(n) { n < 0 ? -n : n }
 
 #
 # Nasal supports a "nil" value for use as a null pointer equivalent.
