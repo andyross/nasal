@@ -2,11 +2,13 @@
 dummyFunc = func { 1 }
 
 #
-# Literal numbers can be decimal or exponential
+# Literal numbers can be decimal, exponential, or hex constants.  All
+# numbers are stored internally as IEEE double-precision values.
 #
 n1 = 3;
 n2 = 3.14;
 n3 = 6.023e23;
+n3 = 0x123456;
 
 #
 # Two identical string literals with different quotes.  Double quotes
