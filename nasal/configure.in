@@ -6,6 +6,7 @@ AC_ISC_POSIX
 AC_STDC_HEADERS
 AC_PROG_INSTALL
 AC_SEARCH_LIBS(sin, m)
+AC_SEARCH_LIBS(pthread_create, pthread)
 AC_SEARCH_LIBS(pcre_compile, pcre)
 AC_OUTPUT([Makefile src/Makefile])
 
