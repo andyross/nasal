@@ -79,8 +79,8 @@ int main(int argc, char** argv)
     struct stat fdat;
     char *buf, *script;
     struct Context *ctx;
-    naRef code, namespace, result;
-    int errLine;
+    naRef code, namespace, result, *args;
+    int errLine, i;
 
     if(argc < 2) {
         fprintf(stderr, "nasal: must specify a script to run\n");
@@ -134,8 +134,15 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
 
+    // Build the arg vector
+    args = malloc(sizeof(naRef) * (argc-2));
+    for(i=0; i<argc-2; i++)
+        args[i] = NASTR(argv[i+2]);
+
     // Run it.  Do something with the result if you like.
-    result = naCall(ctx, code, 0, 0, naNil(), namespace);
+    result = naCall(ctx, code, argc-2, args, naNil(), namespace);
+
+    free(args);
 
     checkError(ctx);
     return 0;

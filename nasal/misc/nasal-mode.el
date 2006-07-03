@@ -1,7 +1,7 @@
 ;; nasal-mode.el
 ;;
 ;; A major mode for writing Nasal code.
-;; Copyright (C) 2003 Andrew Ross
+;; Copyright (C) 2003,2005 Andrew Ross
 ;;
 ;; Based very closely on awk-mode.el as shipped with GNU Emacs 21.2
 ;; Copyright (C) 1988,94,96,2000  Free Software Foundation, Inc.
@@ -36,10 +36,10 @@
   (modify-syntax-entry ?>  "."  nasal-mode-syntax-table)
   ; Underscores are allowed as "symbol constituent"
   (modify-syntax-entry ?_  "_"  nasal-mode-syntax-table)
-  ; Backslash escapes; pound sign starts comments that newlines end.
+  ; Backslash escapes; pound sign starts comments
   (modify-syntax-entry ?\\ "\\" nasal-mode-syntax-table)
   (modify-syntax-entry ?\# "<"  nasal-mode-syntax-table)
-  (modify-syntax-entry ?\n ">"  nasal-mode-syntax-table)
+  (modify-syntax-entry ?\n ">#"  nasal-mode-syntax-table)
   ; Square brackets act as parenthesis
   (modify-syntax-entry ?\[ "(]"  nasal-mode-syntax-table)
   (modify-syntax-entry ?]  ")"  nasal-mode-syntax-table))
@@ -49,10 +49,10 @@
     (list
      (cons (regexp-opt '("parents" "me" "arg") 'words)
 	   'font-lock-variable-name-face)
-
-     (regexp-opt '("and" "or" "nil" "if" "elsif" "else" "for" "foreach"
-		   "while" "return" "break" "continue" "func") 'words)
-
+     
+     (regexp-opt '("and" "or" "nil" "if" "elsif" "else" "for" "foreach" "forindex"
+		   "while" "return" "break" "continue" "func" "var") 'words)
+     
      (list (regexp-opt '("size" "keys" "append" "pop" "int" "streq" "substr"
 			 "contains" "typeof" "call" "eval") 'words)
 	   1 'font-lock-builtin-face)
@@ -63,11 +63,10 @@
   "Major mode for editing Nasal code.
 This is a C mode variant customized for Nasal's syntax.  It shares most of
 C mode's features.  Turning on Nasal mode runs `nasal-mode-hook'."
-  (set (make-local-variable 'paragraph-start) (concat "$\\|" page-delimiter))
-  (set (make-local-variable 'paragraph-separate) paragraph-start)
   (set (make-local-variable 'comment-start) "# ")
   (set (make-local-variable 'comment-end) "")
   (set (make-local-variable 'comment-start-skip) "#+ *")
+  (set (make-local-variable 'c-assignment-op-regexp) "nevermatch")
   (setq font-lock-defaults '(nasal-font-lock-keywords nil nil ((?_ . "w")))))
 
 (provide 'nasal-mode)

@@ -384,15 +384,14 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
 }
 
 // OP_EACH works like a vector get, except that it leaves the vector
-// and index on the stack, increments the index after use, and pops
-// the arguments and pushes a nil if the index is beyond the end.
+// and index on the stack, increments the index after use, and
+// pushes a nil if the index is beyond the end.
 static void evalEach(struct Context* ctx, int useIndex)
 {
     int idx = (int)(ctx->opStack[ctx->opTop-1].num);
     naRef vec = ctx->opStack[ctx->opTop-2];
     if(!IS_VEC(vec)) naRuntimeError(ctx, "foreach enumeration of non-vector");
     if(!vec.ref.ptr.vec->rec || idx >= vec.ref.ptr.vec->rec->size) {
-        ctx->opTop -= 2; // pop two values
         PUSH(naNil());
         return;
     }
@@ -599,6 +598,9 @@ static naRef run(struct Context* ctx)
             break;
         case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
             ctx->opTop = ctx->markStack[--ctx->markTop];
+            break;
+        case OP_CONTINUE: // same, but don't modify markTop
+            ctx->opTop = ctx->markStack[ctx->markTop-1];
             break;
         default:
             ERR(ctx, "BUG: bad opcode");

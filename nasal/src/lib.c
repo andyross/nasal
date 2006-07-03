@@ -67,9 +67,10 @@ static naRef subvec(naContext c, naRef me, int argc, naRef* args)
     nlen = argc > 2 ? naNumValue(args[2]) : naNil();
     if(!naIsNil(nlen))
         len = (int)nlen.num;
-    if(!naIsVector(v) || start < 0 || start >= naVec_size(v) || len < 0)
+    if(!naIsVector(v) || start < 0 || start > naVec_size(v) || len < 0)
         return naNil();
-    if(len == 0 || len > naVec_size(v) - start) len = naVec_size(v) - start;
+    if(naIsNil(nlen) || len > naVec_size(v) - start)
+        len = naVec_size(v) - start;
     result = naNewVector(c);
     naVec_setsize(result, len);
     for(i=0; i<len; i++)
@@ -107,20 +108,18 @@ static naRef streq(naContext c, naRef me, int argc, naRef* args)
 static naRef f_cmp(naContext c, naRef me, int argc, naRef* args)
 {
     char *a, *b;
-    int i, len;
+    int i, alen, blen;
     if(argc < 2 || !naIsString(args[0]) || !naIsString(args[1]))
         naRuntimeError(c, "bad argument to cmp");
     a = naStr_data(args[0]);
+    alen = naStr_len(args[0]);
     b = naStr_data(args[1]);
-    len = naStr_len(args[0]);
-    if(naStr_len(args[1]) < len)
-        len = naStr_len(args[1]);
-    for(i=0; i<len; i++) {
-        int diff = a - b;
-        if(diff < 0) return naNum(-1);
-        else if(diff > 0) return naNum(1);
+    blen = naStr_len(args[1]);
+    for(i=0; i<alen && i<blen; i++) {
+        int diff = a[i] - b[i];
+        if(diff) return naNum(diff < 0 ? -1 : 1);
     }
-    return naNum(0);
+    return naNum(alen == blen ? 0 : (alen < blen ? -1 : 1));
 }
 
 static naRef substr(naContext c, naRef me, int argc, naRef* args)
@@ -181,8 +180,8 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     int errLine;
     naRef script, code, fname;
     script = argc > 0 ? args[0] : naNil();
-    if(!naIsString(script)) return naNil();
-    fname = NEWCSTR(c, "<compile>");
+    fname = argc > 1 ? args[1] : NEWCSTR(c, "<compile>");
+    if(!naIsString(script) || !naIsString(fname)) return naNil();
     code = naParseCode(c, fname, 1,
                        naStr_data(script), naStr_len(script), &errLine);
     if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
@@ -209,9 +208,17 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
                     callme, callns);
     c->callChild = 0;
     if(argc > 2 && IS_VEC(args[argc-1])) {
-        if(!IS_NIL(subc->dieArg)) naVec_append(args[argc-1], subc->dieArg);
+        naRef v = args[argc-1];
+        if(!IS_NIL(subc->dieArg)) naVec_append(v, subc->dieArg);
         else if(naGetError(subc))
-            naVec_append(args[argc-1], NEWCSTR(subc, naGetError(subc)));
+            naVec_append(v, NEWCSTR(subc, naGetError(subc)));
+        if(naVec_size(v)) {
+            int i, sd = naStackDepth(subc);
+            for(i=0; i<sd; i++) {
+                naVec_append(v, naGetSourceFile(subc, i));
+                naVec_append(v, naNum(naGetLine(subc, i)));
+            }
+        }
     }
     naFreeContext(subc);
     return result;
@@ -230,11 +237,12 @@ char* dosprintf(char* f, ...)
 {
     char* buf;
     va_list va;
-    int len = 16;
+    int olen, len = 16;
     while(1) {
         buf = naAlloc(len);
         va_start(va, f);
-        if(vsnprintf(buf, len, f, va) < len) {
+        olen = vsnprintf(buf, len, f, va);
+        if(olen >= 0 && olen < len) {
             va_end(va);
             return buf;
         }
@@ -349,10 +357,9 @@ static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
 {
     int i;
-    naRef func, idx;
     struct naFunc* f;
-    func = argc > 0 ? args[0] : naNil();
-    idx = argc > 1 ? naNumValue(args[1]) : naNil();
+    naRef func = argc > 0 ? args[0] : naNil();
+    naRef idx = argc > 1 ? naNumValue(args[1]) : naNum(0);
     if(!IS_FUNC(func) || IS_NIL(idx))
         naRuntimeError(ctx, "bad arguments to closure()");
     i = (int)idx.num;

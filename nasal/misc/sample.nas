@@ -41,20 +41,53 @@ list1[0] == "a";
 hash1["name"] == "Andy";
 
 #
-# Typical little function.  Arguments are passed in the arg array, not
-# unlike perl.  Note that this is just an assignment of an (anonymous)
-# function argument to the local "dist" variable.  There is no
-# function declaration syntax in Nasal.
+# A simple function.  By default, arguments are passed in the "arg"
+# array, not unlike perl.  Note that this is just an assignment of an
+# (anonymous) function argument to the local "log_message" variable.
+# There is no function declaration syntax in Nasal.
+#
+log_message = func {
+    print(arg[0]);
+}
+
+#
+# You can also pass named arguments to a function, thus saving the
+# typing and performance costs of extracting them from the arg array.
 #
 sqrt = dummyFunc;
-dist = func {
-    x1 = arg[0]; y1 = arg[1];
-    x2 = arg[2]; y2 = arg[3];
+dist = func(x1, y1, x2, y2) {
     dx = x2-x1;
     dy = y2-y1;
     return sqrt(dx*dx + dy*dy);
 }
 dist(0,0,1,1); # == sqrt(2)
+
+#
+# These arguments can have default values, as in C++.  Note that the
+# default value must be a scalar (number, string, function, nil) and
+# not a mutable composite object (list, hash).
+#
+read = func(bytes, flags=0) { }
+
+#
+# Any extra arguments after the named list are placed in the "arg"
+# vector as above.  You can rename this to something other than "arg"
+# by specifying a final argument name with an ellipsis:
+#
+listify = func(elements...) { return elements; }
+listify(1, 2, 3, 4); # returns a list: [1, 2, 3, 4]
+
+#
+# You can use a "var" qualifier to make sure that an assigment is made
+# to a local variable, and not one from the enclosing scope.  This is
+# good practice in general, although it is not required.  Note that
+# this is not a "declaration", just a qualifier on the "=" operator.
+#
+innerFunc = func {
+    for(var dist=0; dist<100; dist += 1) {
+        # Does not interfere with the "dist" symbol defined above
+    }
+}
 
 #
 # Nasal has no "statements", which means that any expression can appear
@@ -63,6 +96,12 @@ dist(0,0,1,1); # == sqrt(2)
 # optional, to make this prettier.
 #
 abs = func(n) { if(n<0) { -n } else { n } }
+
+#
+# But for those who don't like typing, the ternary operator works like
+# you expect:
+#
+abs  func(n) { n < 0 ? -n : n }
 
 #
 # Nasal supports a "nil" value for use as a null pointer equivalent.
@@ -97,6 +136,13 @@ for(i=0; i < 3; i = i+1) {
 }
 
 foreach(elem; list1) { doSomething(elem) }  # Shorthand for above
+
+#
+# There is also a "forindex", which is like foreach except that it
+# assigns the index of each element, instead of the value, to the loop
+# variable.
+#
+forindex(i; list1) { doSomething(list1[i]); }
 
 #
 # Define a class object with one method, one field and one "new"
@@ -263,3 +309,9 @@ print(mycounter(), "\n"); # prints 1
 print(mycounter(), "\n"); # prints 2
 print(mycounter(), "\n"); # prints 3
 print(mycounter(), "\n"); # prints 4...
+
+#
+# Functional programming D: see the documentation on the functions
+# bind(), call(), closure() and caller().  Basically, every piece of
+# the symbol lookup environment is inspectable and mutable at runtime.
+#

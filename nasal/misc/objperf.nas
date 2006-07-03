@@ -2,7 +2,7 @@
 # field access.
 
 REPS = 10;
-COUNT = 65536;
+COUNT = 16384;
 
 print("Initializing...\n");
 v = [];
@@ -21,6 +21,36 @@ for(rep=0; rep<REPS; rep=rep+1) {
     }
     for(i=0; i<COUNT; i=i+1) {
         obj = v[i];
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
+        if(obj.fielda != i) { print("Ack!\n"); return; }
+        if(obj.fieldb != i) { print("Ack!\n"); return; }
+        if(obj.fieldc != i) { print("Ack!\n"); return; }
+        if(obj.fieldd != i) { print("Ack!\n"); return; }
+        
         if(obj.fielda != i) { print("Ack!\n"); return; }
         if(obj.fieldb != i) { print("Ack!\n"); return; }
         if(obj.fieldc != i) { print("Ack!\n"); return; }

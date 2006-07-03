@@ -46,3 +46,14 @@ list = map(func { arg[0] + 100 }, list);
 print("\nAfter map():");
 foreach(elem; list) { print(" ", elem); }
 print("\n");
+
+fn = func { print("a = ", a, "\n"); var b = a; }
+hash = { a : 2 };
+call(fn, nil, nil, hash);
+hash.a += 1;
+call(fn, nil, nil, hash);
+hash.a += 1;
+call(fn, nil, nil, hash);
+hash.a += 1;
+call(fn, nil, nil, hash);
+print("hash.b = ", hash.b, "\n");

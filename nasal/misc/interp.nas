@@ -1,9 +1,9 @@
 ##
-# Generates a callable function object from an interpolation string.
-# Takes a function object as the lexical environment in which the
-# interpolated expressions should be evaluated, in almost all cases
-# (except interpolate() below) this will be the caller's environment
-# and can/should be ignored.
+# Generates a callable function object from an interpolation
+# string. Takes a function object as the lexical environment in which
+# the interpolated expressions should be evaluated, in almost all
+# cases (except interpolate() below) this will be the caller's
+# environment and can/should be ignored.
 #
 interpolater = func(s, lexenv=nil) {
     var elems = interparse(s);
@@ -36,10 +36,10 @@ interpolate = func(s) {
 # symbol name in Nasal.  However, other idioms (regex substitutions)
 # typically allow symbols like $1, so we do here, too.
 symchr = func(c) {
-    if(c >= 48 and c <= 57)  { return 1; } # 0-9
-    if(c >= 65 and c <= 90)  { return 1; } # A-Z
-    if(c >= 97 and c <= 122) { return 1; } # a-z
-    if(c == 95) { return 1; }              # _
+    if(c >= `0` and c <= `9`)  { return 1; }
+    if(c >= `A` and c <= `Z`)  { return 1; }
+    if(c >= `a` and c <= `z`) { return 1; }
+    if(c == `_`) { return 1; }
     return 0;
 }
     
@@ -52,15 +52,15 @@ interparse = func(s) {
     var str0 = 0;
     var list = [];
     for(var i=0; i<size(s)-1; i+=1) {
-        if(strc(s, i) == strc("$")) {
-            if(strc(s, i+1) == strc("{")) {
+        if(s[i] == `$`) {
+            if(s[i+1] == `{`) {
                 var count = 0;
                 var open = i+1;
                 var close = -1;
                 for(var j=i+2; j<size(s); j+=1) {
-                    if(strc(s, j) == strc("{")) {
+                    if(s[j] == `{`) {
                         count += 1;
-                    } elsif(strc(s, j) == strc("}")) {
+                    } elsif(s[j] == `}`) {
                         if(count == 0) { close = j; break; }
                         count -= 1;
                     }
@@ -72,7 +72,7 @@ interparse = func(s) {
                     i = close;
                 }
             } else {
-                for(var j=i+1; j<size(s) and symchr(strc(s, j)); j+=1) {}
+                for(var j=i+1; j<size(s) and symchr(s[j]); j+=1) {}
                 if(j - i > 1) {
                     append(list, substr(s, str0, i-str0));
                     append(list, substr(s, i+1, j-i-1));
@@ -91,7 +91,7 @@ interparse = func(s) {
 a=1;
 b=2;
 sym42 = "blah blah blah";
-print(interpolate("a ${a?42:'foo'} b $b, $sym42\n"));
+print(interpolate("a ${a?42:'foo'} b $b, $sym42,$a\n"));
 a = 0;
 print(interpolate("a ${a?42:'foo'} b $b, $sym42\n"));
 
@@ -102,3 +102,4 @@ print(ip());
 a=3;
 print(ip());
 a=4;
+print(ip());

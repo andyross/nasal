@@ -184,3 +184,9 @@ even more when calling functions with more than 1 argument.  Still at
 
 Go through the bytecode inner loop and strip out all the needless POP
 and PUSH calls, using stuff on the stack where possible.
+
+Changing the objperf benchmark to use 7x more reads than writes showed
+perl with a pretty huge lead, but that turns out to be due to loop
+overhead.  Unrolling the read loop 7 times brings the two interpreters
+back into a tie.  Maybe should consider doing ++/-- operators for
+performance reasons...
