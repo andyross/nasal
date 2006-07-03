@@ -1,0 +1,315 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>Nasal Core Library</title>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<link rel="stylesheet" href="nasal.css">
+</head>
+<body>
+
+<h2 id="lib">Nasal Core Library</h2>
+
+<h3>Data Structure Basics</h3>
+<p>
+<dl>
+<dt>append(vector, elements...)
+<dd>The first argument specifies a vector.  Appends the remaining
+    arguments to the end of the vector.
+
+<dt>setsize(vector, size)
+<dd>Sets the size of a vector. The first argument specifies a vector,
+    the second a number representing the desired size of that vector.
+    If the vector is currently larger than the specified size, it is
+    truncated.  If it is smaller, it is padded with nil entries.
+    Returns the vector operated upon.
+
+<dt>subvec(vector, start, length=nil)
+<dd>Returns a sub-range of a vector.  The first argument specifies a
+    vector, the second a starting index, and the optional third
+    argument indicates a length (the default is to the end of the
+    vector).
+
+<dt>contains(hash, key)
+<dd>The first argument specifies a hash, the second must be a
+    scalar.  Returns 1 if the hash contains the scalar as a key, 0
+    if not.
+
+<dt>delete(hash, key)
+<dd>The first argument specifies a hash, the second must be a
+    scalar key.  Deletes the key from the hash if it exists.
+    Operationally, this is identical to setting the hash value specified
+    by the key to nil, but this variant potentially frees
+    storage by deleting the reference to the key and by shrinking
+    the hash.
+
+<dt>int(value)
+<dd>Returns the integer part of the numeric value of the single
+    argument, or nil if none exists.
+
+<dt>num(value)
+<dd>Returns the numeric value of the single argument, or nil if none
+    exists.
+
+<dt>keys(hash)
+<dd>Returns a vector containing the list of keys found in the single
+    hash argument.
+
+<dt>pop(vector)
+<dd>Removes and returns the last element of the single vector argument.
+
+<dt>size(object)
+<dd>Returns the size of the single argument.  For strings, this is
+    the length in bytes.  For vectors, this is the number of
+    elements.  For hashes, it is the number of key/value pairs.  Returns
+    nil for number and nil arguments.
+
+<dt>streq(a, b)
+<dd>Tests the string values of the two arguments for equality.  Needed
+    because the == operator in Nasal tests for numeric equality, as in
+    perl.  So <code>"0"&nbsp;==&nbsp"0.0"</code> is true,
+    but <code>streq("0",&nbsp;"0.0")</code> is false.  This is rarely
+    required in typical code.
+
+<dt>cmp(a, b)
+<dd>Compares two strings, returning -1 if a is less than b, 0 if they
+    are identical, and 1 if a is greater than b.
+
+<dt>chr()
+<dd>
+
+<dt>substr(string, start, length=nil)
+<dd>Computes a substring.  The first argument specifes a string, the
+    second is an integer index of the start of a substring, the
+    optional third argument specifies a length (the default is to
+    return the remaining string).  Example: substr("abcde", 1, 3)
+    returns "bcd".
+
+<dt>sprintf(format, varargs...)
+<dd>Creates and returns a string formatted as per ANSI C sprintf().
+
+<dt>find(needle, haystack)
+<dd>Finds and returns the index of the first occurence of the string
+    needle in the string haystack, or -1 if no such occurence was found.
+
+<dt>split(delimeter, string)
+<dd>Splits the input string into a vector of substrings bounded by
+    occurences of the delimeter substring.
+
+<dt>rand(seed=nil)
+<dd>Returns a random number in the range [0:1) (that is, 0.0 is a
+  possible return value.  1.0 is not).  If a numeric argument is
+  specified, it is used as a seed instead and the function returns
+  nil.  Implemented in terms of the C library's rand/srand functions;
+  the result should have a full double-precision number's worth of
+  randomness even on systems with a 15 bit rand().
+
+</dl><h3>Internals and Functional Programming</h3><dl>
+
+<dt>typeof(thing)
+<dd>Returns a string indicating the type of the single argument, any
+    of: nil, scalar, vector, hash, func, or ghost.
+
+<dt>die(error)
+<dd>Terminates execution and unwinds the stack.  This invokes the same
+    internal exception handler used for internal runtime errors. Use
+    this to signal fatal errors, or to implement exception handling.
+    The error thrown (including internal runtime errors) can be caught
+    with call().
+
+<dt>call(fn, args=[], me=nil, namespace=nil, error=nil)
+<dd>Calls the given function with the given arguments and returns the
+    result.  The optional arguments can be used to specify the "me"
+    reference for a function call and the local variable namespace.  The
+    error argument, if present, must be a vector.  If the called
+    function terminates due to a runtime error or die() call, the error
+    (either a string or the argument to die() is appended to the vector,
+    followed by the file name at which the error occurred, followed by
+    the line number in that file, followed in order by each file/line
+    number on the call stack.
+
+<dt>caller(level=1)
+<dd>Returns a record from the current call stack.  Level zero is the
+    currently executing function.  Level one (the default) is the caller
+    of the current function, etc... The result is a four element vector
+    containing: the local variables hash table, the function object, the
+    source file, and the line number.
+
+<dt>compile(code, filename="&lt;compile&gt;")
+<dd>Compiles the specified code string and returns a function object
+    bound to the current lexical context.  The file name of the
+    function, if unspecified in the second argument, is simply
+    "&lt;compile&gt;".
+
+<dt>closure(fn, level=0)
+<dd>Returns the hash table representing the lexical namespace of the
+    given function.  Level zero is the scope in which the func{...}
+    expression was evaluated.  Level one is the enclosing scope, etc...
+
+<dt>bind(func, namespace=nil, outer_scope=nil)
+<dd>Creates a new function argument from the code (but *not* lexical
+    context) of the function argument, the specified namespace hash
+    table, and the specified outer scope (which is itself a function
+    argument).  The result is a function object that looks as if the
+    original func{...} expression had been evaluated inside a function
+    whose local variables are the namespace hash, inside the func{...}
+    code block defined by the outer_scope argument.
+
+</dl><h3>Math Library</h3><dl>
+
+<dt>math.sin(number)
+<dd>Returns the sine of the single argument
+
+<dt>math.cos(number)
+<dd>Returns the cosine of the single argument
+
+<dt>math.exp(number)
+<dd>Returns <i>e</i> (Euler's constant) raised to the power
+    specified by the single argument
+
+<dt>math.ln(number)
+<dd>Returns the natural logarithm of the single argument.
+
+<dt>math.sqrt(number)
+<dd>Returns the square root of the single argument.
+
+<dt>math.atan2(x, y)
+<dd>Returns the arctangent of y/x, with the correct sign for the
+    quadrant.  Wraps the ANSI C function of the same name.
+
+<dt>math.e
+<dd>Euler's constant: 2.7182818284590452354
+
+<dt>math.pi
+<dd>Pi: 3.14159265358979323846
+
+</dl><h3>Bitfield Library</h3><dl>
+
+<dt>bits.fld(string, startbit, length)
+<dd>Interpreting the string str as bits, returns the bitfield of the
+    specified length starting at startbit.  Interprets the result as
+    an unsigned integer.
+
+<dt>bits.sfld(string, startbit, length)
+<dd>As bits.fld(), but interprets the result as a 2's complement
+    signed value.
+
+<dt>bits.setfld(string, startbit, length, value)
+<dd>Sets the specified value into the bit string at the specified
+    position.  The string must be mutable: either the result of a
+    runtime concatenation (the ~ operator) or a call to bits.buf()
+    (see below).  Attempts to modify immutable strings (e.g. compile
+    time constants) will produce a runtime error.
+
+<dt>bits.buf(length)
+<dd>Returns a zero-filled mutable string of the specified length.
+
+</dl><h3>I/O Library</h3><dl>
+
+<dt>io.open(filename, mode="r")
+<dd>Opens the file with the specified mode (as per ANSI fopen()) and
+    returns a ghost object representing the filehandle.  Failures are
+    thrown as runtime errors as per die().
+
+<dt>io.close(filehandle)
+<dd>Closes the specified file as per ANSI fclose().
+
+<dt>io.read(filehandle, buf, len)
+<dd>Attempts to read length bytes from the filehandle into the
+    beginning of the mutable string buf.  Failures (including overruns
+    when length &gt; size(buf)) are thrown as runtime errors as per
+    die().  Returns the number of bytes successfully read.
+
+<dt>io.write(filehandle, str)
+<dd>Attempts to write the entirety of the specified string to the
+    filehandle.  Failures are thrown as runtime errors as per die().
+    Returns the number of bytes successfully written.
+
+<dt>io.seek(filehandle, position, whence)
+<dd>As ANSI fseek().  Attempts to seek to the specified position based
+    on the whence value (which must be one of io.SEEK_SET,
+    io.SEEK_END, or io.SEEK_CUR).
+
+<dt>io.tell(filehandle)
+<dd>Returns the current seek position of the filehandle.
+
+<dt>io.readln(filehandle)
+<dd>Reads and returns a single text line from the filehandle.
+   Interprets both "\n" and "\r\n" as end of line markers, and does
+   not include the "\r" or "\n" bytes in the returned string.  End of
+   file or error is signaled by returning nil.
+
+<dt>io.stat(filename)
+<dd>Calls unix or win32 stat() on the specified file name and returns
+    a seven element array whose contents are, in order: dev, ino, mode,
+    nlink, uid, gid, rdef, size, atime, mtime, ctime.  Errors are
+    signaled as exceptions as per die().
+
+</dl><h3>Unix Library</h3><dl>
+
+<dt>unix.pipe()
+<dd>Creates a pipe and returns a 2-element array containing the read
+    and write filehandles.  Runtime errors are signaled as per die().
+
+<dt>unix.fork()
+<dd>Forks the process as per the system call of the same name.
+    Runtime errors are signaled as exceptions of the same name.
+
+<dt>unix.dup2(oldfilehandle, newfilehandle)
+<dd>Makes newfilehandle a copy of oldfilehandle as per the system call
+    of the same name.  Runtime errors are signaled as per die().
+
+<dt>unix.exec(filename, argv, envp)
+<dd>Calls unix execve() to replace this process with a new one.  The
+    argv and env arrays are passed to the new process.  Runtime errors
+    are signaled as per die().
+
+<dt>unix.waitpid(pid, nohang=0)
+<dd>Calls unix waitpid() to retrieve the exit code of a child
+    process.  The nohang flag causes WNOHANG to be passed to the
+    system call.  Runtime errors are signaled as per die().
+
+<dt>unix.opendir(directorypath)
+<dd>Opens the specified directory and returns a ghost handle.  Runtime
+    errors are signaled as per die().
+
+<dt>unix.readdir(dirhandle)
+<dd>Reads and returns the next filename from the directory handle.
+    Runtime errors are signaled as per die().
+
+<dt>unix.closedir(dirhandle)
+<dd>Closes the specified directory handle.
+
+<dt>unix.time()
+<dd>Returns the current system time, in fractional epoch seconds.
+    Uses gettimeofday() to achieve millisecond or better resolution.
+
+<dt>unix.chdir(path)
+<dd>Changes the current working directory.  Runtime errors are
+     signaled as per die().
+
+<dt>unix.environ()
+<dd>Returns the current unix environment as an array of strings of the
+    form "VAR=value".
+
+</dl><h3>Regex (PCRE) Library</h3><dl>
+
+<dt>regex.compile(regex, opts="")
+<dd>Calls pcre_compile()/pcre_study() and returns a ghost representing
+    the compiled regular expression object.  The opts string
+    (corresponding to the "letters after the slash" in a perl regex)
+    can contain the bytes: 'i' for caseless matching, 'm' for
+    multiline behavior where '^$' can match next to a newline, 's' for
+    single line behavior where the dot matches newlines, and 'x' for
+    extended syntax allowing whitespace and comments.
+
+<dt>regex.exec(regex, string, start=0)
+<dd>Matches the regular expression against the string starting at the
+    specified index.  Returns a vector (the pcre "ovector") containing
+    matches.  Each match returned is stored as a start and
+    one-past-end offset in the vector.  An empty vector indicates no
+    match.
+
+</dl>
+
+</body>
+</html>
