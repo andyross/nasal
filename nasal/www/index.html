@@ -15,7 +15,7 @@
  <li><a href="sample.nas">Sample Code Tutorial</a>
  <li><a href="lib.html">Library Functions</a>
  <li><a href="flightgear.html">FlightGear Integration</a>
- <li><a href="nasal-1.0.tar.gz">Download Nasal 1.0</a>
+ <li><a href="nasal-1.0.1.tar.gz">Download Nasal 1.0.1</a>
 </ul>
 
 <h2>Executive summary:</h2>
@@ -45,12 +45,22 @@ and demonstrates all the syntax features of the language.
 <p>
 Source code is available under the terms of the <a
 href="http://www.gnu.org/licenses/licenses.html"> LGPL</a>, and is <a
-href="nasal-1.0.tar.gz">downloadable here.</a>
+href="nasal-1.0.1.tar.gz">downloadable here.</a>
 <p>
 Questions and comments can go to the author,
 <a href="mailto:andy@plausible.org">Andy Ross</a>, via email at <a href="mailto:andy@plausible.org">andy@plausible.org</a>.
 
 <h2>News and Updates</h2>
+
+<h3>04 Jul 2006</h3>
+
+<p>Oops.  Nasal 1.0, which fixed a long standing bug with
+break/continue inside foreach/forindex and a continue issue when used
+with multi-level labels, introduced a nasty regression with the
+regular old break statement.  A mark stack underflow would result and
+cause a runtime error when used in large or deep loops.  A
+new <a href="nasal-1.0.1.tar.gz">1.0.1 release</a> is available with a
+fix for this problem.
 
 <h3>03 Jul 2006</h3>
 
