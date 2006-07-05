@@ -596,19 +596,15 @@ static naRef run(struct Context* ctx)
             if(ctx->markTop >= MAX_MARK_DEPTH)
                 naRuntimeError(ctx, "mark stack overflow");
             ctx->markStack[ctx->markTop++] = ctx->opTop;
-            __builtin_printf("markTop %d (MARK)\n", ctx->markTop);
             break;
         case OP_UNMARK: // pop stack state set by mark
             ctx->markTop--;
-            __builtin_printf("markTop %d (UNMARK)\n", ctx->markTop);
             break;
         case OP_BREAK: // restore stack state (FOLLOW WITH JMP!)
             ctx->opTop = ctx->markStack[ctx->markTop-1];
-            __builtin_printf("markTop %d (BREAK)\n", ctx->markTop);
             break;
         case OP_BREAK2: // same, but also pop the mark stack
             ctx->opTop = ctx->markStack[--ctx->markTop];
-            __builtin_printf("markTop %d (BREAK2)\n", ctx->markTop);
             break;
         default:
             ERR(ctx, "BUG: bad opcode");
