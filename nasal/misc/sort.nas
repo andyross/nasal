@@ -34,6 +34,12 @@ qsort = func(vec, lessthan=func(a,b){a<b}) {
         var lo0 = lo; var hi0 = hi;
         var pn = int((lo + hi) / 2);
         var pivot = vec[pn];
+        # Stupid hack prevents inf. loop when sorting a pair of equal items
+        if(hi-lo == 1) {
+            if(!lessthan(vec[lo], vec[hi]) and !lessthan(vec[hi], vec[lo])) {
+                return;
+            }
+        }
         while(lo < hi) {
             if(lessthan(vec[lo], pivot)) { lo = lo + 1; }
             elsif(lessthan(pivot, vec[hi])) { hi = hi - 1; }

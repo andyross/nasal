@@ -180,7 +180,7 @@ void checkList(struct Token* start, struct Token* end)
 void printToken(struct Token* t, char* prefix)
 {
     int i;
-    printf("%sline %d %s ", prefix, t->line, tokString(t->type));
+    printf("%s%s (%d) line %d ", prefix, tokString(t->type), t->type, t->line);
     if(t->type == TOK_LITERAL || t->type == TOK_SYMBOL) {
         if(t->str) {
             printf("\"");
@@ -199,6 +199,22 @@ void dumpTokenList(struct Token* t, int prefix)
     char prefstr[128];
     int i;
 
+    if(t && t->type != TOK_EMPTY) {
+        if(t->next && t->next->prev != t) *(int*)0=0;
+        if(t->prev && t->prev->next != t) *(int*)0=0;
+#if 0
+        if(t->children) {
+            struct Token* x;
+            for(x = t->children; x; x=x->next) {
+                if(x->type != TOK_EMPTY) {
+                    if(x->parent != t) *(int*)0=0;
+                    if(!x->next && x != t->lastChild) *(int*)0=0;
+                }
+            }
+        }
+#endif
+    }
+
     prefstr[0] = 0;
     for(i=0; i<prefix; i++)
         strcat(prefstr, ". ");
@@ -209,4 +225,3 @@ void dumpTokenList(struct Token* t, int prefix)
         t = t->next;
     }
 }
-

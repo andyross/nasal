@@ -205,11 +205,73 @@ static struct Token* emptyToken(struct Parser* p)
     return t;
 }
 
+// Synthesize a LBRA token to wrap token t foward to the end of
+// "statement".  FIXME: unify this with the addNewChild(), which does
+// very similar stuff.
+static void embrace(struct Parser* p, struct Token* t)
+{
+    struct Token *b, *end = t;
+    if(!t) return;
+    while(end->next) {
+        if(end->next->type == TOK_SEMI) break;
+        if(end->next->type == TOK_COMMA) break;
+        end = end->next;
+    }
+    b = emptyToken(p);
+    b->type = TOK_LCURL;
+    b->line = t->line;
+    b->parent = t->parent;
+    b->prev = t->prev;
+    b->next = end->next;
+    b->children = t;
+    b->lastChild = end;
+    if(t->prev) t->prev->next = b;
+    else b->parent->children = b;
+    if(end->next) end->next->prev = b;
+    else b->parent->lastChild = b;
+    t->prev = 0;
+    end->next = 0;
+    for(; t; t = t->next)
+        t->parent = b;
+}
+
+#define NEXT(t) (t ? t->next : 0)
+#define TYPE(t) (t ? t->type : -1)
+
+static void fixBracelessBlocks(struct Parser* p, struct Token* t)
+{
+    // Find the end, and march *backward*
+    while(t && t->next) t = t->next;
+    for(/**/; t; t=t->prev) {
+        switch(t->type) {
+        case TOK_FOR: case TOK_FOREACH: case TOK_FORINDEX: case TOK_WHILE:
+        case TOK_IF: case TOK_ELSIF:
+            if(TYPE(NEXT(t)) == TOK_LPAR && TYPE(NEXT(NEXT(t))) != TOK_LCURL)
+                    embrace(p, t->next->next);
+            break;
+        case TOK_ELSE:
+            if(TYPE(NEXT(t)) != TOK_LCURL)
+                embrace(p, t->next);
+            break;
+        case TOK_FUNC:
+            if(TYPE(NEXT(t)) == TOK_LPAR) {
+                if(TYPE(NEXT(NEXT(t))) != TOK_LCURL)
+                    embrace(p, NEXT(NEXT(t)));
+            } else if(TYPE(NEXT(t)) != TOK_LCURL)
+                embrace(p, t->next);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 // Fixes up parenting for obvious parsing situations, like code blocks
 // being the child of a func keyword, etc...
 static void fixBlockStructure(struct Parser* p, struct Token* start)
 {
     struct Token *t, *c;
+    fixBracelessBlocks(p, start);
     t = start;
     while(t) {
         switch(t->type) {
@@ -287,8 +349,8 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
                 addSemi = 1;
             break;
         }
-        if(t->next && t->next->type == TOK_SEMI)
-            addSemi = 0; // don't bother if it's already there!
+        if(!t->next || t->next->type == TOK_SEMI || t->next->type == TOK_COMMA)
+            addSemi = 0; // don't bother, no need
         if(addSemi) {
             struct Token* semi = emptyToken(p);
             semi->type = TOK_SEMI;
@@ -297,6 +359,7 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
             semi->prev = t;
             semi->parent = t->parent;
             if(semi->next) semi->next->prev = semi;
+            else semi->parent->lastChild = semi;
             t->next = semi;
             t = semi; // don't bother checking the new one
         }
@@ -540,5 +603,3 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
 
     return codeObj;
 }
-
-
