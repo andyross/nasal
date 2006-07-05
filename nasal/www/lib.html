@@ -304,7 +304,10 @@
     specified index.  Returns a vector (the pcre "ovector") containing
     matches.  Each match returned is stored as a start and
     one-past-end offset in the vector.  An empty vector indicates no
-    match.
+    match.  The first match is the entirety of the matched substring.
+    Matches 1 and higher contain the parenthesized submatches, if any,
+    in the order in which their opening parenthesis appears in the
+    regular expression.
 
 </dl>
 
