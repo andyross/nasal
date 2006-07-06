@@ -135,7 +135,8 @@
 <dd>Compiles the specified code string and returns a function object
     bound to the current lexical context.  The file name of the
     function, if unspecified in the second argument, is simply
-    "&lt;compile&gt;".
+    "&lt;compile&gt;".  On error, the function dies with a
+    user-readable string error message as per die().
 
 <dt>closure(fn, level=0)
 <dd>Returns the hash table representing the lexical namespace of the
