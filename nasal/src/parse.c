@@ -205,7 +205,7 @@ static struct Token* emptyToken(struct Parser* p)
     return t;
 }
 
-// Synthesize a LBRA token to wrap token t foward to the end of
+// Synthesize a curly brace token to wrap token t foward to the end of
 // "statement".  FIXME: unify this with the addNewChild(), which does
 // very similar stuff.
 static void embrace(struct Parser* p, struct Token* t)
@@ -213,8 +213,10 @@ static void embrace(struct Parser* p, struct Token* t)
     struct Token *b, *end = t;
     if(!t) return;
     while(end->next) {
-        if(end->next->type == TOK_SEMI) break;
-        if(end->next->type == TOK_COMMA) break;
+        if(end->type == TOK_SEMI) break; // slurp this
+        if(end->next->type == TOK_COMMA) break; // but not these
+        if(end->next->type == TOK_ELSE) break;
+        if(end->next->type == TOK_ELSIF) break;
         end = end->next;
     }
     b = emptyToken(p);
