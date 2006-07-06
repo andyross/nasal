@@ -191,11 +191,12 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
     }
 }
 
-// FIXME: should handle UTF8 too
 static void charLiteral(struct Parser* p, int index, char* s, int len)
 {
-    if(len != 1) error(p, "character constant not single character", index);
-    newToken(p, index, TOK_LITERAL, 0, 0, *s);
+    int n, c;
+    c = naLexUtf8C(s, len, &n);
+    if(c < 0 || n != len) error(p, "invalid utf8 character constant", index);
+    newToken(p, index, TOK_LITERAL, 0, 0, c);
 }
 
 // Read in a string literal

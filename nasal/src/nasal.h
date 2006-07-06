@@ -130,6 +130,7 @@ naRef naBitsLib(naContext c);
 naRef naIOLib(naContext c);
 naRef naRegexLib(naContext c);
 naRef naUnixLib(naContext c);
+naRef naUtf8Lib(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

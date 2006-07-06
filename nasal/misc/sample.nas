@@ -199,9 +199,10 @@ var ascii_sum = 0;
 for(var i=0; i<size(string); i+=1) { ascii_sum += string[i]; }
 
 #
-# You can use backquotes to write single-byte ASCII character constants
+# You can use backquotes to write UTF8 character constants
 #
 if(`A` != 65) { print("ASCII violation bug!\n"); }
+if(`©` != 169) { print("Unicode violation bug!\n"); }
 
 #
 # And you can mutate strings by assigning to their indices, as long as
@@ -219,6 +220,12 @@ ascii_lc = func(string) {
     return mutable;
 }
 print(ascii_lc("ABCDEFG"), "\n"); # prints "abcdefg"
+
+#
+# Advanced vectors: The lookup index can be negative, where -1
+# indicates the last element in the vector (or string).
+#
+next_to_last = list1[-2];
 
 ###
 ### Now some fun examples:

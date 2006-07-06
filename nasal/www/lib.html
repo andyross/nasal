@@ -201,6 +201,31 @@
 <dt>bits.buf(length)
 <dd>Returns a zero-filled mutable string of the specified length.
 
+</dl><h3>UTF8 Library</h3><dl>
+
+<dt>utf8.chstr(unicode)
+<dd>Returns a string containing the UTF8 representation of the
+    specified unicode character value.
+    
+<dt>utf8.strc(string, index)
+<dd>Returns the unicode character at the specified index within the UTF8
+    string.  Dies on encoding error or overrun.
+
+<dt>utf8.substr(string, start, len=nil)
+<dd>As for regular substr(), but the indices are of UTF8 characters
+    intead of bytes.  Dies on encoding error or overflow.
+
+<dt>utf8.size(string)
+<dd>As for regular size() when called on a string, but returns the
+    number of UTF8 unicode characters instead of bytes.  Dies on
+    encoding error.
+
+<dt>utf8.validate(string, replace=`?`)
+<dd>Checks the string for UTF8 validity.  At every byte position where
+    an encoding error is found, it replaces that byte with the
+    specified replacement character (default is `?`).  Note that the
+    second argument is a number, not a string.
+
 </dl><h3>I/O Library</h3><dl>
 
 <dt>io.open(filename, mode="r")
