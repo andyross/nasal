@@ -5,6 +5,7 @@
 #include <string.h>
 
 #ifdef _MSC_VER // sigh...
+#define snprintf _snprintf
 #define vsnprintf _vsnprintf
 #endif
 
@@ -184,7 +185,13 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     if(!naIsString(script) || !naIsString(fname)) return naNil();
     code = naParseCode(c, fname, 1,
                        naStr_data(script), naStr_len(script), &errLine);
-    if(!naIsCode(code)) return naNil(); // FIXME: export error to caller...
+    if(naIsNil(code)) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Parse error: %s at line %d",
+                 naGetError(c), errLine);
+        c->dieArg = NEWCSTR(c, buf);
+        naRuntimeError(c, "__die__");
+    }
     return naBindToContext(c, code);
 }
 
