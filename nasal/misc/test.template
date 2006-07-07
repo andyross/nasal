@@ -3,12 +3,14 @@ Some bare text in the document.
 
 Some Nasal code to execute: <% print("print() works"); %>	
 
-Our page local variable: <%= local_to_page %>
+Our page-local variable: <%= local_to_page %>
 
 A loop:
 <% foreach(a; [1, 2, 3, 4, 5]) { %>
   Loop iteration: <%= a %>
 <% } %>
+
+Some initialization code, which will run *before* the page is executed:
 
 <%! print("initialization should happen before gen_template returns...\n"); %>
 <%! var local_to_page = 123456789; %>
