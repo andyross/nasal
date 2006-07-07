@@ -1,0 +1,7 @@
+test
+<% print("foo\n"); %>
+<%= "expression!" %>
+<% foreach(a; [1, 2, 3, 4, 5]) { %>
+blah <%= a %>
+<% } %>
+<%! print("initialization should happen before gen_template returns...\n"); %>

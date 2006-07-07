@@ -8,18 +8,7 @@
 <body>
 
 <h1>Nasal: Not another scripting language!</h1>
-
-<h2>Executive summary:</h2>
-<ul>
- <li>Vectors, Hashes and Scalars (number/strings)
- <li>"Normal" OOP syntax
- <li>Small!  105k source code. Easily embeddable and extensible
- <li>Functional programming
- <li>Garbage collection
-</ul>
-
 <h2>Design Philosophy</h2>
-
 Performance is not a design goal.  Nasal isn't especially slow.  Early
 benchmarks of the garbage collector showed it as faster than perl's
 reference counter, and its number crunching performance is on par with
@@ -48,7 +37,8 @@ The real goal with Nasal is to have a language that supports most
 avoiding the bloat that comes from "platform" scripting languages like
 perl, python, ruby and php.
 
-<h2>Notable Characteristics</h2>
+
+<h2>Syntax & Programming</h2>
 Like perl, python and javascript, nasal uses vectors (expandable
 arrays) and hash tables as its native data format.  This is a
 well-understood idiom, and it works very well.  I felt no need to rock
@@ -141,12 +131,45 @@ environments (consider PHP, Javascript, ASP or in-configuration-file
 scripts) where it needs to live as a plain old string inside of
 another program's code or data file.
 <p>
+Nasal tries to be stricter than perl.  Operations like converting a
+non-numeric string value to a number, reading or writing past the end
+of an array or operating on a nil reference, which are generally legal
+in perl, throw exceptions in nasal.  Perl sometimes bends over
+backwards to do something "reasonable" with your instructions
+(e.g. what's the boolean truth value of a hash reference?); nasal
+doesn't try ("error: non-scalar used in boolean context at line 92")
+
+<h2>Architecture</h2>
+<p>
+Unlike almost all other script interpreters, Nasal is threadsafe and
+scalable when called from multiple CPU threads (as opposed to the
+userspace interpreter threads implemented by Ruby).  No special
+treatment is required (as for perl, which clones a separate
+interpreter with separate data for each thread and uses locking around
+specifically-designated shared data) and the threads can be scheduled
+simultaneously.  There is no global lock on the interpreter, as used
+by Python or Lua.  The only limit on scalability is garbage
+collection, which must block all interpreter threads before running.
+<p>
+When running threaded code, Nasal provides "minimal threadsafety",
+meaning that the interpreter itself can be safely called from multiple
+CPU threads without risk of corrupting or deadlocking the interpreter
+internals.  Multithreaded operations are therefore "safe", although
+they are not guaranteed to be atomic.  In particular, poorly
+synchronized insertions into containers can "drop" objects into
+oblivion (which is OK from an interpreter stability standpoint, since
+the GC will clean them up normally).  Nasal itself provides no
+synchronization primitives to address this; thread architecture is a
+"top-level" design job, and Nasal is intended to be an extension
+language in a larger project.  Choice of synchronization mechanisms is
+going to be highly application dependent.
+<p>
 Nasal garbage collects runtime storage, so the programmer need not
 worry about manual allocation, or even circular references.  The
 current implementation is a simple mark/sweep collector, which should
 be acceptable for most applications.  Future enhancements will include
 a "return early" capability for latency-critical applications.  The
-collector can be instructred to return after a certain maximum delay,
+collector can be instructed to return after a certain maximum delay,
 and be restarted later.  Fancy items like generational collectors fail
 the "small and simple" criteria and are not likely to be included.
 <p>
@@ -159,14 +182,6 @@ object and inspect the results to determine what error was thrown
 (either with the <code>die()</code> builtin or via an internal runtime
 error) and what the stack trace looked like.  Elaborate exception
 handling isn't really appropriate for embedded scripting languages.
-<p>
-Nasal tries to be stricter than perl.  Operations like converting a
-non-numeric string value to a number, reading or writing past the end
-of an array or operating on a nil reference, which are generally legal
-in perl, throw exceptions in nasal.  Perl sometimes bends over
-backwards to do something "reasonable" with your instructions
-(e.g. what's the boolean truth value of a hash reference?); nasal
-doesn't try ("error: non-scalar used in boolean context at line 92")
 <p>
 Nasal's interpreter is small, comparatively simple, written in ANSI C,
 and generally an excellent choice for embedded applications.  It uses
@@ -183,19 +198,6 @@ This is important for embedded languages as it provides the ability to
 realtime constraints, and Nasal can be instructed to run for only a
 certain number of "cycles" before returning.  Later calls will
 automatically pick up the interpreter state where it left off.
-<p>
-Nasal provides "minimal threadsafety", meaning that the interpreter
-itself can be safely called from multiple CPU threads without risk of
-corrupting or deadlocking the interpreter internals.  Multithreaded
-operations are therefore "safe", although they are not guaranteed to
-be atomic.  In particular, poorly synchronized insertions into
-containers can "drop" objects into oblivion (which is OK from an
-interpreter stability standpoint, since the GC will clean them up
-normally).  Race conditions have to be the programmer's problem
-anyway, this is just another symptom.  Using Nasal in a real threading
-context will require locking primitives supplied by the application.
-Garbage collection will, however, lock all access to the interpreter
-before running.
 
 </body>
 </html>

@@ -1,7 +1,7 @@
 ;; nasal-mode.el
 ;;
 ;; A major mode for writing Nasal code.
-;; Copyright (C) 2003,2005 Andrew Ross
+;; Copyright (C) 2003,2005,2006 Andrew Ross
 ;;
 ;; Based very closely on awk-mode.el as shipped with GNU Emacs 21.2
 ;; Copyright (C) 1988,94,96,2000  Free Software Foundation, Inc.
@@ -15,9 +15,10 @@
 ;; ...to your .emacs file.  All files with a .nas extension should
 ;; then be associated with nasal mode automatically.  I am *not* an
 ;; elisp hacker, though, so YMMV.
-;;
 
-(defvar nasal-mode-syntax-table nil "Syntax table in use in Nasal-mode buffers.")
+(defvar nasal-mode-syntax-table nil
+  "Syntax table in use in Nasal-mode buffers.")
+
 (if nasal-mode-syntax-table ()
   (setq nasal-mode-syntax-table (make-syntax-table))
   ; Operator characters are "punctuation"
@@ -49,20 +50,21 @@
     (list
      (cons (regexp-opt '("parents" "me" "arg") 'words)
 	   'font-lock-variable-name-face)
-     
-     (regexp-opt '("and" "or" "nil" "if" "elsif" "else" "for" "foreach" "forindex"
-		   "while" "return" "break" "continue" "func" "var") 'words)
-     
-     (list (regexp-opt '("size" "keys" "append" "pop" "int" "streq" "substr"
-			 "contains" "typeof" "call" "eval") 'words)
-	   1 'font-lock-builtin-face)
-     ))
+     (regexp-opt '("and" "break" "continue" "else" "elsif" "for" "foreach"
+		   "forindex" "func" "if" "nil" "or""return" "var" "while")
+		 'words)
+     (list (regexp-opt '("append" "bind" "call" "caller" "chr" "closure"
+			 "cmp" "compile" "contains" "delete" "die" "find"
+			 "int" "keys" "num" "pop" "rand" "setsize" "size"
+			 "split" "sprintf" "streq" "substr" "subvec" "typeof")
+		       'words)
+	   1 'font-lock-builtin-face)))
   "Nasal-specific syntax to be hilighted.")
 
-(define-derived-mode nasal-mode c-mode "Nasal"
+(define-derived-mode nasal-mode perl-mode "Nasal"
   "Major mode for editing Nasal code.
-This is a C mode variant customized for Nasal's syntax.  It shares most of
-C mode's features.  Turning on Nasal mode runs `nasal-mode-hook'."
+This is a Perl mode variant customized for Nasal's syntax.  It shares most of
+perl-mode's features.  Turning on Nasal mode runs `nasal-mode-hook'."
   (set (make-local-variable 'comment-start) "# ")
   (set (make-local-variable 'comment-end) "")
   (set (make-local-variable 'comment-start-skip) "#+ *")
