@@ -672,7 +672,7 @@ char* naGetError(struct Context* ctx)
 {
     if(IS_STR(ctx->dieArg))
         return (char*)ctx->dieArg.ref.ptr.str->data;
-    return ctx->error;
+    return ctx->error[0] ? ctx->error : 0;
 }
 
 naRef naBindFunction(naContext ctx, naRef code, naRef closure)
@@ -718,7 +718,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     if(IS_NIL(locals))
         locals = naNewHash(ctx);
     if(!IS_FUNC(func))
-        func = naNewFunc(ctx, func); // bind bare code objects
+        (func = naNewFunc(ctx, func)).ref.ptr.func->namespace = locals;
     if(!IS_NIL(obj))
         naHash_set(locals, globals->meRef, obj);
 

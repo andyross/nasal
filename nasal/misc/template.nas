@@ -1,7 +1,9 @@
 ##
 # Interprets a JSP-like syntax:
 # <%! ... %> Indicates an initialization expression, executed once in
-#            the outer scope of the page body.
+#            the outer scope of the page body.  Variables declared
+#            here will be local to the code on the page, but nowhere
+#            else.
 # <%= ... %> Is a Nasal expression, the results of which will be
 #            inserted into the message body (e.g. <%= "abcde" %>);
 # <% ... %>  Is Nasal code which will be compiled into the body inline
@@ -13,7 +15,8 @@
 #
 # Returns a callable function which implements the page.  This
 # function takes a single argument, which is a function (itself taking
-# a string) used to generate output (e.g. print).
+# a string) used to generate output (e.g. print).  Inside the page's
+# code, this function is available as "out(string)".
 #
 # Note neat trick: the body is an inner function of the initialization
 # function, which is evaluated to return the page body function as its
@@ -38,7 +41,7 @@ gen_template = func(s) {
     var sym = "__nhtm" ~ last;
     syms[sym] = substr(s, last);
     body ~= "out(" ~ sym ~ ")}";
-    return bind(compile(init ~ body, "<template>"), syms, caller(0)[1])();
+    return bind(compile(init ~ body, "<template>"), syms, caller()[1])();
 }
 
 
