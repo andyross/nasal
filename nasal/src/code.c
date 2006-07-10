@@ -382,8 +382,8 @@ static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
 }
 
 // Recursively descend into the parents lists
-static int getMember(struct Context* ctx, naRef obj, naRef fld,
-                     naRef* result, int count)
+static int getMember_r(struct Context* ctx, naRef obj, naRef fld,
+                       naRef* result, int count)
 {
     naRef p;
     if(--count < 0) ERR(ctx, "too many parents");
@@ -394,13 +394,19 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
             int i;
             struct VecRec* v = p.ref.ptr.vec->rec;
             for(i=0; i<v->size; i++)
-                if(getMember(ctx, v->array[i], fld, result, count))
+                if(getMember_r(ctx, v->array[i], fld, result, count))
                     return 1;
         } else
             ERR(ctx, "object \"parents\" field not vector");
     }
-    naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
     return 0;
+}
+
+static int getMember(struct Context* ctx, naRef obj, naRef fld,
+                     naRef* result, int count)
+{
+    if(!getMember_r(ctx, obj, fld, result, count))
+        naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
 }
 
 // OP_EACH works like a vector get, except that it leaves the vector
