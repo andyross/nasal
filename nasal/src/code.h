@@ -86,7 +86,7 @@ struct Context {
 
     // Error handling
     jmp_buf jumpHandle;
-    char* error;
+    char error[128];
     naRef dieArg;
 
     // Sub-call lists

@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdarg.h>
 #include "nasal.h"
 #include "code.h"
 
@@ -17,14 +19,21 @@ void printOpDEBUG(int ip, int op);
 void printStackDEBUG(struct Context* ctx);
 ////////////////////////////////////////////////////////////////////////
 
+#ifdef _MSC_VER
+#define vsnprintf _vsnprintf
+#endif
+
 struct Globals* globals = 0;
 
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code);
 
 #define ERR(c, msg) naRuntimeError((c),(msg))
-void naRuntimeError(struct Context* c, char* msg)
-{ 
-    c->error = msg;
+void naRuntimeError(struct Context* c, const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(c->error, sizeof(c->error), fmt, ap);
+    va_end(ap);
     longjmp(c->jumpHandle, 1);
 }
 
@@ -65,7 +74,9 @@ static int checkVec(struct Context* ctx, naRef vec, naRef idx)
 {
     int i = (int)numify(ctx, idx);
     if(i < 0) i += naVec_size(vec);
-    if(i < 0 || i >= naVec_size(vec)) ERR(ctx, "vector index out of bounds");
+    if(i < 0 || i >= naVec_size(vec))
+        naRuntimeError(ctx, "vector index %d out of bounds (size: %d)",
+                       i, naVec_size(vec));
     return i;
 }
 
@@ -73,7 +84,9 @@ static int checkStr(struct Context* ctx, naRef str, naRef idx)
 {
     int i = (int)numify(ctx, idx);
     if(i < 0) i += naStr_len(str);
-    if(i < 0 || i >= naStr_len(str)) ERR(ctx, "string index out of bounds");
+    if(i < 0 || i >= naStr_len(str))
+        naRuntimeError(ctx, "string index %d out of bounds (size: %d)",
+                       i, naStr_len(str));
     return i;
 }
 
@@ -128,7 +141,7 @@ static void initContext(struct Context* c)
     c->callParent = 0;
     c->callChild = 0;
     c->dieArg = naNil();
-    c->error = 0;
+    c->error[0] = 0;
 }
 
 static void initGlobals()
@@ -215,7 +228,9 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
     struct naCode* c = f->func.ref.ptr.func->code.ref.ptr.code;
 
     // Set the argument symbols, and put any remaining args in a vector
-    if(nargs < c->nArgs) ERR(ctx, "not enough arguments to function call");
+    if(nargs < c->nArgs)
+        naRuntimeError(ctx, "too few function args (have %d need %d)",
+            nargs, c->nArgs);
     for(i=0; i<c->nArgs; i++)
         naHash_newsym(f->locals.ref.ptr.hash,
                       &c->constants[c->argSyms[i]], &args[i]);
@@ -323,7 +338,7 @@ static naRef getLocal2(struct Context* ctx, struct Frame* f, naRef sym)
     naRef result;
     if(!naHash_get(f->locals, sym, &result))
         if(!getClosure(f->func.ref.ptr.func, sym, &result))
-            ERR(ctx, "undefined symbol");
+            naRuntimeError(ctx, "undefined symbol: %s", naStr_data(sym));
     return result;
 }
 
@@ -372,9 +387,8 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
     naRef p;
     if(--count < 0) ERR(ctx, "too many parents");
     if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
-    if(naHash_get(obj, fld, result)) {
-        return 1;
-    } else if(naHash_get(obj, globals->parentsRef, &p)) {
+    if(naHash_get(obj, fld, result)) return 1;
+    if(naHash_get(obj, globals->parentsRef, &p)) {
         if(IS_VEC(p)) {
             int i;
             struct VecRec* v = p.ref.ptr.vec->rec;
@@ -382,8 +396,9 @@ static int getMember(struct Context* ctx, naRef obj, naRef fld,
                 if(getMember(ctx, v->array[i], fld, result, count))
                     return 1;
         } else
-            ERR(ctx, "parents field not vector");
+            ERR(ctx, "object \"parents\" field not vector");
     }
+    naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
     return 0;
 }
 
@@ -394,7 +409,7 @@ static void evalEach(struct Context* ctx, int useIndex)
 {
     int idx = (int)(ctx->opStack[ctx->opTop-1].num);
     naRef vec = ctx->opStack[ctx->opTop-2];
-    if(!IS_VEC(vec)) naRuntimeError(ctx, "foreach enumeration of non-vector");
+    if(!IS_VEC(vec)) ERR(ctx, "foreach enumeration of non-vector");
     if(!vec.ref.ptr.vec->rec || idx >= vec.ref.ptr.vec->rec->size) {
         PUSH(naNil());
         return;
@@ -520,8 +535,7 @@ static naRef run(struct Context* ctx)
             ctx->opTop--;
             break;
         case OP_MEMBER:
-            if(!getMember(ctx, STK(1), CONSTARG(), &STK(1), 64))
-                ERR(ctx, "no such member");
+            getMember(ctx, STK(1), CONSTARG(), &STK(1), 64);
             break;
         case OP_SETMEMBER:
             if(!IS_HASH(STK(3))) ERR(ctx, "non-objects have no members");
@@ -594,7 +608,7 @@ static naRef run(struct Context* ctx)
             break;
         case OP_MARK: // save stack state (e.g. "setjmp")
             if(ctx->markTop >= MAX_MARK_DEPTH)
-                naRuntimeError(ctx, "mark stack overflow");
+                ERR(ctx, "mark stack overflow");
             ctx->markStack[ctx->markTop++] = ctx->opTop;
             break;
         case OP_UNMARK: // pop stack state set by mark
@@ -721,7 +735,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 
     // Return early if an error occurred.  It will be visible to the
     // caller via naGetError().
-    ctx->error = 0;
+    ctx->error[0] = 0;
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
         return naNil();

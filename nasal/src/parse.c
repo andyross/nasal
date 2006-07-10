@@ -1,4 +1,5 @@
 #include <setjmp.h>
+#include <string.h>
 
 #include "parse.h"
 
@@ -573,7 +574,7 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
     // Catch parser errors here.
     *errLine = 0;
     if(setjmp(p.jumpHandle)) {
-        c->error = p.err;
+        strncpy(c->error, p.err, sizeof(c->error));
         *errLine = p.errLine;
         return naNil();
     }

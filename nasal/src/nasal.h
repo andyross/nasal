@@ -113,8 +113,8 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args, naRef obj, naRef 
 // longjmp call to a handler in naCall() and DOES NOT RETURN.  It is
 // intended for use in library code that cannot otherwise report an
 // error via the return value, and MUST be used carefully.  If in
-// doubt, return naNil() as your error condition.
-void naRuntimeError(naContext ctx, char* msg);
+// doubt, return naNil() as your error condition.  Works like printf().
+void naRuntimeError(struct Context* c, const char* fmt, ...);
 
 // Call a method on an object (NOTE: func is a function binding, *not*
 // a code object as returned from naParseCode).
