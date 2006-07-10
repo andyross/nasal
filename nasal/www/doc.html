@@ -101,6 +101,20 @@ means, you don't need to care.  It is this feature that allows
 functions to use variables declared in the outer scope when it is
 defined (e.g. seeing "module" variables).
 <p>
+Unlike many other languages, however, the symbol lookup namespace in
+Nasal is always a function call.  Most languages allow variables
+declared within "inner" code blocks to "hide" variables of the same
+name set at a higher level.  In Nasal, all uses of a given symbol name
+within a single function refer to the same symbol, always.  This can
+occasionally be surprising to new programmers:
+<pre>
+if(1) {
+    var i=1234;
+    for(var i=0; i<10; i+=1) {}
+    print(i); # i==10 here, not 1234!
+}
+</pre>
+<p>
 Like all other scripting languages, functions are just symbols in a
 namespace, but unlike all other scripting languages, there is no
 function "declaration" syntax.  A function is always an anonymous
