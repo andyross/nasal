@@ -6,8 +6,8 @@
 ////////////////////////////////////////////////////////////////////////
 // Debugging stuff. ////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
-//#define DEBUG_NASAL
-#if !defined(DEBUG_NASAL)
+//#define INTERPRETER_DUMP
+#if !defined(INTERPRETER_DUMP)
 # define DBG(expr) /* noop */
 #else
 # define DBG(expr) expr
@@ -253,7 +253,8 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
     }
 }
 
-struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall, int tail)
+static struct Frame* setupFuncall(struct Context* ctx, int nargs,
+                                  int mcall, int tail)
 {
     naRef *frame;
     struct Frame* f;

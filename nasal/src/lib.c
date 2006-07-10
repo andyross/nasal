@@ -240,7 +240,7 @@ static naRef f_die(naContext c, naRef me, int argc, naRef* args)
 
 // Wrapper around vsnprintf, iteratively increasing the buffer size
 // until it fits.  Returned buffer should be freed by the caller.
-char* dosprintf(char* f, ...)
+static char* dosprintf(char* f, ...)
 {
     char* buf;
     va_list va;

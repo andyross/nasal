@@ -214,8 +214,16 @@ static void embrace(struct Parser* p, struct Token* t)
     struct Token *b, *end = t;
     if(!t) return;
     while(end->next) {
-        if(end->type == TOK_SEMI) break; // slurp this
-        if(end->next->type == TOK_COMMA) break; // but not these
+        if(end->next->type == TOK_SEMI) {
+            // Slurp up the semi, iff it is followed by an else/elsif,
+            // otherwise leave it in place.
+            if(end->next->next) {
+                if(end->next->next->type == TOK_ELSE)  end = end->next;
+                if(end->next->next->type == TOK_ELSIF) end = end->next;
+            }
+            break;
+        }
+        if(end->next->type == TOK_COMMA) break;
         if(end->next->type == TOK_ELSE) break;
         if(end->next->type == TOK_ELSIF) break;
         end = end->next;
