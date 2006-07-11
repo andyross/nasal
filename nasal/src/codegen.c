@@ -145,7 +145,7 @@ static int genScalarConstant(struct Parser* p, struct Token* t)
 
 static int genLValue(struct Parser* p, struct Token* t, int* cidx)
 {
-    if(t->type == TOK_LPAR) {
+    if(t->type == TOK_LPAR && !BINARY(t)) {
         return genLValue(p, LEFT(t), cidx); // Handle stuff like "(a) = 1"
     } else if(t->type == TOK_SYMBOL) {
         *cidx = genScalarConstant(p, t);
