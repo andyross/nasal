@@ -5,8 +5,6 @@
 
 // Static precedence table, from low (loose binding, do first) to high
 // (tight binding, do last).
-enum { PREC_BINARY, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };
-
 #define MAX_PREC_TOKS 6
 struct precedence {
     int toks[MAX_PREC_TOKS];
@@ -528,6 +526,8 @@ static struct Token* parsePrecedence(struct Parser* p,
     // Found nothing, try the next level
     if(!top)
         return parsePrecedence(p, start, end, level+1);
+
+    top->rule = rule;
 
     if(left) {
         left->next = right;

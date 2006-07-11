@@ -19,11 +19,15 @@ enum {
     TOK_FORINDEX
 };
 
+// Precedence rules
+enum { PREC_BINARY=1, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };
+
 struct Token {
     int type;
     int line;
     char* str;
     int strlen;
+    int rule;
     double num;
     struct Token* parent;
     struct Token* next;
