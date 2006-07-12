@@ -96,6 +96,8 @@ struct Context {
     // Linked list pointers in globals
     struct Context* nextFree;
     struct Context* nextAll;
+
+    void* userData;
 };
 
 #define globals nasal_globals

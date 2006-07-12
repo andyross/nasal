@@ -113,7 +113,8 @@ static int iotell(naContext c, void* f)
 
 static void iodestroy(void* f)
 {
-    ioclose(0, f);
+    if(f != stdin && f != stdout && f != stderr)
+        ioclose(0, f);
 }
 
 struct naIOType naStdIOType = { ioclose, ioread, iowrite, ioseek,
@@ -169,7 +170,8 @@ static naRef f_readln(naContext ctx, naRef me, int argc, naRef* args)
         if(c == '\r') {
             char c2 = getcguard(ctx, g->handle, buf);
             if(c2 != EOF && c2 != '\n')
-                ungetc(c2, g->handle);
+                if(EOF == ungetc(c2, g->handle))
+                    break;
             break;
         }
         buf[i++] = c;

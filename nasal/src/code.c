@@ -142,6 +142,7 @@ static void initContext(struct Context* c)
     c->callChild = 0;
     c->dieArg = naNil();
     c->error[0] = 0;
+    c->userData = 0;
 }
 
 static void initGlobals()
@@ -402,8 +403,8 @@ static int getMember_r(struct Context* ctx, naRef obj, naRef fld,
     return 0;
 }
 
-static int getMember(struct Context* ctx, naRef obj, naRef fld,
-                     naRef* result, int count)
+static void getMember(struct Context* ctx, naRef obj, naRef fld,
+                      naRef* result, int count)
 {
     if(!getMember_r(ctx, obj, fld, result, count))
         naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
@@ -602,6 +603,7 @@ static naRef run(struct Context* ctx)
             break;
         case OP_RETURN:
             a = STK(1);
+            ctx->dieArg = naNil();
             if(--ctx->fTop <= 0) return a;
             ctx->opTop = f->bp + 1; // restore the correct opstack frame!
             STK(1) = a;

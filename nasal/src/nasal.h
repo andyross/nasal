@@ -4,37 +4,15 @@
 extern "C" {
 #endif
 
-#ifndef BYTE_ORDER
-
-# if (BSD >= 199103)
-#  include <machine/endian.h>
-# elif defined(__CYGWIN__) || defined(__MINGW32__)
-#  include <sys/param.h>
-# elif defined(linux)
-#  include <endian.h>
-# else
-#  ifndef LITTLE_ENDIAN
-#   define LITTLE_ENDIAN   1234    /* LSB first: i386, vax */
-#  endif
-#  ifndef BIG_ENDIAN
-#   define BIG_ENDIAN      4321    /* MSB first: 68000, ibm, net */
-#  endif
-
-#  if defined(ultrix) || defined(__alpha__) || defined(__alpha) ||  \
-      defined(__i386__) || defined(__i486__) || defined(_X86_) ||   \
-      defined(sun386)
-#   define BYTE_ORDER LITTLE_ENDIAN
-#  else
-#   define BYTE_ORDER BIG_ENDIAN
-#  endif
-# endif /* BSD */
-#endif /* BYTE_ORDER */
-
-#if BYTE_ORDER == BIG_ENDIAN
-# include <limits.h>
-# if (LONG_MAX == 2147483647)
-#  define NASAL_BIG_ENDIAN_32_BIT 1
-# endif
+/* Rather than play elaborate and games with platform-dependent
+ * endianness headers, just detect the platforms we support. */
+#if defined(_M_X86) || defined(i386) || defined(__x86_64) \
+    || defined(__ia64__) || defined(_M_IA64) 
+# define NASAL_LE
+#elif defined(__sparc) || defined(__powerpc) || defined(__mips)
+# define NASAL_BE
+#else
+# error Unrecognized CPU architecture
 #endif
 
 // This is a nasal "reference".  They are always copied by value, and
@@ -52,8 +30,8 @@ extern "C" {
 typedef union {
     double num;
     struct {
-#ifdef NASAL_BIG_ENDIAN_32_BIT
-        int reftag; // Big-endian systems need this here!
+#ifdef NASAL_BE
+        int reftag; // Big-endian 32 bit systems need this here!
 #endif
         union {
             struct naObj* obj;
@@ -65,8 +43,8 @@ typedef union {
             struct naCCode* ccode;
             struct naGhost* ghost;
         } ptr;
-#ifndef NASAL_BIG_ENDIAN_32_BIT
-        int reftag; // Little-endian and 64 bit systems need this here!
+#ifndef NASAL_BE
+        int reftag; // Little-endian 32 bit systems need this here!
 #endif
     } ref;
 } naRef;
@@ -79,6 +57,12 @@ typedef naRef (*naCFunction)(naContext ctx, naRef me, int argc, naRef* args);
 // All Nasal code runs under the watch of a naContext:
 naContext naNewContext();
 void naFreeContext(naContext c);
+
+// The context supports a user data pointer that C code can use to
+// store data specific to an naCall invocation without exposing it to
+// Nasal as a ghost.
+void naSetUserData(naContext c, void* p);
+void* naGetUserData(naContext c);
 
 // Save this object in the context, preventing it (and objects
 // referenced by it) from being garbage collected.
@@ -104,7 +88,7 @@ naRef naBindFunction(naContext ctx, naRef code, naRef closure);
 // namespace at the top of the current call stack).
 naRef naBindToContext(naContext ctx, naRef code);
 
-// Call a code or function object with the specifed arguments "on" the
+// Call a code or function object with the specified arguments "on" the
 // specified object and using the specified hash for the local
 // variables.  Any of args, obj or locals may be nil.
 naRef naCall(naContext ctx, naRef func, int argc, naRef* args, naRef obj, naRef locals);
@@ -201,15 +185,21 @@ int          naIsGhost(naRef r);
 
 // Acquires a "modification lock" on a context, allowing the C code to
 // modify Nasal data without fear that such data may be "lost" by the
-// garbage collector (the C stack is not examined in GC!).  This
-// disallows garbage collection until the current thread can be
-// blocked.  The lock should be acquired whenever modifications to
-// Nasal objects are made.  It need not be acquired when only read
-// access is needed.  It MUST NOT be acquired by naCFunction's, as
-// those are called with the lock already held; acquiring two locks
-// for the same thread will cause a deadlock when the GC is invoked.
-// It should be UNLOCKED by naCFunction's when they are about to do
-// any long term non-nasal processing and/or blocking I/O.
+// garbage collector (nasal data the C stack is not examined in GC!).
+// This disallows garbage collection until the current thread can be
+// blocked.  The lock should be acquired whenever nasal objects are
+// being modified.  It need not be acquired when only read access is
+// needed, PRESUMING that the Nasal data being read is findable by the
+// collector (via naSave, for example) and that another Nasal thread
+// cannot or will not delete the reference to the data.  It MUST NOT
+// be acquired by naCFunction's, as those are called with the lock
+// already held; acquiring two locks for the same thread will cause a
+// deadlock when the GC is invoked.  It should be UNLOCKED by
+// naCFunction's when they are about to do any long term non-nasal
+// processing and/or blocking I/O.  Note that naModLock() may need to
+// block to allow garbage collection to occur, and that garbage
+// collection by other threads may be blocked until naModUnlock() is
+// called.
 void naModLock();
 void naModUnlock();
 
