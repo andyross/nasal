@@ -44,6 +44,9 @@ return func {
     handlers[file] = handler;
     times[file] = timestamp;
 
+    # Set us to text/html by default
+    sethdr("Content-Type", "text/html");
+
     return handler();
 }
 

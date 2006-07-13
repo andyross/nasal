@@ -1,3 +1,7 @@
+# This is a Nasal HTTP handler function. Just print the value of a
+# bunch of CGI variables and headers, and echo the POST data if there
+# is any.
+
 var cgi_vars = [ "PATH", "SERVER_SIGNATURE", "SERVER_SOFTWARE",
 		 "SERVER_NAME", "SERVER_ADDR", "SERVER_PORT",
 		 "REMOTE_ADDR", "DOCUMENT_ROOT", "SERVER_ADMIN",
@@ -8,7 +12,11 @@ var cgi_vars = [ "PATH", "SERVER_SIGNATURE", "SERVER_SOFTWARE",
 
 var read_headers = ["Content-Length", "Host", "Cookie"];
 
-func {
+#
+# The above is initialization code to set up useful variables, etc...
+# We now return a function to use as the actual handler.
+#
+return func {
     sethdr("XNasalHandler1", "Woo hoo!");
     setstatus(201);
 
