@@ -216,4 +216,8 @@ int naIsCCode(naRef r)  { return IS_CCODE(r); }
 int naIsGhost(naRef r)  { return IS_GHOST(r); }
 
 void naSetUserData(naContext c, void* p) { c->userData = p; }
-void* naGetUserData(naContext c) { return c->userData; }
+void* naGetUserData(naContext c)
+{
+    if(c->userData) return c->userData;
+    return c->callParent ? naGetUserData(c->callParent) : 0;
+}
