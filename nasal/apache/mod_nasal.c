@@ -5,12 +5,19 @@
 #include "http_protocol.h"
 #include "util_filter.h"
 #include "util_script.h"
+#include "http_log.h"
 
 #include "nasal.h"
 
-/* apxs -i -a -c -Wc,-Wall -Wc,-Werror mod_nasal.c [nasal souces...] */
+/* To build (assuming there's a libnasal.a in the local directory):
+ *   apxs -i -a -c -Wc,-Wall -Wc,-Werror -L. -lnasal mod_nasal.c
+ *
+ * The -Werror is to force a failure before it tries to install a
+ * module with warnings.  Then just restart apache.
+ */
 
-FILE* debuglog = NULL;
+#define LOGERR(svr, ...) \
+    ap_log_error(__FILE__, __LINE__, APLOG_ERR, 0, (svr), __VA_ARGS__)
 
 /* Wrapper for a single handler request, mostly used for the bucket
  * brigade reading scheme.  Zero fill and initialize the r field, then
@@ -24,10 +31,9 @@ struct nasal_request {
     apr_size_t len;
 };
 
-/* Nasal functions:
- * CGI:  getcgi, gethdr, sethdr, setresult, read, print
- * Sync: mutex_new, mutex_lock, mutex_unlock, cond_new, cond_wait,
- *       cond_signal, cond_broadcast
+/* TODO: APR synchronization functions:
+ * mutex_new, mutex_lock, mutex_unlock, cond_new, cond_wait,
+ * cond_signal, cond_broadcast
  */
 
 /* Nasal environments are server-specific.  The handlers is a hash
@@ -80,16 +86,129 @@ static void* read_file(const char* file, apr_pool_t* pool, int* len)
 static void dumpStack(naContext ctx, const server_rec* s)
 {
     int i;
-    if(naGetError(ctx)) {
-        fprintf(debuglog, "%s at %s, line %d\n",
-                naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
-                naGetLine(ctx, 0));
+    LOGERR(s,"%s at %s, line %d", naGetError(ctx),
+           naStr_data(naGetSourceFile(ctx, 0)), naGetLine(ctx, 0));
+    for(i=1; i<naStackDepth(ctx); i++)
+        LOGERR(s, "  called from: %s, line %d",
+               naStr_data(naGetSourceFile(ctx, i)), naGetLine(ctx, i));
+}
 
-        for(i=1; i<naStackDepth(ctx); i++)
-            fprintf(debuglog, "  called from: %s, line %d\n",
-                    naStr_data(naGetSourceFile(ctx, i)),
-                    naGetLine(ctx, i));
+/* Uses Apache's funky bucket brigade filter API to read a chunk (how
+ * big depends on the upstream filters) of data into the nasal_request
+ * object's buf/len fields.  Returns 0 on error or end-of-stream, 1 if
+ * more data is expected. */
+static int read_next_buf(struct nasal_request* nr)
+{
+    int st;
+    if(!nr->bb)
+        nr->bb = apr_brigade_create(nr->r->pool,
+                                    nr->r->connection->bucket_alloc);
+    if(!nr->bb) return 0;
+    while(1) {
+        if(nr->b) {
+            nr->b = APR_BUCKET_NEXT(nr->b);
+        } else {
+            st = ap_get_brigade(nr->r->input_filters, nr->bb, AP_MODE_READBYTES,
+                                APR_BLOCK_READ, HUGE_STRING_LEN);
+            if(st != APR_SUCCESS) return 0;
+            nr->b = APR_BRIGADE_FIRST(nr->bb);
+        }
+        if(nr->b == APR_BRIGADE_SENTINEL(nr->bb)) {
+            apr_brigade_cleanup(nr->bb);
+            nr->b = NULL;
+            continue;
+        }
+        if(APR_BUCKET_IS_FLUSH(nr->b)) continue;
+        if(APR_BUCKET_IS_EOS(nr->b)) return 0;
+        apr_bucket_read(nr->b, &nr->buf, &nr->len, APR_BLOCK_READ);
+        return 1;
     }
+}
+
+static naRef f_print(naContext c, naRef me, int argc, naRef* args)
+{
+    int i;
+    struct nasal_request* nr = naGetUserData(c);
+    if(!nr) naRuntimeError(c, "print() called outside of request");
+    for(i=0; i<argc; i++) {
+        naRef s = naStringValue(c, args[i]);
+        if(naIsNil(s)) continue;
+        ap_rwrite(naStr_data(s), naStr_len(s), nr->r);
+    }
+    return naNil();
+}
+
+static naRef f_read(naContext c, naRef me, int argc, naRef* args)
+{
+    struct nasal_request* nr = naGetUserData(c);
+    if(nr && read_next_buf(nr))
+        return naStr_fromdata(naNewString(c), (void*)nr->buf, nr->len);
+    return naNil();
+}
+
+static naRef f_getcgi(naContext ctx, naRef me, int argc, naRef* args)
+{
+    const char* val;
+    struct nasal_request* nr = naGetUserData(ctx);
+    naRef var = args > 0 ? naStringValue(ctx, args[0]) : naNil();
+    if(!nr) naRuntimeError(ctx, "getcgi() called outside of request");
+    if(naIsNil(var)) naRuntimeError(ctx, "Bad argument to getcgi()");
+    val = apr_table_get(nr->r->subprocess_env, naStr_data(var));
+    return val ? NASTR(val) : naNil();
+}
+
+static naRef f_gethdr(naContext ctx, naRef me, int argc, naRef* args)
+{
+    const char* val;
+    struct nasal_request* nr = naGetUserData(ctx);
+    naRef var = args > 0 ? naStringValue(ctx, args[0]) : naNil();
+    if(!nr) naRuntimeError(ctx, "gethdr() called outside of request");
+    if(naIsNil(var)) naRuntimeError(ctx, "Bad argument to gethdr()");
+    val = apr_table_get(nr->r->headers_in, naStr_data(var));
+    return val ? NASTR(val) : naNil();
+}
+
+static naRef f_sethdr(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef var = argc > 0 ? naStringValue(ctx, args[0]) : naNil();
+    naRef val = argc > 1 ? naStringValue(ctx, args[1]) : naNil();
+    struct nasal_request* nr = naGetUserData(ctx);
+    if(!nr || naIsNil(var) || naIsNil(val))
+        naRuntimeError(ctx, "Bad argument/context for sethdr()");
+    apr_table_set(nr->r->headers_out, naStr_data(var), naStr_data(val));
+    return val;
+}
+
+static naRef f_setstatus(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef val = args > 0 ? naNumValue(args[0]) : naNil();
+    struct nasal_request* nr = naGetUserData(ctx);
+    if(!nr || naIsNil(val))
+        naRuntimeError(ctx, "Bad argument/context for setstatus()");
+    nr->r->status = (int)val.num;
+    return val;
+}
+
+struct func { char* name; naCFunction func; };
+static struct func funcs[] = {
+    { "print", f_print },
+    { "read", f_read },
+    { "getcgi", f_getcgi },
+    { "gethdr", f_gethdr },
+    { "sethdr", f_sethdr },
+    { "setstatus", f_setstatus },
+};
+static naRef make_syms(naContext ctx)
+{
+    naRef syms = naStdLib(ctx);
+    int i, n = sizeof(funcs)/sizeof(struct func);
+    for(i=0; i<n; i++) {
+        naRef code = naNewCCode(ctx, funcs[i].func);
+        naRef name = NASTR(funcs[i].name);
+        name = naInternSymbol(name);
+        naHash_set(syms, name, naNewFunc(ctx, code));
+    }
+    return syms;
 }
 
 static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
@@ -105,19 +224,18 @@ static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
     }
     if(naIsNil(code = naParseCode(ctx, NASTR(file), 1, buf, len, &errline)))
     {
-        fprintf(debuglog, "Parse error in %s: %s at line %d\n",
-                file, naGetError(ctx), errline);
-        *err = "parse error in Nasal file"; /* FIXME: format nice msg */
+        LOGERR(cmd->server, "Parse error in %s: %s at line %d",
+                     file, naGetError(ctx), errline);
+        *err = "parse error in Nasal file";
         return naNil();
     }
-    syms = naStdLib(ctx);
+    syms = make_syms(ctx);
     naHash_set(syms, naInternSymbol(NASTR("math")),  naMathLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("bits")),  naBitsLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("io")),    naIOLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("unix")),  naUnixLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("utf8")),  naUtf8Lib(ctx));
-    /* FIXME: add mod_nasal functions */
     copy_hash(ctx, cfg->namespace, syms); 
 
     result = naCall(ctx, code, 0, 0, naNil(), syms);
@@ -136,36 +254,6 @@ static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
 
 module AP_MODULE_DECLARE_DATA nasal_module;
 
-#if 0
-static int read_next_buf(struct nasal_request* nr)
-{
-    int st;
-    if(!nr->bb)
-        nr->bb = apr_brigade_create(nr->r->pool,
-                                    nr->r->connection->bucket_alloc);
-    if(!nr->bb) return 0;
-    while(1) {
-        if(nr->b) {
-            nr->b = APR_BUCKET_NEXT(nr->b);
-        } else {
-            st = ap_get_brigade(nr->r->input_filters, nr->bb, AP_MODE_READBYTES,
-                                APR_BLOCK_READ, HUGE_STRING_LEN);
-            if(st != APR_SUCCESS) return 0;
-            nr->b = APR_BRIGADE_FIRST(nr->bb);
-        }
-        if(nr->b == APR_BRIGADE_SENTINEL(nr->bb)) {
-            /* apr_brigade_cleanup(nr->bb); */ /* need this? */
-            nr->b = NULL;
-            continue;
-        }
-        if(APR_BUCKET_IS_FLUSH(nr->b)) continue;
-        if(APR_BUCKET_IS_EOS(nr->b)) return 0;
-        apr_bucket_read(nr->b, &nr->buf, &nr->len, APR_BLOCK_READ);
-        return 1;
-    }
-}
-#endif
-
 static int nasal_handle_request(request_rec *r)
 {
     struct nasal_request nreq;
@@ -173,26 +261,37 @@ static int nasal_handle_request(request_rec *r)
     naRef handler;
     struct nasal_cfg *cfg = ap_get_module_config(r->server->module_config,
                                                  &nasal_module);
-    
-    /* Find a handler */
-    handler = naHash_cget(cfg->handlers, (char*)r->handler);
-    if(naIsNil(handler)) return DECLINED;
+    /* Is it ours? */
+    /* FIXME: make naHash_cget() work here so we can skip
+     * naNewContext() for stuff we don't handle. */
+    ctx = naNewContext();
+    if(!naHash_get(cfg->handlers, NASTR(r->handler), &handler)) {
+        naFreeContext(ctx);
+        return DECLINED;
+    }
 
     /* Initialize CGI "environment" vars and our bucket reader */
     ap_add_common_vars(r);
     ap_add_cgi_vars(r);
     memset(&nreq, 0, sizeof(nreq));
     nreq.r = r;
+    r->status = HTTP_OK;
 
+    /* Call the handler */
     ctx = naNewContext();
     naSetUserData(ctx, &nreq);
     naCall(ctx, handler, 0, 0, naNil(), naNil());
-    if(naGetError(ctx))
-        dumpStack(ctx);
-    /* FIXME: how to generate error page? */
+    if(naGetError(ctx)) {
+        dumpStack(ctx, r->server);
+        r->status = HTTP_INTERNAL_SERVER_ERROR;
+    }
     naFreeContext(ctx);
 
-    return OK;
+    /* FIXME: what's the proper behavior here?  I have to return "OK"
+     * if I want the generated page to show.  But I have to return the
+     * status (and *not* "OK") if I want Apache's internal error
+     * handling to get hooked. */
+    return r->status < 400 ? OK : r->status;
 }
 
 static void register_hooks(apr_pool_t *p)
@@ -211,7 +310,7 @@ static const char *cmd_nasal_handler(cmd_parms *cmd, void *whatisthis,
     naContext ctx = naNewContext();
     naRef code = run_file(ctx, cfg, file, cmd, &err);
     if(!err) {
-        if(!naIsCode(code))
+        if(!naIsFunc(code))
             err = "NasalHandler code did not return a function";
         else
             naHash_set(cfg->handlers, NASTR(handler), code);
@@ -226,12 +325,10 @@ static const char *cmd_nasal_init(cmd_parms *cmd, void *whatisthis,
                                   const char *file)
 {
     const char* err = NULL;
-    naRef syms;
-    naContext ctx;
     struct nasal_cfg *cfg = ap_get_module_config(cmd->server->module_config,
                                                  &nasal_module);
-    ctx = naNewContext();
-    syms = run_file(ctx, cfg, file, cmd, &err);
+    naContext ctx = naNewContext();
+    naRef syms = run_file(ctx, cfg, file, cmd, &err);
     if(!err) {
         if(naIsHash(syms)) copy_hash(ctx, syms, cfg->namespace);
         else               err = "NasalInit code did not return a hash table";
@@ -255,10 +352,6 @@ static void *nasal_create_server_config(apr_pool_t *p, server_rec *s)
     naSave(ctx, cfg->namespace = naNewHash(ctx));
     naSave(ctx, cfg->handlers = naNewHash(ctx));
     naFreeContext(ctx);
-
-    debuglog = fopen("mod_nasal.log", "a");
-    setbuf(debuglog, NULL);
-
     return cfg;
 }
 

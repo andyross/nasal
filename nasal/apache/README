@@ -1,0 +1,20 @@
+A quick (but surprisingly complete) Nasal apache module.  Usage:
+
+1. Build with "make", assuming you have a working apache installation
+   with mod_so configured, the "apxs" program on your path, and write
+   access to your apache configuration.
+
+2. Edit your httpd.conf or equivalent configuration files to add the
+   following lines at the top level (or in a virtual host):
+
+     NasalHandler <nasal-cvs>/apache/nas-handler.nas nas
+     NasalHandler <nasal-cvs>/nasal/apache/nhtm-handler.nas nhtm
+     AddHandler nas .nas
+     AddHandler nhtm .nhtm
+
+3. Drop the test.nas (Nasal program handler) and test.nhtm (JSP-like
+   template language) into your web tree and hit them.  Edit away.
+   Try stuff.  Ask Andy for docs.
+
+This is actually quite useful as-is, but needs a CGI form data parser
+to be feature complete.

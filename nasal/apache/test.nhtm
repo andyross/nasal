@@ -1,0 +1,20 @@
+
+Some bare text in the document.
+
+Some Nasal code to execute: <% print("print() works"); %>	
+
+Our incremented page-local variable: <%= local_to_page+=1 %>
+
+(Note that the above variable is local to a specific httpd process --
+if you are using the default prefork MPM, you will see a separate
+count for each process.)
+
+A loop:
+<% foreach(a; [1, 2, 3, 4, 5]) { %>
+  Loop iteration: <%= a %>
+<% } %>
+
+Some initialization code, which will run *before* the page is executed:
+
+<%! print("initialization should happen before gen_template returns...\n"); %>
+<%! var local_to_page = 123456789; %>
