@@ -458,8 +458,7 @@ static naRef f_bind(naContext ctx, naRef me, int argc, naRef* args)
     return func;
 }
 
-struct func { char* name; naCFunction func; };
-static struct func funcs[] = {
+static naCFuncItem funcs[] = {
     { "size", size },
     { "keys", keys }, 
     { "append", append }, 
@@ -485,17 +484,10 @@ static struct func funcs[] = {
     { "split", f_split },
     { "rand", f_rand },
     { "bind", f_bind },
+    { 0 }
 };
 
 naRef naStdLib(naContext c)
 {
-    naRef namespace = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++) {
-        naRef code = naNewCCode(c, funcs[i].func);
-        naRef name = NEWSTR(c, funcs[i].name, strlen(funcs[i].name));
-        name = naInternSymbol(name);
-        naHash_set(namespace, name, naNewFunc(c, code));
-    }
-    return namespace;
+    return naGenLib(c, funcs);
 }

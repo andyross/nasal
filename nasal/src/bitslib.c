@@ -73,22 +73,15 @@ static naRef f_buf(naContext c, naRef me, int argc, naRef* args)
     return naStr_buf(naNewString(c), (int)len.num);
 }
 
-static struct func { char* name; naCFunction func; } funcs[] = {
+static naCFuncItem funcs[] = {
     { "sfld", f_sfld },
     { "fld", f_fld },
     { "setfld", f_setfld },
     { "buf", f_buf },
+    { 0 }
 };
 
 naRef naBitsLib(naContext c)
 {
-    naRef namespace = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++) {
-        naRef code = naNewCCode(c, funcs[i].func);
-        naRef name = naStr_fromdata(naNewString(c),
-                                    funcs[i].name, strlen(funcs[i].name));
-        naHash_set(namespace, name, naNewFunc(c, code));
-    }
-    return namespace;
+    return naGenLib(c, funcs);
 }

@@ -91,7 +91,7 @@ static naRef f_strc(naContext ctx, naRef me, int argc, naRef* args)
 {
     naRef idx;
     unsigned char* s;
-    int len, c, bytes;
+    int len, c=0, bytes;
     if(argc < 2 || !naIsString(args[0]) || naIsNil(idx=naNumValue(args[1])))
         naRuntimeError(ctx, "bad/missing argument to utf8.strc");
     len = naStr_len(args[0]);
@@ -146,26 +146,16 @@ static naRef f_validate(naContext c, naRef me, int argc, naRef* args)
     return result;
 }
 
-static struct func { char* name; naCFunction func; } funcs[] = {
+static naCFuncItem funcs[] = {
     { "chstr", f_chstr },
     { "strc", f_strc },
     { "substr", f_substr },
     { "size", f_size },
     { "validate", f_validate },
+    { 0 }
 };
-
-static void setsym(naContext c, naRef hash, char* sym, naRef val)
-{
-    naRef name = naStr_fromdata(naNewString(c), sym, strlen(sym));
-    naHash_set(hash, naInternSymbol(name), val);
-}
 
 naRef naUtf8Lib(naContext c)
 {
-    naRef ns = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++)
-        setsym(c, ns, funcs[i].name,
-               naNewFunc(c, naNewCCode(c, funcs[i].func)));
-    return ns;
+    return naGenLib(c, funcs);
 }

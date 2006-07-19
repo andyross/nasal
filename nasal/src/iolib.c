@@ -201,7 +201,7 @@ static naRef f_stat(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
-static struct func { char* name; naCFunction func; } funcs[] = {
+static naCFuncItem funcs[] = {
     { "close", f_close },
     { "read", f_read },
     { "write", f_write },
@@ -210,26 +210,17 @@ static struct func { char* name; naCFunction func; } funcs[] = {
     { "open", f_open },
     { "readln", f_readln },
     { "stat", f_stat },
+    { 0 }
 };
-
-static void setsym(naContext c, naRef hash, char* sym, naRef val)
-{
-    naRef name = naStr_fromdata(naNewString(c), sym, strlen(sym));
-    naHash_set(hash, naInternSymbol(name), val);
-}
 
 naRef naIOLib(naContext c)
 {
-    naRef ns = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++)
-        setsym(c, ns, funcs[i].name,
-               naNewFunc(c, naNewCCode(c, funcs[i].func)));
-    setsym(c, ns, "SEEK_SET", naNum(SEEK_SET));
-    setsym(c, ns, "SEEK_CUR", naNum(SEEK_CUR));
-    setsym(c, ns, "SEEK_END", naNum(SEEK_END));
-    setsym(c, ns, "stdin", naIOGhost(c, stdin));
-    setsym(c, ns, "stdout", naIOGhost(c, stdout));
-    setsym(c, ns, "stderr", naIOGhost(c, stderr));
+    naRef ns = naGenLib(c, funcs);
+    naAddSym(c, ns, "SEEK_SET", naNum(SEEK_SET));
+    naAddSym(c, ns, "SEEK_CUR", naNum(SEEK_CUR));
+    naAddSym(c, ns, "SEEK_END", naNum(SEEK_END));
+    naAddSym(c, ns, "stdin", naIOGhost(c, stdin));
+    naAddSym(c, ns, "stdout", naIOGhost(c, stdout));
+    naAddSym(c, ns, "stderr", naIOGhost(c, stderr));
     return ns;
 }

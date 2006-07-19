@@ -221,3 +221,17 @@ void* naGetUserData(naContext c)
     if(c->userData) return c->userData;
     return c->callParent ? naGetUserData(c->callParent) : 0;
 }
+
+void naAddSym(naContext c, naRef ns, char *sym, naRef val)
+{
+    naRef name = naStr_fromdata(naNewString(c), sym, strlen(sym));
+    naHash_set(ns, naInternSymbol(name), val);
+}
+
+naRef naGenLib(naContext c, naCFuncItem *fns)
+{
+    naRef ns = naNewHash(c);
+    for(/**/; fns->name; fns++)
+        naAddSym(c, ns, fns->name, naNewFunc(c, naNewCCode(c, fns->func)));
+    return ns;
+}

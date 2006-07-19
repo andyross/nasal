@@ -71,23 +71,13 @@ static void regexDestroy(void* r)
     naFree(regex);
 }
 
-static struct func { char* name; naCFunction func; } funcs[] = {
+static naCFuncItem funcs[] = {
     { "compile", f_compile },
     { "exec", f_exec },
+    { 0 }
 };
-
-static void setsym(naContext c, naRef hash, char* sym, naRef val)
-{
-    naRef name = naStr_fromdata(naNewString(c), sym, strlen(sym));
-    naHash_set(hash, naInternSymbol(name), val);
-}
 
 naRef naRegexLib(naContext c)
 {
-    naRef ns = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++)
-        setsym(c, ns, funcs[i].name,
-               naNewFunc(c, naNewCCode(c, funcs[i].func)));
-    return ns;
+    return naGenLib(c, funcs);
 }

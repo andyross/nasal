@@ -439,6 +439,9 @@ static naRef run(struct Context* ctx)
     int op, arg;
     naRef a, b, c;
 
+    ctx->dieArg = naNil();
+    ctx->error[0] = 0;
+
     FIXFRAME();
 
     while(1) {
@@ -487,7 +490,7 @@ static naRef run(struct Context* ctx)
             ctx->opTop--;
             break;
         case OP_CAT:
-            // stringify can call the GC, so don't take stuff of the stack!
+            // stringify can call the GC, so don't take stuff off the stack!
             a = stringify(ctx, ctx->opStack[ctx->opTop-1]);
             b = stringify(ctx, ctx->opStack[ctx->opTop-2]);
             c = naStr_concat(naNewString(ctx), b, a);
@@ -731,8 +734,6 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     if(!IS_NIL(obj))
         naHash_set(locals, globals->meRef, obj);
 
-    ctx->dieArg = naNil();
-
     ctx->opTop = ctx->markTop = 0;
     ctx->fTop = 1;
     ctx->fStack[0].func = func;
@@ -742,16 +743,24 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 
     setupArgs(ctx, ctx->fStack, args, argc);
 
-    // Return early if an error occurred.  It will be visible to the
-    // caller via naGetError().
-    ctx->error[0] = 0;
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
         return naNil();
     }
-
     result = run(ctx);
     if(!ctx->callParent) naModUnlock(ctx);
     return result;
 }
 
+naRef naContinue(naContext ctx)
+{
+    naRef result;
+    if(!ctx->callParent) naModLock(ctx);
+    if(setjmp(ctx->jumpHandle)) {
+        if(!ctx->callParent) naModUnlock(ctx);
+        return naNil();
+    }
+    result = run(ctx);
+    if(!ctx->callParent) naModUnlock(ctx);
+    return result;
+}

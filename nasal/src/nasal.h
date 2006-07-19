@@ -93,6 +93,13 @@ naRef naBindToContext(naContext ctx, naRef code);
 // variables.  Any of args, obj or locals may be nil.
 naRef naCall(naContext ctx, naRef func, int argc, naRef* args, naRef obj, naRef locals);
 
+// As naCall(), but continues execution at the operation after a
+// previous die() call or runtime error.  Useful to do "yield"
+// semantics, leaving the context in a condition where it can be
+// restarted from C code.  Cannot be used currently to restart a
+// failed operation.
+naRef naContinue(naContext ctx);
+
 // Throw an error from the current call stack.  This function makes a
 // longjmp call to a handler in naCall() and DOES NOT RETURN.  It is
 // intended for use in library code that cannot otherwise report an
@@ -202,6 +209,11 @@ int          naIsGhost(naRef r);
 // called.
 void naModLock();
 void naModUnlock();
+
+// Library utilities.  Generate namespaces and add symbols.
+typedef struct { char* name; naCFunction func; } naCFuncItem;
+naRef naGenLib(naContext c, naCFuncItem *funcs);
+void naAddSym(naContext c, naRef ns, char *sym, naRef val);
 
 #ifdef __cplusplus
 } // extern "C"

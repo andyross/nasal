@@ -6,6 +6,7 @@
 #include "util_filter.h"
 #include "util_script.h"
 #include "http_log.h"
+#include "apr_strings.h"
 
 #include "nasal.h"
 
@@ -189,6 +190,36 @@ static naRef f_setstatus(naContext ctx, naRef me, int argc, naRef* args)
     return val;
 }
 
+static int hex(int c)
+{
+    if(c <= '9') return c - '0';
+    else if(c <= 'F') return c - 'A' + 10;
+    else if(c <= 'f') return c - 'a' + 10;
+    return 0;
+}
+
+static naRef f_urldec(naContext ctx, naRef me, int argc, naRef* args)
+{
+    const char* url;
+    int i, j=0, len;
+    char* buf;
+    naRef result;
+    if(argc<1 || !naIsString(args[0]))
+        naRuntimeError(ctx, "bad/missing argument to urldec");
+    url = naStr_data(args[0]);
+    len = naStr_len(args[0]);
+    buf = malloc(len);
+    for(i=0; i<len; i++) {
+        if(url[i] == '%' && (i+2)<len) {
+            buf[j++] = (hex(url[i+1]) << 4) | hex(url[i+2]);
+            i += 2;
+        } else { buf[j++] = (url[i] == '+' ? ' ' : url[i]); }
+    }
+    result = naStr_fromdata(naNewString(ctx), buf, j);
+    free(buf);
+    return result;
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "print", f_print },
@@ -197,6 +228,7 @@ static struct func funcs[] = {
     { "gethdr", f_gethdr },
     { "sethdr", f_sethdr },
     { "setstatus", f_setstatus },
+    { "urldec", f_urldec },
 };
 static naRef make_syms(naContext ctx)
 {
@@ -262,13 +294,11 @@ static int nasal_handle_request(request_rec *r)
     struct nasal_cfg *cfg = ap_get_module_config(r->server->module_config,
                                                  &nasal_module);
     /* Is it ours? */
-    /* FIXME: make naHash_cget() work here so we can skip
-     * naNewContext() for stuff we don't handle. */
-    ctx = naNewContext();
-    if(!naHash_get(cfg->handlers, NASTR(r->handler), &handler)) {
-        naFreeContext(ctx);
+    handler = naHash_cget(cfg->handlers, (char*)r->handler);
+    if(naIsNil(handler))
         return DECLINED;
-    }
+
+    ctx = naNewContext();
 
     /* Initialize CGI "environment" vars and our bucket reader */
     ap_add_common_vars(r);
@@ -276,6 +306,10 @@ static int nasal_handle_request(request_rec *r)
     memset(&nreq, 0, sizeof(nreq));
     nreq.r = r;
     r->status = HTTP_OK;
+
+    /* Sane default if no one overrides it */
+    if(!r->content_type)
+        r->content_type = apr_pstrdup(r->pool, "text/html");
 
     /* Call the handler */
     ctx = naNewContext();
@@ -287,10 +321,10 @@ static int nasal_handle_request(request_rec *r)
     }
     naFreeContext(ctx);
 
-    /* FIXME: what's the proper behavior here?  I have to return "OK"
-     * if I want the generated page to show.  But I have to return the
-     * status (and *not* "OK") if I want Apache's internal error
-     * handling to get hooked. */
+    /* FIXME: check r->headers_out for Content-Type and set it (as
+     * "content-type" -- lower cased!) to the r->content_type field
+     * instead.  Apache ignores the headers. */
+
     return r->status < 400 ? OK : r->status;
 }
 
@@ -310,10 +344,8 @@ static const char *cmd_nasal_handler(cmd_parms *cmd, void *whatisthis,
     naContext ctx = naNewContext();
     naRef code = run_file(ctx, cfg, file, cmd, &err);
     if(!err) {
-        if(!naIsFunc(code))
-            err = "NasalHandler code did not return a function";
-        else
-            naHash_set(cfg->handlers, NASTR(handler), code);
+        if(naIsFunc(code)) naHash_set(cfg->handlers, NASTR(handler), code);
+        else               err = "NasalHandler code did not return a function";
     }
     naFreeContext(ctx);
     return err;

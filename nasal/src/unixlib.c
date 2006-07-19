@@ -156,8 +156,7 @@ static naRef f_environ(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
-struct func { char* name; naCFunction func; };
-static struct func funcs[] = {
+static naCFuncItem funcs[] = {
     { "pipe", f_pipe },
     { "fork", f_fork },
     { "dup2", f_dup2 },
@@ -169,19 +168,10 @@ static struct func funcs[] = {
     { "time", f_time },
     { "chdir", f_chdir },
     { "environ", f_environ },
+    { 0 }
 };
-
-static void setsym(naContext c, naRef hash, char* sym, naRef val)
-{
-    naHash_set(hash, naInternSymbol(NEWCSTR(c, sym)), val);
-}
 
 naRef naUnixLib(naContext c)
 {
-    naRef ns = naNewHash(c);
-    int i, n = sizeof(funcs)/sizeof(struct func);
-    for(i=0; i<n; i++)
-        setsym(c, ns, funcs[i].name,
-               naNewFunc(c, naNewCCode(c, funcs[i].func)));
-    return ns;
+    return naGenLib(c, funcs);
 }
