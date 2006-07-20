@@ -1,18 +1,8 @@
 /*
- * I made Nasal interactive console and attached to this mail.
- * 
- * To compile it, you need Readline library.  int-nasal.c is used instead
- * of prog-nasal.c. After compile int-nasal.c, link with other Nasal source
- * files (and Readline library) except prog-nasal.c.
- * 
- * As the feature of this program, you can complete the variable and
- * function names with TAB key.
- * 
- * This program is will be useful for checking short scripts, and you can
- * use Nasal as intellegent calculator.
- *
- * Manabu NISHIYAMA
-*/
+ * Interactive (readline-based) Nasal interpreter, with command line
+ * editing, history, and even tab-completion of Nasal symbols!
+ * Written by Manabu Nishiyama and Jonatan Liljedahl
+ */
 
 #include <string.h>
 #include <stdio.h>
@@ -148,10 +138,11 @@ char *name_generator(const char *text, int state)
 #define NASTR(s) naStr_fromdata(naNewString(ctx), (s), strlen((s)))
 int main(int argc, char** argv)
 {
-    char *buf, *script = "(interactive mode)";
+    char *buf, *text=NULL, *script = "(interactive mode)";
     struct Context *ctx;
     naRef code, result, sresult;
     int errLine, i;
+    int cont = 0;
 
     /* Tell the GNU Readline library how to complete. */
     rl_completion_entry_function = (int (*)(const char*, int))name_generator;
@@ -186,26 +177,51 @@ int main(int argc, char** argv)
     candidate = naNewVector(ctx);
     naSave(ctx, candidate);
     
-    
+    cont = 0;
     while(1){
         // Read one line.
-        buf = readline("Nasal: ");
-	if (*buf && buf){
-	    add_history (buf);
+	if(cont == 0){
+	    buf = readline("Nasal: ");
 	}else{
-	    continue;
+	    buf = readline(".....: ");
+	}
+	
+	if (buf){
+	    if(*buf != '\0') add_history (buf);
+	}else{
+	    break;
 	}
 	if(!strcmp("exit", buf)) break;
 
+	if(text != NULL) {
+	    int i = strlen(text);
+	    text = realloc(text,i+strlen(buf)+1);
+	    strcpy(text+i,buf);
+	}else{
+	    text = strdup(buf);
+	}
+	
+	free(buf);
+
 	// Parse the code in the buffer.  The line of a fatal parse error
 	// is returned via the pointer.
-	code = naParseCode(ctx, NASTR(script), 1, buf, strlen(buf), &errLine);
-	free(buf);
+	code = naParseCode(ctx, NASTR(script), 1, text, strlen(text), &errLine);
 	if(naIsNil(code)) {
-	    fprintf(stderr, "Parse error: %s at line %d\n",
-		    naGetError(ctx), errLine);
+	    // Decide program is continued or not
+	    if(strcmp(naGetError(ctx), "unterminated brace") == 0){
+		cont = 1;
+	    }else{
+		fprintf(stderr, "Parse error: %s at line %d\n",
+			naGetError(ctx), errLine);
+		free(text);
+		text = NULL;
+		cont = 0;
+	    }
 	    continue;
 	}
+	free(text);
+	text = NULL;
+	cont = 0;
 	
 	// Run it.  Do something with the result if you like.
 	result = naCall(ctx, code, 0, 0, naNil(), nspace);
@@ -228,7 +244,6 @@ int main(int argc, char** argv)
 	fprintf(stdout, "\n");
     }
     
-    checkError(ctx);
     return 0;
 }
 #undef NASTR
