@@ -6,19 +6,29 @@
 # sudo, but you can pick your own mechanism.
 SUDO=sudo
 
-NASAL_OBJS=bitslib.o code.o codegen.o gc.o hash.o iolib.o lex.o lib.o	\
-           mathlib.o misc.o parse.o regexlib.o string.o thread-posix.o	\
-           thread-win32.o unixlib.o utf8lib.o vector.o
+# These are the default names, but Ubuntu (and AFAIK all debian
+# derivatives) give them separate names to disambiguate with older
+# Apache versions.
+APXS=apxs
+APACHECTL=apachectl
+#APXS=apxs2           # Ubuntu/Debian
+#APACHECTL=apache2ctl # Ubuntu/Debian
 
-all: mod_nasal.c libnasal.a
-	$(SUDO) apxs -i -a -c -I ../src -Wc,-Wall mod_nasal.c libnasal.a
-	$(SUDO) apachectl restart
+
+NASAL_SRCS=bitslib.c code.c codegen.c gc.c hash.c iolib.c lex.c lib.c	\
+           mathlib.c misc.c parse.c regexlib.c sqlitelib.c string.c	\
+           thread-posix.c thread-win32.c unixlib.c utf8lib.c vector.c
+
+CFLAGS=-I ../src -Wc,-Wall
+LIBS=-lsqlite3 -lpcre
+
+all: mod_nasal.c $(NASAL_SRCS)
+	$(SUDO) $(APXS) -i -a -c $(CFLAGS) $(LIBS) $^
+	$(SUDO) $(APACHECTL) restart
 
 clean:
-	$(SUDO) rm -rf libnasal.a $(NASAL_OBJS) mod_nasal.*o mod_nasal.la .libs
+	$(SUDO) rm -rf $(NASAL_SRCS) mod_nasal.la .libs
+	rm -rf *.o *.slo *.lo 
 
-libnasal.a: $(NASAL_OBJS)
-	ar cr $@ $^
-
-%.o : ../src/%.c
-	gcc -c -Wall -O2 -g -fPIC -pthread -D_REENTRANT $< 
+%.c:
+	ln -s ../src/$@ $@

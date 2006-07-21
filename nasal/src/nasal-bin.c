@@ -11,6 +11,7 @@
 #include <pthread.h>
 #endif
 
+#include "config.h"
 #include "nasal.h"
 
 void checkError(naContext ctx)
@@ -131,9 +132,14 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
+#ifdef HAVE_PCRE
+    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
+#endif
+#ifdef HAVE_SQLITE
+    naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naSQLiteLib(ctx));
+#endif
 
     // Build the arg vector
     args = malloc(sizeof(naRef) * (argc-2));

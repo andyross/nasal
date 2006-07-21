@@ -335,6 +335,44 @@
     in the order in which their opening parenthesis appears in the
     regular expression.
 
+</dl><h3>SQLite Library</h3><dl>
+<p>Integration with the SQLite
+    (<a href=http://www.sqlite.org>www.sqlite.org</a>) database
+    engine.
+
+<dt>sqlite.open(filename)
+<dd>Opens a connection to a SQLite database in the specified file,
+    creating the file if needed, and returns a db handle.  Signals
+    errors via die().
+
+<dt>sqlite.close(db)
+<dd>Closes the specified database connection.  This call is generally
+    optional; garbage collection will destroy stale connections.
+
+
+<dt>sqlite.prepare(db, sql)
+<dd>Creates a prepared statement on the specified database from the
+    SQL code in the second argument.  Signals errors via die().
+
+
+<dt>sqlite.exec(db, stmt, [opt. callback], bind_args...)
+<dd>Executes a SQL statement (either a string or a prepared statement
+    returned from prepare()).  The bind arguments are assigned in
+    order to the "?" placeholders in the original SQL.  Each row of
+    the result, if any, is placed in a hash table indexed by field
+    name.  If the optional callback argument is specified, it is
+    invoked once for each row, with the hash table as an argument.
+    Otherwise, all rows returned are appended to a single vector and
+    returned as the result of sqlite.exec().  Signals errors via die().
+
+
+<dt>sqlite.finalize(stmt)
+<dd>Finalizes and free storage associated with a prepared statement.
+    This call is generally optional; garbage collection will destroy
+    stale statements.
+
+
+
 </dl>
 
 </body>

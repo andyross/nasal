@@ -268,6 +268,7 @@ static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
     naHash_set(syms, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("unix")),  naUnixLib(ctx));
     naHash_set(syms, naInternSymbol(NASTR("utf8")),  naUtf8Lib(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("sqlite")),  naSQLiteLib(ctx));
     copy_hash(ctx, cfg->namespace, syms); 
 
     result = naCall(ctx, code, 0, 0, naNil(), syms);

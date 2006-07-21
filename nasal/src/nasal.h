@@ -58,6 +58,11 @@ typedef naRef (*naCFunction)(naContext ctx, naRef me, int argc, naRef* args);
 naContext naNewContext();
 void naFreeContext(naContext c);
 
+// Use this when making a call to a new context "underneath" a
+// preexisting context.  It allows stack walking to see through the
+// boundary, and eliminates the need to release the mod lock.
+naContext naSubContext(naContext super);
+
 // The context supports a user data pointer that C code can use to
 // store data specific to an naCall invocation without exposing it to
 // Nasal as a ghost.
@@ -122,6 +127,7 @@ naRef naIOLib(naContext c);
 naRef naRegexLib(naContext c);
 naRef naUnixLib(naContext c);
 naRef naUtf8Lib(naContext c);
+naRef naSQLiteLib(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

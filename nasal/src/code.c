@@ -205,9 +205,18 @@ struct Context* naNewContext()
     return c;
 }
 
+struct Context* naSubContext(struct Context* super)
+{
+    struct Context* ctx = naNewContext();
+    ctx->callParent = super;
+    super->callChild = ctx;
+    return ctx;
+}
+
 void naFreeContext(struct Context* c)
 {
     c->ntemps = 0;
+    if(c->callParent) c->callParent->callChild = 0;
     LOCK();
     c->nextFree = globals->freeContexts;
     globals->freeContexts = c;

@@ -207,7 +207,7 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     if(!IS_HASH(callns)) callns = naNil();
     if(!IS_FUNC(args[0]) || (!IS_NIL(callargs) && !IS_VEC(callargs)))
         naRuntimeError(c, "bad argument to call()");
-    subc = naNewContext();
+    subc = naSubContext(c);
     subc->callParent = c;
     c->callChild = subc;
     vr = IS_NIL(callargs) ? 0 : callargs.ref.ptr.vec->rec;
