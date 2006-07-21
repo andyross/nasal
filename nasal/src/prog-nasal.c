@@ -116,9 +116,7 @@ int main(int argc, char** argv)
     free(buf);
 
     // Make a hash containing the standard library functions.  This
-    // will be the namespace for a new script (more elaborate
-    // environments -- imported libraries, for example -- might be
-    // different).
+    // will be the namespace for a new script
     namespace = naStdLib(ctx);
 
     // Add application-specific functions (in this case, "print" and
@@ -129,11 +127,11 @@ int main(int argc, char** argv)
                naNewFunc(ctx, naNewCCode(ctx, newthread)));
 
     // Add extra libraries as needed.
+    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
     naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
 #ifdef HAVE_PCRE
     naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
 #endif
@@ -141,13 +139,20 @@ int main(int argc, char** argv)
     naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naSQLiteLib(ctx));
 #endif
 
+    // Bind the "code" object from naParseCode into a "function"
+    // object.  This is optional, really -- we could also just pass
+    // the namespace hash as the final argument to naCall().  But
+    // having the global namespace in an outer scope means that we
+    // won't be polluting it with the local variables of the script.
+    code = naBindFunction(ctx, code, namespace);
+
     // Build the arg vector
     args = malloc(sizeof(naRef) * (argc-2));
     for(i=0; i<argc-2; i++)
         args[i] = NASTR(argv[i+2]);
 
     // Run it.  Do something with the result if you like.
-    result = naCall(ctx, code, argc-2, args, naNil(), namespace);
+    result = naCall(ctx, code, argc-2, args, naNil(), naNil());
 
     free(args);
 
