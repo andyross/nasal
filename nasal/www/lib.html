@@ -44,7 +44,9 @@
 
 <dt>int(value)
 <dd>Returns the integer part of the numeric value of the single
-    argument, or nil if none exists.
+    argument, or nil if none exists.  Truncates towards zero, not
+    negative infinity (i.e. it's implemented in C as a double to
+    integer typecast).
 
 <dt>num(value)
 <dd>Returns the numeric value of the single argument, or nil if none
@@ -144,13 +146,15 @@
     expression was evaluated.  Level one is the enclosing scope, etc...
 
 <dt>bind(func, namespace=nil, outer_scope=nil)
-<dd>Creates a new function argument from the code (but *not* lexical
-    context) of the function argument, the specified namespace hash
-    table, and the specified outer scope (which is itself a function
-    argument).  The result is a function object that looks as if the
-    original func{...} expression had been evaluated inside a function
-    whose local variables are the namespace hash, inside the func{...}
-    code block defined by the outer_scope argument.
+<dd>The opposite of closure, bind() creates a new function object.  A
+    function in Nasal is three things: the first is the actual
+    bytecode or C function pointer of the function (specified here via
+    another function argument from which to extract the code).  The
+    second is the local variable namespace (a hash table) of the
+    "super-function" that was running when the function was bound
+    (i.e., when the func{...} expression was evaluated).  The third is
+    the closure object of that super-function from which the lexical
+    environment of the super-super-function can be extracted, etc...
 
 </dl><h3>Math Library</h3><dl>
 
@@ -316,7 +320,7 @@
 
 </dl><h3>Regex (PCRE) Library</h3><dl>
 
-<dt>regex.compile(regex, opts="")
+<dt>regex.comp(regex, opts="")
 <dd>Calls pcre_compile()/pcre_study() and returns a ghost representing
     the compiled regular expression object.  The opts string
     (corresponding to the "letters after the slash" in a perl regex)
