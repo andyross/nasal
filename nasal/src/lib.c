@@ -134,12 +134,12 @@ static naRef substr(naContext c, naRef me, int argc, naRef* args)
     start = (int)startR.num;
     if(naIsNil(lenR)) {
         len = naStr_len(src) - start;
-        if(len < 0) return naNil();
     } else {
         lenR = naNumValue(lenR);
         if(naIsNil(lenR)) return naNil();
         len = (int)lenR.num;
     }
+    if(len < 0) return naNil();
     return naStr_substr(naNewString(c), src, start, len);
 }
 

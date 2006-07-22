@@ -47,7 +47,8 @@ void* threadtop(void* param)
 }
 
 // A brutally simple "create a thread" API, taking a single function.
-// Useful for test purposes, but for little else.
+// Useful for test purposes, but for little else.  Note that there are
+// no synchronization primitives defined!
 static naRef newthread(naContext c, naRef me, int argc, naRef* args)
 {
 #ifndef _WIN32

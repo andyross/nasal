@@ -391,23 +391,24 @@ static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
     return val;
 }
 
-// Recursively descend into the parents lists
-static int getMember_r(struct Context* ctx, naRef obj, naRef fld,
-                       naRef* result, int count)
+// Funky API: returns null to indicate no member, an empty string to
+// indicate success, or a non-empty error message.  Works this way so
+// we can generate smart error messages without throwing them with a
+// longjmp -- this gets called under naObjMember() from C code.
+static const char* getMember_r(naRef obj, naRef field, naRef* out, int count)
 {
+    int i;
     naRef p;
-    if(--count < 0) ERR(ctx, "too many parents");
-    if(!IS_HASH(obj)) ERR(ctx, "non-objects have no members");
-    if(naHash_get(obj, fld, result)) return 1;
-    if(naHash_get(obj, globals->parentsRef, &p)) {
-        if(IS_VEC(p)) {
-            int i;
-            struct VecRec* v = p.ref.ptr.vec->rec;
-            for(i=0; i<v->size; i++)
-                if(getMember_r(ctx, v->array[i], fld, result, count))
-                    return 1;
-        } else
-            ERR(ctx, "object \"parents\" field not vector");
+    struct VecRec* pv;
+    if(--count < 0) return "too many parents";
+    if(!IS_HASH(obj)) return 0;
+    if(naHash_get(obj, field, out)) return "";
+    if(!naHash_get(obj, globals->parentsRef, &p)) return 0;
+    if(!IS_VEC(p)) return "object \"parents\" field not vector";
+    pv = p.ref.ptr.vec->rec;
+    for(i=0; i<pv->size; i++) {
+        const char* err = getMember_r(pv->array[i], field, out, count);
+        if(err) return err; /* either an error or success */
     }
     return 0;
 }
@@ -415,8 +416,15 @@ static int getMember_r(struct Context* ctx, naRef obj, naRef fld,
 static void getMember(struct Context* ctx, naRef obj, naRef fld,
                       naRef* result, int count)
 {
-    if(!getMember_r(ctx, obj, fld, result, count))
-        naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
+    const char* err = getMember_r(obj, fld, result, count);
+    if(!err)   naRuntimeError(ctx, "No such member: %s", naStr_data(fld));
+    if(err[0]) naRuntimeError(ctx, err);
+}
+
+int naObjMember(naRef obj, naRef field, naRef* out)
+{
+    const char* err = getMember_r(obj, field, out, 64);
+    return err && !err[0];
 }
 
 // OP_EACH works like a vector get, except that it leaves the vector

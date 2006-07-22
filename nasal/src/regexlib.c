@@ -25,7 +25,7 @@ static int parseOpts(naContext c, char* s)
     return opts;
 }
 
-static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
+static naRef f_comp(naContext c, naRef me, int argc, naRef* args)
 {
     int erroff, opts = 0;
     const char* errptr;
@@ -33,7 +33,7 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     naRef pat = argc > 0 ? naStringValue(c, args[0]) : naNil();
     naRef optr = argc > 1 ? args[1] : naNil();
     if(!IS_STR(pat) || (!IS_NIL(optr) && !IS_STR(optr)))
-        naRuntimeError(c, "bad arg to regex.compile");
+        naRuntimeError(c, "bad arg to regex.comp");
     if(IS_STR(optr)) opts = parseOpts(c, (char*)optr.ref.ptr.str->data);
     regex = naAlloc(sizeof(struct Regex));
     regex->re = pcre_compile((char*)pat.ref.ptr.str->data, opts, &errptr, &erroff, 0);
@@ -72,7 +72,7 @@ static void regexDestroy(void* r)
 }
 
 static naCFuncItem funcs[] = {
-    { "compile", f_compile },
+    { "comp", f_comp },
     { "exec", f_exec },
     { 0 }
 };

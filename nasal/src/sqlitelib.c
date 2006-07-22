@@ -72,8 +72,8 @@ static naRef f_prepare(naContext c, naRef me, int argc, naRef* args)
     return naNewGhost(c, &StmtType, g);
 }
 
-// FIXME: intern the field names somewhere?  Per-database cache?
-// FIXME: need to catch and re-throw errors from the callback.
+// FIXME: need to catch and re-throw errors from the callback.  Right
+// now they just get silently eaten.
 static naRef run_query(naContext c, sqlite3* db, sqlite3_stmt* stmt,
                        naRef callback)
 {
@@ -89,7 +89,9 @@ static naRef run_query(naContext c, sqlite3* db, sqlite3_stmt* stmt,
             fields = malloc(cols * sizeof(naRef));
             for(i=0; i<cols; i++) {
                 const char* s = sqlite3_column_name(stmt, i);
-                fields[i] = naStr_fromdata(naNewString(c), (char*)s, strlen(s));
+                naRef fn = naStr_fromdata(naNewString(c), (char*)s, strlen(s));
+                // Do we really want to use the global intern table here?
+                fields[i] = naInternSymbol(fn);
             }
         }
         row = naNewHash(c);

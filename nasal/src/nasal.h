@@ -112,9 +112,10 @@ naRef naContinue(naContext ctx);
 // doubt, return naNil() as your error condition.  Works like printf().
 void naRuntimeError(struct Context* c, const char* fmt, ...);
 
-// Call a method on an object (NOTE: func is a function binding, *not*
-// a code object as returned from naParseCode).
-naRef naMethod(naContext ctx, naRef func, naRef object);
+// Retrieve the specified member from the object, respecting the
+// "parents" array as for "object.field".  Returns zero for missing
+// fields.
+int naObjMember(naRef obj, naRef field, naRef* out);
 
 // Returns a hash containing functions from the Nasal standard library
 // Useful for passing as a namespace to an initial function call
