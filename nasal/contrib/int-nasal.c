@@ -1,16 +1,10 @@
-/*
- * Interactive (readline-based) Nasal interpreter, with command line
- * editing, history, and even tab-completion of Nasal symbols!
- * Written by Manabu Nishiyama and Jonatan Liljedahl
- */
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <readline/readline.h>
-
+#include <readline/history.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -21,7 +15,41 @@
 
 #include "nasal.h"
 
-naRef nspace, candidate;
+void dumpByteCode(naRef codeObj);
+/*
+//uncomment this if dumpByteCode is not in debug.c
+void dumpByteCode(naRef codeObj) {
+    unsigned short *byteCode = codeObj.ref.ptr.code->byteCode;
+    int ip = 0, op, c;
+    naRef a;
+    while(ip < codeObj.ref.ptr.code->codesz) {
+        op = byteCode[ip++];
+        printf("%8d %-12s",ip-1,opStringDEBUG(op));
+        switch(op) {
+            case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
+                c=byteCode[ip++];
+                a=codeObj.ref.ptr.code->constants[c];
+                printf(" %-4d ",c);
+                if(IS_CODE(a)) {
+                    printf("(CODE)\n[\n");
+                    dumpByteCode(a);
+                    printf("]\n");
+                } else
+                    printRefDEBUG(a);
+            break;
+            case OP_JIFNOT: case OP_JIFNIL: case OP_JMP: case OP_JMPLOOP:
+            case OP_FCALL: case OP_MCALL: case OP_FTAIL: case OP_MTAIL:
+                printf(" %d\n",byteCode[ip++]);
+            break;
+            default:
+                printf("\n");
+        }
+    }
+}
+*/
+
+int do_list = 0;
+naRef namespace, candidate;
 
 void checkError(naContext ctx)
 {
@@ -30,8 +58,8 @@ void checkError(naContext ctx)
         fprintf(stderr, "Runtime error: %s\n  at %s, line %d\n",
                 naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
                 naGetLine(ctx, 0));
-	
-	for(i=1; i<naStackDepth(ctx); i++)
+
+        for(i=1; i<naStackDepth(ctx); i++)
             fprintf(stderr, "  called from: %s, line %d\n",
                     naStr_data(naGetSourceFile(ctx, i)),
                     naGetLine(ctx, i));
@@ -39,6 +67,109 @@ void checkError(naContext ctx)
     }
 }
 
+int printRef(naContext ctx, naRef r, int max)
+{
+    int i;
+	static int count;
+	if(max) count=max;
+	else
+	if(count == 0) {
+		printf("...");
+		return 1;
+	}
+
+	count--;
+	
+    if(naIsNum(r)) {
+        printf("%g", r.num);
+    } else if(naIsNil(r)) {
+        printf("<nil>");
+    } else if(naIsString(r)) {
+        printf("\"%s\"",naStr_data(r));
+    } else if(naIsVector(r)) {
+        int i,sz=naVec_size(r);
+        printf("[");
+        for(i=0;i<sz;i++) {
+            if(printRef(ctx,naVec_get(r,i),0)) break;
+            if(i<sz-1) printf(", ");
+        }
+        printf("]");
+    } else if(naIsHash(r)) {
+        int i,sz=naHash_size(r);
+        naRef keys = naNewVector(ctx);
+        naHash_keys(keys,r);
+        printf("{");
+        for(i=0;i<sz;i++) {
+            naRef val,key=naVec_get(keys,i);
+            if(printRef(ctx,key,0)) break;
+            printf(" : ");
+            naHash_get(r,key,&val);
+            printRef(ctx,val,0);
+            if(i<sz-1) printf(", ");
+        }       
+        printf("}");
+    } else if(naIsFunc(r)) {
+        printf("<func> %p",r.ref.ptr.func);
+    } else if(naIsCode(r)) {
+        printf("<code> %p",r.ref.ptr.code);
+    } else if(naIsGhost(r)) {
+        printf("<ghost> %p",r.ref.ptr.ghost);
+    }
+	return 0;
+}
+
+char *name_generator(const char *text, int state)
+{
+    static naRef ns;
+    static int list_index, len, pos;
+    char *name;
+
+    /* If this is a new word to complete, initialize now.  This
+       includes saving the length of TEXT for efficiency, and
+       initializing the index variable to 0. */
+
+    if (!state){
+        char *dtext = strdup(text), *start = dtext, *end;
+
+    ns = namespace;
+    pos = 0;
+    while(naVec_size(candidate)) naVec_removelast(candidate);
+    while((end = strchr(start, '.'))){
+        *end = '\0';
+        ns = naHash_cget(ns, start);
+        pos = end-dtext+1;
+        *end = '.';
+        start = end+1;
+        if (!naIsHash(ns)){
+            break;
+        }
+    }
+    free(dtext);
+
+    list_index = 0;
+    len = strlen(text+pos);
+    naHash_keys(candidate, ns);
+    }
+    /* Return the next name which partially matches from the
+       command list. */
+    while((name = naStr_data(naVec_get(candidate, list_index)))){
+        list_index++;
+
+    if (strncmp (name, text+pos, len) == 0){
+        //Allocated memory is to be freed by Readline library.
+        char *p = (char *)malloc(strlen(text)+strlen(name)-len+1);
+      
+        strcpy(p, text);
+        p[pos] = '\0';
+        strcat(p, name);
+        strcat(p, naIsHash((naHash_cget(ns, name))) ? ".":"\0");
+        return p;
+    }
+    }
+    
+    /* If no names matched, then return NULL. */
+    return (char *)0;
+}
 
 #ifdef _WIN32
 DWORD WINAPI threadtop(LPVOID param)
@@ -82,168 +213,185 @@ static naRef print(naContext c, naRef me, int argc, naRef* args)
     return naNil();
 }
 
-char *name_generator(const char *text, int state)
-{
-    static naRef ns;
-    static int list_index, len, pos;
-    char *name;
+#define NASTR(s) naStr_fromdata(naNewString(ctx), (s), strlen((s)))
 
-    /* If this is a new word to complete, initialize now.  This
-       includes saving the length of TEXT for efficiency, and
-       initializing the index variable to 0. */
+void naInteractive(naContext ctx, naRef namespace) {
+    int level=0;
+    char prompt[] = ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ";
+    char *text=NULL,*buf;
+    int escape=0;
+    int in_string=0;
+    int errLine;
+    naRef code,result;
 
-    if (!state){
-        char *dtext = strdup(text), *start = dtext, *end;
+    printf("Press Ctrl-D to exit nasal interpreter\n");
+    while(1) {
+        char *s;
+        s=prompt+strlen(prompt)-level-2;
+        if(s<prompt) s=prompt;
+        buf = readline(s);
+        if(!buf) break;
 
-	ns = nspace;
-	pos = 0;
-	while(naVec_size(candidate)) naVec_removelast(candidate);
-	while((end = strchr(start, '.'))){
-	    *end = '\0';
-	    ns = naHash_cget(ns, start);
-	    pos = end-dtext+1;
-	    *end = '.';
-	    start = end+1;
-	    if (!naIsHash(ns)){
-	        break;
-	    }
-	}
-	free(dtext);
+        s=buf;
+        while(*s) {
+            if(!escape && *s == '"') {
+                if(in_string==2) {
+                    in_string=0;
+                    level--;
+                } else
+                if(in_string==0) {
+                    in_string=2;
+                    level++;
+                }
+            }
+            else
+            if(!escape && *s == '\'') {
+                if(!escape && in_string==1) {
+                    in_string=0;
+                    level--;
+                } else
+                if(in_string==0) {
+                    in_string=1;
+                    level++;
+                }
+            }
+            else
+            if(!(in_string || escape) && strchr("{[(",*s)) level++;
+            else
+            if(!(in_string || escape) && strchr("}])",*s)) level--;
+            escape=0;
+            if(*s == '\\') escape=1;
+            else
+            if(!in_string && *s == '`') escape=1;
+            s++;
+        }
+        if(level<0) level=0;
 
-	list_index = 0;
-	len = strlen(text+pos);
-	naHash_keys(candidate, ns);
+        if(text) {
+            int i = strlen(text);
+            text = realloc(text,i+strlen(buf)+1);
+            strcpy(text+i,buf);
+        } else
+            text=strdup(buf);
+
+        if(level==0) {
+            code = naParseCode(ctx, naNil(), 1, text, strlen(text), &errLine);
+            free(text);
+            text=NULL;
+        }
+        add_history(buf);
+        free(buf);
+
+        if(level==0) {
+            if(naIsNil(code)) {
+                fprintf(stderr, "Parse error: %s\n", naGetError(ctx));
+                continue;
+            }
+            if(do_list)
+                dumpByteCode(code);
+            else {
+                result = naCall(ctx, code, 0, NULL, naNil(), namespace);
+				naHash_delete(namespace, naInternSymbol(NASTR("arg")));
+                
+				if(naGetError(ctx))
+                    fprintf(stderr, "Runtime error: %s\n",naGetError(ctx));
+                else {
+                    printRef(ctx,result,500);
+                    printf("\n");
+                }
+            }
+        }
     }
-    /* Return the next name which partially matches from the
-       command list. */
-    while((name = naStr_data(naVec_get(candidate, list_index)))){
-        list_index++;
-
-	if (strncmp (name, text+pos, len) == 0){
-	    //Allocated memory is to be freed by Readline library.
-	    char *p = (char *)malloc(strlen(text)+strlen(name)-len+1);
-	  
-	    strcpy(p, text);
-	    p[pos] = '\0';
-	    strcat(p, name);
-	    strcat(p, naIsHash((naHash_cget(ns, name))) ? ".":"\0");
-	    return p;
-	}
-    }
-    
-    /* If no names matched, then return NULL. */
-    return (char *)0;
 }
 
-#define NASTR(s) naStr_fromdata(naNewString(ctx), (s), strlen((s)))
+void naScriptfile(naContext ctx, char *script, int argc, char **argv, naRef namespace)
+{
+    FILE* f;
+    struct stat fdat;
+    char *buf;
+    naRef code, result, *args;
+    int errLine, i;
+
+    f = fopen(script, "r");
+    if(!f) {
+        fprintf(stderr, "nasal: could not open input file: %s\n", script);
+        exit(1);
+    }
+    stat(script, &fdat);
+    buf = malloc(fdat.st_size);
+    if(fread(buf, 1, fdat.st_size, f) != fdat.st_size) {
+        fprintf(stderr, "nasal: error in fread()\n");
+        exit(1);
+    }
+
+    code = naParseCode(ctx, NASTR(script), 1, buf, fdat.st_size, &errLine);
+    free(buf);
+    if(naIsNil(code)) {
+        fprintf(stderr, "Parse error: %s at line %d\n",
+                naGetError(ctx), errLine);
+        exit(1);
+    }
+
+    if(do_list) {
+        dumpByteCode(code);
+    } else {
+        args = malloc(sizeof(naRef) * (argc));
+        for(i=0; i<argc; i++)
+            args[i] = NASTR(argv[i]);
+        result = naCall(ctx, code, argc, args, naNil(), namespace);
+        printf("[Result: ");
+        printRef(ctx,result,1000);
+        printf(" ]\n");
+        free(args);
+        checkError(ctx);
+    }
+}
+
 int main(int argc, char** argv)
 {
-    char *buf, *text=NULL, *script = "(interactive mode)";
-    struct Context *ctx;
-    naRef code, result, sresult;
-    int errLine, i;
-    int cont = 0;
+    char *script;
+    naContext ctx;
+    argv++; argc--;
+    
+    if(argc && strcmp(*argv,"--list")==0) {
+        argv++; argc--;
+        do_list = 1;
+    }
 
-    /* Tell the GNU Readline library how to complete. */
+    if(argc < 1) {
+        script = NULL;
+    } else {
+        script = *argv++;
+        argc--;
+    }
+
     rl_completion_entry_function = (int (*)(const char*, int))name_generator;
     rl_completer_word_break_characters = " \t\n\"\\'`@$><=;,|&{}()[]+-/*";
     rl_completion_append_character = '\0';
     
-    // Create an interpreter context
     ctx = naNewContext();
-
-    // Make a hash containing the standard library functions.  This
-    // will be the namespace for a new script (more elaborate
-    // environments -- imported libraries, for example -- might be
-    // different).
-    nspace = naStdLib(ctx);
-    naSave(ctx, nspace);
     
-    // Add application-specific functions (in this case, "print" and
-    // the math library) to the namespace if desired.
-    naHash_set(nspace, naInternSymbol(NASTR("print")),
+    namespace = naStdLib(ctx);
+    naSave(ctx,namespace); //is this needed?
+    naHash_set(namespace, naInternSymbol(NASTR("print")),
                naNewFunc(ctx, naNewCCode(ctx, print)));
-    naHash_set(nspace, naInternSymbol(NASTR("thread")),
+    naHash_set(namespace, naInternSymbol(NASTR("thread")),
                naNewFunc(ctx, naNewCCode(ctx, newthread)));
-
-    // Add extra libraries as needed.
-    naHash_set(nspace, naInternSymbol(NASTR("math")), naMathLib(ctx));
-    naHash_set(nspace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
-    naHash_set(nspace, naInternSymbol(NASTR("io")), naIOLib(ctx));
-    //I have not installed PCRE yet...
-    //naHash_set(nspace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
-    naHash_set(nspace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
 
     candidate = naNewVector(ctx);
-    naSave(ctx, candidate);
+    naSave(ctx,candidate); //is this needed?
     
-    cont = 0;
-    while(1){
-        // Read one line.
-	if(cont == 0){
-	    buf = readline("Nasal: ");
-	}else{
-	    buf = readline(".....: ");
-	}
-	
-	if (buf){
-	    if(*buf != '\0') add_history (buf);
-	}else{
-	    break;
-	}
-	if(!strcmp("exit", buf)) break;
-
-	if(text != NULL) {
-	    int i = strlen(text);
-	    text = realloc(text,i+strlen(buf)+1);
-	    strcpy(text+i,buf);
-	}else{
-	    text = strdup(buf);
-	}
-	
-	free(buf);
-
-	// Parse the code in the buffer.  The line of a fatal parse error
-	// is returned via the pointer.
-	code = naParseCode(ctx, NASTR(script), 1, text, strlen(text), &errLine);
-	if(naIsNil(code)) {
-	    // Decide program is continued or not
-	    if(strcmp(naGetError(ctx), "unterminated brace") == 0){
-		cont = 1;
-	    }else{
-		fprintf(stderr, "Parse error: %s at line %d\n",
-			naGetError(ctx), errLine);
-		free(text);
-		text = NULL;
-		cont = 0;
-	    }
-	    continue;
-	}
-	free(text);
-	text = NULL;
-	cont = 0;
-	
-	// Run it.  Do something with the result if you like.
-	result = naCall(ctx, code, 0, 0, naNil(), nspace);
-	naHash_delete(nspace, naInternSymbol(NASTR("arg")));
-
-	// Did it fail? Print a nice warning, with stack trace
-	// information.
-	if(naGetError(ctx)) {
-	    fprintf(stderr, "Runtime error: %s\n", naGetError(ctx));
-
-	    for(i=1; i<naStackDepth(ctx); i++)
-		fprintf(stderr, "  called from: %s\n",
-			naStr_data(naGetSourceFile(ctx, i)));
-	    continue;
-	}
-	// Display result.
-	sresult = naStringValue(ctx, result);
-	if(naIsNil(sresult)) continue;
-	fwrite(naStr_data(sresult), 1, naStr_len(sresult), stdout);
-	fprintf(stdout, "\n");
-    }
-    
+    if(script)
+        naScriptfile(ctx,script,argc,argv,namespace);
+    else
+        naInteractive(ctx,namespace);
+        
     return 0;
 }
 #undef NASTR
