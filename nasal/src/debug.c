@@ -228,30 +228,31 @@ void dumpTokenList(struct Token* t, int prefix)
 }
 
 // Prints bytecode listing
-void dumpByteCode(naRef codeObj)
-{
-    unsigned short *opcodes = codeObj.ref.ptr.code->byteCode;
-    int ip, op, c;
+void dumpByteCode(naRef codeObj) {
+    unsigned short *byteCode = codeObj.ref.ptr.code->byteCode;
+    int ip = 0, op, c;
     naRef a;
-    for(ip = 0; ip < codeObj.ref.ptr.code->codesz; ip++) {
-        op = opcodes[ip];
-        printOpDEBUG(ip-1, op);
+    while(ip < codeObj.ref.ptr.code->codesz) {
+        op = byteCode[ip++];
+        printf("%8d %-12s",ip-1,opStringDEBUG(op));
         switch(op) {
-        case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
-            c = opcodes[ip++];
-            a = codeObj.ref.ptr.code->constants[c];
-            printf("IP: %d (%d) ", ip-1, c);
-            if(IS_CODE(a)) {
-                printf("\n---- CODE ----\n");
-                dumpByteCode(a);
-                printf("--------------\n");
-            } else
-                printRefDEBUG(a);
+            case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
+                c=byteCode[ip++];
+                a=codeObj.ref.ptr.code->constants[c];
+                printf(" %-4d ",c);
+                if(IS_CODE(a)) {
+                    printf("(CODE)\n[\n");
+                    dumpByteCode(a);
+                    printf("]\n");
+                } else
+                    printRefDEBUG(a);
             break;
-        case OP_JIFNOT: case OP_JIFNIL: case OP_JMP: case OP_JMPLOOP:
-        case OP_FCALL: case OP_MCALL: case OP_FTAIL: case OP_MTAIL:
-            printf("IP: %d [%d]\n", ip-1, opcodes[ip++]);
+            case OP_JIFNOT: case OP_JIFNIL: case OP_JMP: case OP_JMPLOOP:
+            case OP_FCALL: case OP_MCALL: case OP_FTAIL: case OP_MTAIL:
+                printf(" %d\n",byteCode[ip++]);
             break;
+            default:
+                printf("\n");
         }
     }
 }
