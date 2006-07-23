@@ -123,12 +123,12 @@ static void tmpStr(naRef* out, struct naStr* str, const char* key)
     out->ref.ptr.str = str;
 }
 
-int naObjMember_cget(naRef obj, const char* field, naRef* out)
+int naMember_cget(naRef obj, const char* field, naRef* out)
 {
     naRef key;
     struct naStr str;
     tmpStr(&key, &str, field);
-    return naObjMember_get(obj, key, out);
+    return naMember_get(obj, key, out);
 }
 
 naRef naHash_cget(naRef hash, char* key)

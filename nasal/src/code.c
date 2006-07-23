@@ -394,7 +394,7 @@ static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
 // Funky API: returns null to indicate no member, an empty string to
 // indicate success, or a non-empty error message.  Works this way so
 // we can generate smart error messages without throwing them with a
-// longjmp -- this gets called under naObjMember() from C code.
+// longjmp -- this gets called under naMember_get() from C code.
 static const char* getMember_r(naRef obj, naRef field, naRef* out, int count)
 {
     int i;
@@ -421,7 +421,7 @@ static void getMember(struct Context* ctx, naRef obj, naRef fld,
     if(err[0]) naRuntimeError(ctx, err);
 }
 
-int naObjMember_get(naRef obj, naRef field, naRef* out)
+int naMember_get(naRef obj, naRef field, naRef* out)
 {
     const char* err = getMember_r(obj, field, out, 64);
     return err && !err[0];
