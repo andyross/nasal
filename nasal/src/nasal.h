@@ -115,7 +115,8 @@ void naRuntimeError(struct Context* c, const char* fmt, ...);
 // Retrieve the specified member from the object, respecting the
 // "parents" array as for "object.field".  Returns zero for missing
 // fields.
-int naObjMember(naRef obj, naRef field, naRef* out);
+int naObjMember_get(naRef obj, naRef field, naRef* out);
+int naObjMember_cget(naRef obj, const char* field, naRef* out);
 
 // Returns a hash containing functions from the Nasal standard library
 // Useful for passing as a namespace to an initial function call

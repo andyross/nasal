@@ -421,7 +421,7 @@ static void getMember(struct Context* ctx, naRef obj, naRef fld,
     if(err[0]) naRuntimeError(ctx, err);
 }
 
-int naObjMember(naRef obj, naRef field, naRef* out)
+int naObjMember_get(naRef obj, naRef field, naRef* out)
 {
     const char* err = getMember_r(obj, field, out, 64);
     return err && !err[0];

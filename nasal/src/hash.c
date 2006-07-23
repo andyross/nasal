@@ -103,19 +103,16 @@ int naHash_sym(struct naHash* hash, struct naStr* sym, naRef* out)
 static struct HashNode* find(struct naHash* hash, naRef key)
 {
     struct HashRec* h = hash->rec;
-    if(h) {
-        struct HashNode* hn = h->table[hashcolumn(h, key)];
-        while(hn) {
-            if(EQUAL(key, hn->key))
-                return hn;
-            hn = hn->next;
-        }
-    }
+    struct HashNode* hn;
+    if(!h) return 0;
+    for(hn = h->table[hashcolumn(h, key)]; hn; hn = hn->next)
+        if(EQUAL(key, hn->key))
+            return hn;
     return 0;
 }
 
 // Make a temporary string on the stack
-static void tmpStr(naRef* out, struct naStr* str, char* key)
+static void tmpStr(naRef* out, struct naStr* str, const char* key)
 {
     str->len = 0;
     str->type = T_STR;
@@ -124,6 +121,14 @@ static void tmpStr(naRef* out, struct naStr* str, char* key)
     while(key[str->len]) str->len++;
     *out = naNil();
     out->ref.ptr.str = str;
+}
+
+int naObjMember_cget(naRef obj, const char* field, naRef* out)
+{
+    naRef key;
+    struct naStr str;
+    tmpStr(&key, &str, field);
+    return naObjMember_get(obj, key, out);
 }
 
 naRef naHash_cget(naRef hash, char* key)
