@@ -102,9 +102,9 @@ static naRef f_readdir(naContext ctx, naRef me, int argc, naRef* args)
     struct dirent* dent;
     if(argc < 1 || !IS_GHOST(args[0]) || naGhost_type(args[0]) != &DirGhostType)
         naRuntimeError(ctx, "bad argument to readdir");
-    if(!(dent = readdir(*(DIR**)naGhost_ptr(args[0]))))
+    if((dent = readdir(*(DIR**)naGhost_ptr(args[0]))) < 0)
         naRuntimeError(ctx, strerror(errno));
-    return NEWCSTR(ctx, dent->d_name);
+    return dent ? NEWCSTR(ctx, dent->d_name) : naNil();
 }
 
 static naRef f_closedir(naContext ctx, naRef me, int argc, naRef* args)
@@ -144,15 +144,20 @@ static naRef f_exec(naContext ctx, naRef me, int argc, naRef* args)
     return file; // never reached
 }
 
+static naRef f_getcwd(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char buf[1024];
+    if(!getcwd(buf, sizeof(buf))) naRuntimeError(ctx, strerror(errno));
+    return NEWCSTR(ctx, buf);
+}
+
 extern char** environ;
 static naRef f_environ(naContext ctx, naRef me, int argc, naRef* args)
 {
-    char** p = environ;
     naRef result = naNewVector(ctx);
-    while(*p) {
+    char** p;
+    for(p = environ; *p; p++)
         naVec_append(result, NEWCSTR(ctx, *p));
-        p++;
-    }
     return result;
 }
 
@@ -167,6 +172,7 @@ static naCFuncItem funcs[] = {
     { "closedir", f_closedir },
     { "time", f_time },
     { "chdir", f_chdir },
+    { "getcwd", f_getcwd },
     { "environ", f_environ },
     { 0 }
 };
