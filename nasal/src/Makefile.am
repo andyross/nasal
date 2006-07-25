@@ -4,7 +4,7 @@ lib_LIBRARIES = libnasal.a
 
 include_HEADERS = nasal.h
 
-bin_SCRIPTS = nasal
+dist_bin_SCRIPTS = nasal
 
 if HAVE_PCRE
 pcre = regexlib.c
