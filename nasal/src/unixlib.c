@@ -177,7 +177,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naUnixLib(naContext c)
+naRef naInit_unix(naContext c)
 {
     return naGenLib(c, funcs);
 }

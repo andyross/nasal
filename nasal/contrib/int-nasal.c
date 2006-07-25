@@ -371,18 +371,18 @@ int main(int argc, char** argv)
     
     ctx = naNewContext();
     
-    namespace = naStdLib(ctx);
+    namespace = naInit_std(ctx);
     naSave(ctx,namespace); //is this needed?
     naHash_set(namespace, naInternSymbol(NASTR("print")),
                naNewFunc(ctx, naNewCCode(ctx, print)));
     naHash_set(namespace, naInternSymbol(NASTR("thread")),
                naNewFunc(ctx, naNewCCode(ctx, newthread)));
-    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naInit_utf8(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naInit_math(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("bits")), naInit_bits(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("io")), naInit_io(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("unix")), naInit_unix(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("regex")), naInit_regex(ctx));
 
     candidate = naNewVector(ctx);
     naSave(ctx,candidate); //is this needed?

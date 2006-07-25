@@ -77,7 +77,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naRegexLib(naContext c)
+naRef naInit_regex(naContext c)
 {
     return naGenLib(c, funcs);
 }

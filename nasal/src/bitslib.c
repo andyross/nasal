@@ -81,7 +81,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naBitsLib(naContext c)
+naRef naInit_bits(naContext c)
 {
     return naGenLib(c, funcs);
 }

@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 
     // Make a hash containing the standard library functions.  This
     // will be the namespace for a new script
-    namespace = naStdLib(ctx);
+    namespace = naInit_std(ctx);
 
     // Add application-specific functions (in this case, "print" and
     // the math library) to the namespace if desired.
@@ -128,16 +128,16 @@ int main(int argc, char** argv)
                naNewFunc(ctx, naNewCCode(ctx, newthread)));
 
     // Add extra libraries as needed.
-    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naUtf8Lib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("math")), naMathLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("bits")), naBitsLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("io")), naIOLib(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("unix")), naUnixLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naInit_utf8(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naInit_math(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("bits")), naInit_bits(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("io")), naInit_io(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("unix")), naInit_unix(ctx));
 #ifdef HAVE_PCRE
-    naHash_set(namespace, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("regex")), naInit_regex(ctx));
 #endif
 #ifdef HAVE_SQLITE
-    naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naSQLiteLib(ctx));
+    naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naInit_sqlite(ctx));
 #endif
 
     // Bind the "code" object from naParseCode into a "function"

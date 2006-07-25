@@ -163,7 +163,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naSQLiteLib(naContext c)
+naRef naInit_sqlite(naContext c)
 {
     return naGenLib(c, funcs);
 }

@@ -487,7 +487,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naStdLib(naContext c)
+naRef naInit_std(naContext c)
 {
     return naGenLib(c, funcs);
 }

@@ -213,7 +213,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naIOLib(naContext c)
+naRef naInit_io(naContext c)
 {
     naRef ns = naGenLib(c, funcs);
     naAddSym(c, ns, "SEEK_SET", naNum(SEEK_SET));

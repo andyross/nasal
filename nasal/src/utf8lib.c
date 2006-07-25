@@ -155,7 +155,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naUtf8Lib(naContext c)
+naRef naInit_utf8(naContext c)
 {
     return naGenLib(c, funcs);
 }

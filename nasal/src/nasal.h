@@ -121,16 +121,16 @@ int naMember_cget(naRef obj, const char* field, naRef* out);
 
 // Returns a hash containing functions from the Nasal standard library
 // Useful for passing as a namespace to an initial function call
-naRef naStdLib(naContext c);
+naRef naInit_std(naContext c);
 
 // Ditto, for other core libraries
-naRef naMathLib(naContext c);
-naRef naBitsLib(naContext c);
-naRef naIOLib(naContext c);
-naRef naRegexLib(naContext c);
-naRef naUnixLib(naContext c);
-naRef naUtf8Lib(naContext c);
-naRef naSQLiteLib(naContext c);
+naRef naInit_math(naContext c);
+naRef naInit_bits(naContext c);
+naRef naInit_io(naContext c);
+naRef naInit_regex(naContext c);
+naRef naInit_unix(naContext c);
+naRef naInit_utf8(naContext c);
+naRef naInit_sqlite(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

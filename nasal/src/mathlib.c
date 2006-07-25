@@ -69,7 +69,7 @@ static naCFuncItem funcs[] = {
     { 0 }
 };
 
-naRef naMathLib(naContext c)
+naRef naInit_math(naContext c)
 {
     naRef ns = naGenLib(c, funcs);
     naAddSym(c, ns, "pi", naNum(3.14159265358979323846));
