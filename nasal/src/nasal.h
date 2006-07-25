@@ -6,10 +6,11 @@ extern "C" {
 
 /* Rather than play elaborate and games with platform-dependent
  * endianness headers, just detect the platforms we support. */
-#if defined(_M_X86) || defined(i386) || defined(__x86_64) \
-    || defined(__ia64__) || defined(_M_IA64) 
+#if defined(_M_X86)   || defined(i386)    || defined(__x86_64) || \
+    defined(__ia64__) || defined(_M_IA64) || defined(__ARMEL__) 
 # define NASAL_LE
-#elif defined(__sparc) || defined(__powerpc) || defined(__mips)
+#elif defined(__sparc) || defined(__ppc__) || defined(__mips) || \
+      defined(__ARMEB__)
 # define NASAL_BE
 #else
 # error Unrecognized CPU architecture

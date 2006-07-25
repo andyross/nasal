@@ -5,10 +5,11 @@ AC_PROG_CC
 AC_ISC_POSIX
 AC_STDC_HEADERS
 AC_PROG_INSTALL
+AC_PROG_RANLIB
 AC_SEARCH_LIBS(sin, m)
 AC_SEARCH_LIBS(pthread_create, pthread)
 AC_SEARCH_LIBS(pcre_compile, pcre, [AC_DEFINE([HAVE_PCRE],[],libpcre)])
 AM_CONDITIONAL(HAVE_PCRE, test x$ac_cv_search_pcre_compile != xno)
 AC_SEARCH_LIBS(sqlite3_open, sqlite3, [AC_DEFINE([HAVE_SQLITE],[],libsqlite3)])
 AM_CONDITIONAL(HAVE_SQLITE, test x$ac_cv_search_sqlite3_open != xno)
-AC_OUTPUT([Makefile src/Makefile])
+AC_OUTPUT([Makefile src/Makefile lib/Makefile])

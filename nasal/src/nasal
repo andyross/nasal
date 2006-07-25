@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Find the nasal-bin next to this script
+BINDIR=`dirname $0`
+if [ ! -x "$BINDIR/nasal-bin" ]; then
+    BINDIR=`which $0`
+    BINDIR=`dirname $BINDIR`
+fi
+
+# Find a ../lib/nasal directory (e.g. /usr/local/lib/nasal)
+LIBDIR="$BINDIR/../lib/nasal"
+
+# ...or a ../nasal directory (e.g. /usr/local/nasal or ~/nasal)
+if [ ! -d "$LIBDIR" ]; then
+    LIBDIR="$BINDIR/../nasal"
+fi
+# ...or a ../lib directory (e.g. <sourcedir>/lib)
+if [ ! -d "$LIBDIR" ]; then
+    LIBDIR="$BINDIR/../lib"
+fi
+
+exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" "$@"
