@@ -29,7 +29,7 @@ char* opStringDEBUG(int op)
     case OP_EACH: return "EACH";
     case OP_JMP: return "JMP";
     case OP_JIFNOT: return "JIFNOT";
-    case OP_JIFNIL: return "JIFNIL";
+    case OP_JIFEND: return "JIFEND";
     case OP_FCALL: return "FCALL";
     case OP_MCALL: return "MCALL";
     case OP_RETURN: return "RETURN";
@@ -247,7 +247,7 @@ void dumpByteCode(naRef codeObj) {
                 } else
                     printRefDEBUG(a);
             break;
-            case OP_JIFNOT: case OP_JIFNIL: case OP_JMP: case OP_JMPLOOP:
+            case OP_JIFNOT: case OP_JIFEND: case OP_JMP: case OP_JMPLOOP:
             case OP_FCALL: case OP_MCALL: case OP_FTAIL: case OP_MTAIL:
                 printf(" %d\n",byteCode[ip++]);
             break;

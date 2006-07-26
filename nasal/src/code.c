@@ -37,10 +37,20 @@ void naRuntimeError(struct Context* c, const char* fmt, ...)
     longjmp(c->jumpHandle, 1);
 }
 
+#define END_PTR ((void*)1)
+#define IS_END(r) (IS_REF((r)) && (r).ref.ptr.obj == END_PTR)
+static naRef endToken()
+{
+    naRef r;
+    r.ref.reftag = NASAL_REFTAG;
+    r.ref.ptr.obj = END_PTR;
+    return r;
+}
+
 static int boolify(struct Context* ctx, naRef r)
 {
     if(IS_NUM(r)) return r.num != 0;
-    if(IS_NIL(r)) return 0;
+    if(IS_NIL(r) || IS_END(r)) return 0;
     if(IS_STR(r)) {
         double d;
         if(naStr_len(r) == 0) return 0;
@@ -436,7 +446,7 @@ static void evalEach(struct Context* ctx, int useIndex)
     naRef vec = ctx->opStack[ctx->opTop-2];
     if(!IS_VEC(vec)) ERR(ctx, "foreach enumeration of non-vector");
     if(!vec.ref.ptr.vec->rec || idx >= vec.ref.ptr.vec->rec->size) {
-        PUSH(naNil());
+        PUSH(endToken());
         return;
     }
     ctx->opStack[ctx->opTop-1].num = idx+1; // modify in place
@@ -534,6 +544,9 @@ static naRef run(struct Context* ctx)
         case OP_PUSHNIL:
             PUSH(naNil());
             break;
+        case OP_PUSHEND:
+            PUSH(endToken());
+            break;
         case OP_NEWVEC:
             PUSH(naNewVector(ctx));
             break;
@@ -590,9 +603,9 @@ static naRef run(struct Context* ctx)
             f->ip = cd->byteCode[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
-        case OP_JIFNIL:
+        case OP_JIFEND:
             arg = ARG();
-            if(IS_NIL(STK(1))) {
+            if(IS_END(STK(1))) {
                 ctx->opTop--; // Pops **ONLY** if it's nil!
                 f->ip = arg;
                 DBG(printf("   [Jump to: %d]\n", f->ip);)

@@ -485,7 +485,7 @@ static void genForEach(struct Parser* p, struct Token* t)
     pushLoop(p, label);
     loopTop = p->cg->codesz;
     emit(p, t->type == TOK_FOREACH ? OP_EACH : OP_INDEX);
-    jumpEnd = emitJump(p, OP_JIFNIL);
+    jumpEnd = emitJump(p, OP_JIFEND);
     assignOp = genLValue(p, elem, &dummy);
     emit(p, OP_XCHG);
     emit(p, assignOp);
@@ -522,7 +522,7 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
     for(i=0; i<levels; i++)
         emit(p, (i<levels-1) ? OP_BREAK2 : OP_BREAK);
     if(t->type == TOK_BREAK)
-        emit(p, OP_PUSHNIL); // breakIP is always a JIFNOT/JIFNIL!
+        emit(p, OP_PUSHEND); // breakIP is always a JIFNOT/JIFEND!
     emitImmediate(p, OP_JMP, t->type == TOK_BREAK ? bp : cp);
 }
 
