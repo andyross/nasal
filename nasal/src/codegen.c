@@ -544,6 +544,8 @@ static void newLineEntry(struct Parser* p, int line)
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i, dummy;
+    if(!t) naParseError(p, "parse error", -1); // throw line -1...
+    p->errLine = t->line;                      // ...to use this one instead
     if(t->line != p->cg->lastLine)
         newLineEntry(p, t->line);
     p->cg->lastLine = t->line;
@@ -613,7 +615,7 @@ static void genExpr(struct Parser* p, struct Token* t)
     case TOK_MINUS:
         if(BINARY(t)) {
             genBinOp(OP_MINUS,  p, t);  // binary subtraction
-        } else if(RIGHT(t)->type == TOK_LITERAL && !RIGHT(t)->str) {
+        } else if(RIGHT(t) && RIGHT(t)->type == TOK_LITERAL && !RIGHT(t)->str) {
             RIGHT(t)->num *= -1;        // Pre-negate constants
             genScalarConstant(p, RIGHT(t));
         } else {
@@ -627,7 +629,7 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_DOT:
         genExpr(p, LEFT(t));
-        if(RIGHT(t)->type != TOK_SYMBOL)
+        if(!RIGHT(t) || RIGHT(t)->type != TOK_SYMBOL)
             naParseError(p, "object field not symbol", RIGHT(t)->line);
         emitImmediate(p, OP_MEMBER, findConstantIndex(p, RIGHT(t)));
         break;
@@ -658,7 +660,7 @@ static void genExpr(struct Parser* p, struct Token* t)
 
 static void genExprList(struct Parser* p, struct Token* t)
 {
-    if(t->type == TOK_SEMI) {
+    if(t && t->type == TOK_SEMI) {
         genExpr(p, LEFT(t));
         if(RIGHT(t) && RIGHT(t)->type != TOK_EMPTY) {
             emit(p, OP_POP);

@@ -369,12 +369,18 @@
     Otherwise, all rows returned are appended to a single vector and
     returned as the result of sqlite.exec().  Signals errors via die().
 
-
 <dt>sqlite.finalize(stmt)
 <dd>Finalizes and free storage associated with a prepared statement.
     This call is generally optional; garbage collection will destroy
     stale statements.
 
+</dl><h3>GNU Readline Library</h3><dl>
+<p>Minimal but functional integration with GNU readline, allowing for
+runtime command line editing.  This is used by
+the <code>interactive</code> module to implement the interactive nasal
+interpreter.
+<dt>readline(prompt="> ")
+<dd>Read and return a line of input from the user, or nil at end-of-stream.
 
 
 </dl>

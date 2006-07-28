@@ -8,13 +8,13 @@ var _dump = func(o) {
     elsif(ot == "vector") {
         var result = "[ ";
 	forindex(i; o)
-	    result ~= (i==0 ? "" : ", ") ~ dump(o[i]);
+	    result ~= (i==0 ? "" : ", ") ~ _dump(o[i]);
         return result ~ " ]";
     } elsif(ot == "hash") {
         var ks = keys(o);
         var result = "{ ";
         forindex(i; ks)
-            result ~= (i==0 ? "" : ", ") ~ ks[i] ~ " : " ~ dump(o[ks[i]]);
+            result ~= (i==0 ? "" : ", ") ~ ks[i] ~ " : " ~ _dump(o[ks[i]]);
         return result ~ " }";
     } else return sprintf("<%s>", ot)
 }

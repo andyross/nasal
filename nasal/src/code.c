@@ -296,6 +296,12 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs,
         return &(ctx->fStack[ctx->fTop-1]);
     }
     
+    // Tail calls aren't allowed at the top level, because otherwise
+    // code called from a single-statement code block
+    // (e.g. import("...") from the interactive interpreter) won't
+    // have a caller().
+    if(ctx->fTop == 1) tail = 0;
+
     if(tail) ctx->fTop--;
     else if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
 

@@ -31,8 +31,10 @@ struct precedence {
 
 void naParseError(struct Parser* p, char* msg, int line)
 {
+    // Some errors (e.g. code generation of a null pointer) lack a
+    // line number, so we throw -1 and set the line earlier.
+    if(line > 0) p->errLine = line;
     p->err = msg;
-    p->errLine = line;
     longjmp(p->jumpHandle, 1);
 }
 
