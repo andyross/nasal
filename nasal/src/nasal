@@ -19,4 +19,9 @@ if [ ! -d "$LIBDIR" ]; then
     LIBDIR="$BINDIR/../lib"
 fi
 
-exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" "$@"
+if [ -x "$BINDIR/nasal-bin" ]; then
+    exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" "$@"
+fi
+
+echo "Cannot locate nasal-bin interpreter."
+exit 1

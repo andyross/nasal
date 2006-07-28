@@ -96,7 +96,10 @@ naRef naBindToContext(naContext ctx, naRef code);
 
 // Call a code or function object with the specified arguments "on" the
 // specified object and using the specified hash for the local
-// variables.  Any of args, obj or locals may be nil.
+// variables.  Passing a null args array skips the parameter variables
+// (e.g. "arg") assignments; to get a zero-length arg instead, pass in
+// argc==0 and a non-null args vector.  The obj or locals parameters
+// may be nil.
 naRef naCall(naContext ctx, naRef func, int argc, naRef* args, naRef obj, naRef locals);
 
 // As naCall(), but continues execution at the operation after a
@@ -131,6 +134,7 @@ naRef naInit_regex(naContext c);
 naRef naInit_unix(naContext c);
 naRef naInit_utf8(naContext c);
 naRef naInit_sqlite(naContext c);
+naRef naInit_readline(naContext c);
 
 // Current line number & error message
 int naStackDepth(naContext ctx);

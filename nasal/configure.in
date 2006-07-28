@@ -1,15 +1,23 @@
-AC_INIT(src/code.c)
-AM_INIT_AUTOMAKE(nasal, 1.1pre)
+AC_INIT(nasal, 1.1pre, andy@plausible.org)
+AC_SUBST(LIBTOOL_VERSION_INFO, 0:0:0)
+
+AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(src/config.h)
 AC_PROG_CC
 AC_ISC_POSIX
 AC_STDC_HEADERS
 AC_PROG_INSTALL
-AC_PROG_RANLIB
+AC_PROG_LIBTOOL
+
 AC_SEARCH_LIBS(sin, m)
 AC_SEARCH_LIBS(pthread_create, pthread)
-AC_SEARCH_LIBS(pcre_compile, pcre, [AC_DEFINE([HAVE_PCRE],[],libpcre)])
+
+AC_SEARCH_LIBS(pcre_compile, pcre, [AC_DEFINE([HAVE_PCRE],[],pcre)])
 AM_CONDITIONAL(HAVE_PCRE, test x$ac_cv_search_pcre_compile != xno)
-AC_SEARCH_LIBS(sqlite3_open, sqlite3, [AC_DEFINE([HAVE_SQLITE],[],libsqlite3)])
+AC_SEARCH_LIBS(sqlite3_open, sqlite3, [AC_DEFINE([HAVE_SQLITE],[],sqlite3)])
 AM_CONDITIONAL(HAVE_SQLITE, test x$ac_cv_search_sqlite3_open != xno)
+AC_SEARCH_LIBS(tgetstr, [ncurses curses]) dnl:: libreadline needs curses
+AC_SEARCH_LIBS(readline, readline, [AC_DEFINE(HAVE_READLINE,[],readline)])
+AM_CONDITIONAL(HAVE_READLINE, test x$ac_cv_search_readline != xno)
+
 AC_OUTPUT([Makefile src/Makefile lib/Makefile])

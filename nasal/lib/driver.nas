@@ -102,7 +102,10 @@ var new_nasal_env = func { clone_syms(core_funcs) }
 # Reads and runs a file in a cloned version of the standard library
 var run_file = func(file, syms=nil, args=nil) {
     var err = [];
-    var code = compile(readfile(file), file);
+    var compfn = func { compile(readfile(file), file); };
+    var code = call(compfn, nil, nil, nil, err);
+    if(size(err))
+	die(sprintf("%s in %s", err[0], file));
     code = bind(code, new_nasal_env(), nil);
     call(code, args, nil, syms, err);
     if(size(err) and err[0] != "exit") {
@@ -146,7 +149,6 @@ var load_mod = func(mod, prefdir) {
 
 # This is the function exposed to users.
 var import = func(mod, imports...) {
-    var cl = caller(1);
     if(!contains(loaded_modules, mod)) {
 	var callerfile = caller()[2];
 	load_mod(mod, dirname(callerfile));
@@ -185,5 +187,10 @@ core_funcs["import"] = import;
 core_funcs["new_nasal_env"] = new_nasal_env;
 
 # Finally, run a Nasal file that we find on the command line
-if(size(arg))
-    run_file(arg[0], {}, subvec(arg, 1));
+if(size(arg)) {
+    return run_file(arg[0], {}, subvec(arg, 1));
+} else {
+    # No file?   Then start an interactive session.
+    import("interactive");
+    interactive.run();
+}

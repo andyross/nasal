@@ -771,7 +771,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     ctx->fStack[0].ip = 0;
     ctx->fStack[0].bp = ctx->opTop;
 
-    setupArgs(ctx, ctx->fStack, args, argc);
+    if(args) setupArgs(ctx, ctx->fStack, args, argc);
 
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);

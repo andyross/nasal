@@ -139,6 +139,10 @@ int main(int argc, char** argv)
 #ifdef HAVE_SQLITE
     naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naInit_sqlite(ctx));
 #endif
+#ifdef HAVE_SQLITE
+    naHash_set(namespace, naInternSymbol(NASTR("readline")),
+               naInit_readline(ctx));
+#endif
 
     // Bind the "code" object from naParseCode into a "function"
     // object.  This is optional, really -- we could also just pass
