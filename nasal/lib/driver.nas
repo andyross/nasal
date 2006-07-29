@@ -8,7 +8,8 @@
 #       import("math", "sin", "cos");
 #   will import the math library as a hash table named "math" in the
 #   local namespace, and also set local variables for the sin and cos
-#   functions.
+#   functions.  A single "*" as the symbol to import is shorthand for
+#   "import everything into my namespace".
 #
 # + Module files end with ".nas" and live either in the same directory
 #   as the importing file (detected dynamically), the same directory
@@ -156,10 +157,13 @@ var import = func(mod, imports...) {
     var caller_locals = caller()[0];
     var module = clone_syms(loaded_modules[mod]);
     caller_locals[mod] = module;
-    foreach(sym; imports) {
-	if(!contains(module, sym))
-	    die("No symbol '" ~ sym ~ "' in module '" ~ mod ~ "'");
-	caller_locals[sym] = module[sym];
+    if(size(imports) == 1 and imports[0] == "*") {
+	foreach(sym; keys(module)) caller_locals[sym] = module[sym];
+    } else {
+	foreach(sym; imports) {
+	    if(contains(module, sym)) caller_locals[sym] = module[sym];
+	    else die(sprintf("No symbol '%s' in module '%s'", sym, mod));
+	}
     }
 }
 

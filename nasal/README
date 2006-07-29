@@ -1,6 +1,6 @@
 See documentation in doc/index.html or at http://plausible.org/nasal
 
-Important source to read is prog-nasal.c, lib.c and nasal.h.  These
+Important source to read is nasal.h, nasal-bin.c, and lib.c.  These
 define and implement the user-side extension API.
 
 Don't use the -ansi switch to gcc.  It turns off preprocessor
