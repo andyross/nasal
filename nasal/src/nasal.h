@@ -114,7 +114,11 @@ naRef naContinue(naContext ctx);
 // intended for use in library code that cannot otherwise report an
 // error via the return value, and MUST be used carefully.  If in
 // doubt, return naNil() as your error condition.  Works like printf().
-void naRuntimeError(struct Context* c, const char* fmt, ...);
+void naRuntimeError(naContext c, const char* fmt, ...);
+
+// "Re-throws" a runtime error caught from the subcontext.  Acts as a
+// naRuntimeError() called on the parent context.  Does not return.
+void naRethrowError(naContext subc);
 
 // Retrieve the specified member from the object, respecting the
 // "parents" array as for "object.field".  Returns zero for missing

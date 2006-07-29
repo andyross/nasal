@@ -105,8 +105,12 @@ static naRef run_query(naContext c, sqlite3* db, sqlite3_stmt* stmt,
                 val = naNum(sqlite3_column_double(stmt, i));
             naHash_set(row, fields[i], val);
         }
-        if(subc) naCall(subc, callback, 1, &row, naNil(), naNil());
-        else     naVec_append(result, row);
+        if(!subc) {
+            naVec_append(result, row);
+        } else {
+            naCall(subc, callback, 1, &row, naNil(), naNil());
+            if(naGetError(subc)) naRethrowError(subc);
+        }
     }
     if(subc) naFreeContext(subc);
     free(fields);

@@ -207,14 +207,17 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     if(!IS_HASH(callns)) callns = naNil();
     if(!IS_FUNC(args[0]) || (!IS_NIL(callargs) && !IS_VEC(callargs)))
         naRuntimeError(c, "bad argument to call()");
+
+    // Note that we don't free the subcontext, in case the user
+    // re-throws the same error.  That happens at the next OP_RETURN
+    // or naSubContext().
     subc = naSubContext(c);
     subc->callParent = c;
     c->callChild = subc;
     vr = IS_NIL(callargs) ? 0 : callargs.ref.ptr.vec->rec;
     result = naCall(subc, args[0], vr ? vr->size : 0, vr ? vr->array : 0,
                     callme, callns);
-    c->callChild = 0;
-    if(argc > 2 && IS_VEC(args[argc-1])) {
+    if(argc > 1 && IS_VEC(args[argc-1])) {
         naRef v = args[argc-1];
         if(!IS_NIL(subc->dieArg)) naVec_append(v, subc->dieArg);
         else if(naGetError(subc))
@@ -227,13 +230,15 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
             }
         }
     }
-    naFreeContext(subc);
     return result;
 }
 
 static naRef f_die(naContext c, naRef me, int argc, naRef* args)
 {
-    c->dieArg = argc > 0 ? args[0] : naNil();
+    naRef darg = argc > 0 ? args[0] : naNil();
+    if(!naIsNil(darg) && c->callChild && IDENTICAL(c->callChild->dieArg, darg))
+        naRethrowError(c->callChild);
+    c->dieArg = darg;
     naRuntimeError(c, "__die__");
     return naNil(); // never executes
 }

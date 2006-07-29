@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include "nasal.h"
 #include "code.h"
 
@@ -35,6 +36,13 @@ void naRuntimeError(struct Context* c, const char* fmt, ...)
     vsnprintf(c->error, sizeof(c->error), fmt, ap);
     va_end(ap);
     longjmp(c->jumpHandle, 1);
+}
+
+void naRethrowError(naContext subc)
+{
+    strncpy(subc->callParent->error, subc->error, sizeof(subc->error));
+    subc->callParent->dieArg = subc->dieArg;
+    longjmp(subc->callParent->jumpHandle, 1);
 }
 
 #define END_PTR ((void*)1)
@@ -218,6 +226,7 @@ struct Context* naNewContext()
 struct Context* naSubContext(struct Context* super)
 {
     struct Context* ctx = naNewContext();
+    if(ctx->callChild) naFreeContext(ctx->callChild);
     ctx->callParent = super;
     super->callChild = ctx;
     return ctx;
@@ -226,6 +235,7 @@ struct Context* naSubContext(struct Context* super)
 void naFreeContext(struct Context* c)
 {
     c->ntemps = 0;
+    if(c->callChild) naFreeContext(c->callChild);
     if(c->callParent) c->callParent->callChild = 0;
     LOCK();
     c->nextFree = globals->freeContexts;
@@ -643,6 +653,7 @@ static naRef run(struct Context* ctx)
         case OP_RETURN:
             a = STK(1);
             ctx->dieArg = naNil();
+            if(ctx->callChild) naFreeContext(ctx->callChild);
             if(--ctx->fTop <= 0) return a;
             ctx->opTop = f->bp + 1; // restore the correct opstack frame!
             STK(1) = a;
@@ -686,32 +697,36 @@ void naSave(struct Context* ctx, naRef obj)
     naVec_append(globals->save, obj);
 }
 
-// FIXME: handle ctx->callParent
 int naStackDepth(struct Context* ctx)
 {
-    return ctx->fTop;
+    return ctx ? ctx->fTop + naStackDepth(ctx->callChild): 0;
 }
 
-// FIXME: handle ctx->callParent
+static int findFrame(naContext ctx, naContext* out, int fn)
+{
+    if(fn < ctx->fTop) { *out = ctx; return fn; }
+    return findFrame(ctx->callChild, out, fn - ctx->fTop);}
+
 int naGetLine(struct Context* ctx, int frame)
 {
-    struct Frame* f = &ctx->fStack[ctx->fTop-1-frame];
-    naRef func = f->func;
-    int ip = f->ip;
-    if(IS_FUNC(func) && IS_CODE(func.ref.ptr.func->code)) {
-        struct naCode* c = func.ref.ptr.func->code.ref.ptr.code;
+    struct Frame* f;
+    frame = findFrame(ctx, &ctx, frame);
+    f = &ctx->fStack[ctx->fTop-1-frame];
+    if(IS_FUNC(f->func) && IS_CODE(f->func.ref.ptr.func->code)) {
+        struct naCode* c = f->func.ref.ptr.func->code.ref.ptr.code;
         unsigned short* p = c->lineIps + c->nLines - 2;
-        while(p >= c->lineIps && p[0] > ip)
+        while(p >= c->lineIps && p[0] > f->ip)
             p -= 2;
         return p[1];
     }
     return -1;
 }
 
-// FIXME: handle ctx->callParent
 naRef naGetSourceFile(struct Context* ctx, int frame)
 {
-    naRef f = ctx->fStack[ctx->fTop-1-frame].func;
+    naRef f;
+    frame = findFrame(ctx, &ctx, frame);
+    f = ctx->fStack[ctx->fTop-1-frame].func;
     f = f.ref.ptr.func->code;
     return f.ref.ptr.code->srcFile;
 }
