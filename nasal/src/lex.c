@@ -179,6 +179,7 @@ static void dqEscape(char* buf, int len, int index, struct Parser* p,
     case 'n': *cOut = '\n'; break;
     case 't': *cOut = '\t'; break;
     case '\\': *cOut = '\\'; break;
+    case '`': *cOut = '`'; break;
     case 'x':
         if(len < 4) error(p, "unterminated string", index);
         *cOut = (char)((hexc(buf[2], p, index)<<4) | hexc(buf[3], p, index));

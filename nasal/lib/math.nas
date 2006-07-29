@@ -3,8 +3,8 @@ var abs = func(n) { n < 0 ? -n : n }
 var pow = func(x, y) { exp(y * ln(x)) }
 
 var mod = func(n, m) {
-    var x = n - m * int(n/m); # Note that int() truncates to zero, not -Inf
-    return x < 0 ? x + m : x; # ...so must handle negative n's
+    var x = n - m * int(n/m);      # int() truncates to zero, not -Inf
+    return x < 0 ? x + abs(m) : x; # ...so must handle negative n's
 }
 
 var asin = func(y) { atan2(y, sqrt(1-y*y)) }
