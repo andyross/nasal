@@ -1,5 +1,13 @@
 # This is the top-level "driver" file containing the module import
-# code for Nasal programs.  Nasal modules are really simple:
+# code for Nasal programs.  Call this file from your C code to get
+# back a hash table for use in binding new functions.  You can use it
+# directly, clone it to make sandboxed environments, or (in a script)
+# call new_nasal_env() to create such a cloned environment even
+# without access to the original hash.
+#
+# MODULES:
+#
+# Nasal modules are really simple:
 #
 # + Users import modules with the import function.  The first argument
 #   is a string containing the module name.  Any further arguments are
@@ -75,19 +83,10 @@ var dirname = func(path) {
     return path;
 }
 
-# Clones a hash table, but only "safe" symbols: nothing prefixed with
-# an underscore, not the arg or EXPORT vectors, and nothing with
-# deeper references.  Modules that want to export "unsafe" things need
-# to use the EXPORT facility.
-var clone_syms = func(h) {
+var clone_hash = func(h) {
     var result = {};
-    foreach(k; keys(h)) {
-	if(typeof(k) != "scalar" or size(k) == 0) continue;
-	if(k[0] == `_` or k == "arg" or k == "EXPORT") continue;
-	if(typeof(h[k]) == "hash") continue;
-	if(typeof(h[k]) == "vector") continue;
+    foreach(k; keys(h))
 	result[k] = h[k];
-    }
     return result;
 }
 
@@ -98,7 +97,7 @@ var readfile = func(file) {
     return buf;
 }
 
-var new_nasal_env = func { clone_syms(core_funcs) }
+var new_nasal_env = func { clone_hash(core_env) }
 
 # Reads and runs a file in a cloned version of the standard library
 var run_file = func(file, syms=nil, args=nil) {
@@ -135,17 +134,26 @@ var load_mod = func(mod, prefdir) {
     }
     var iscore = contains(core_modules, mod);
     if(file == nil and !iscore) die("cannot find module: " ~ mod);
-    var syms = iscore ? clone_syms(core_modules[mod]) : {};
+    var syms = iscore ? core_modules[mod] : {};
     if(file != nil) run_file(file, syms);
+
+    # Build a table of symbols to export, either the contents of the
+    # EXPORT list or the shallow, non-internal, non-special symbols.
+    var modexp = {};
     if(contains(syms, "EXPORT") and typeof(syms["EXPORT"]) == "vector") {
-	var exports = syms["EXPORT"];
-	var syms2 = {};
-	foreach(s; exports)
+	foreach(s; syms["EXPORT"])
 	    if(contains(syms, s))
-		syms2[s] = syms[s];
-	syms = syms2;
+    	        modexp[s] = syms[s];
+    } else {
+	foreach(k; keys(syms)) {
+	    if(typeof(k) != "scalar" or size(k) == 0) continue;
+	    if(k[0] == `_` or k == "arg" or k == "EXPORT") continue;
+	    if(typeof(syms[k]) == "hash") continue;
+	    if(typeof(syms[k]) == "vector") continue;
+	    modexp[k] = syms[k];
+	}
     }
-    loaded_modules[mod] = syms;
+    loaded_modules[mod] = modexp;
 }
 
 # This is the function exposed to users.
@@ -155,7 +163,7 @@ var import = func(mod, imports...) {
 	load_mod(mod, dirname(callerfile));
     }
     var caller_locals = caller()[0];
-    var module = clone_syms(loaded_modules[mod]);
+    var module = clone_hash(loaded_modules[mod]);
     caller_locals[mod] = module;
     if(size(imports) == 1 and imports[0] == "*") {
 	foreach(sym; keys(module)) caller_locals[sym] = module[sym];
@@ -173,7 +181,7 @@ var module_path = [dirname(caller(0)[2]), "."];
 
 # Tables of "core" (built-in) functions and modules available, and a
 # table of "loaded" modules that have been imported at least once.
-var core_funcs = {};
+var core_env = {};
 var core_modules = {};
 var loaded_modules = {};
 
@@ -182,19 +190,29 @@ var loaded_modules = {};
 var outer_scope = closure(caller(0)[1]);
 foreach(x; keys(outer_scope)) {
     var t = typeof(outer_scope[x]);
-    if(t == "func") { core_funcs[x] = outer_scope[x]; }
+    if(t == "func") { core_env[x] = outer_scope[x]; }
     elsif(t == "hash") { core_modules[x] = outer_scope[x]; }
 }
 
 # Add import() and new_nasal_env().
-core_funcs["import"] = import;
-core_funcs["new_nasal_env"] = new_nasal_env;
+core_env["import"] = import;
+core_env["new_nasal_env"] = new_nasal_env;
 
-# Finally, run a Nasal file that we find on the command line
-if(size(arg)) {
-    return run_file(arg[0], {}, subvec(arg, 1));
-} else {
-    # No file?   Then start an interactive session.
-    import("interactive");
-    interactive.run();
+# Execute our command line if we have one; either "--interactive" to
+# run an interactive interpreter (the bin/nasal wrapper script passes
+# this when it sees no arguments), or else a script to run and pass
+# the remainder of our arguments.
+if(size(arg)){
+    if(arg[0] == "--interactive") {
+	import("interactive");
+	interactive.run();
+    } else {
+	run_file(arg[0], {}, subvec(arg, 1));
+    }
 }
+
+# Finally, our return value is a properly initialized environment that
+# can be used to bind functions against.  The nasal-bin interpreter
+# ignores this value, but embedded environments use this as the seed
+# from which all future environments are created.
+return core_env;

@@ -20,7 +20,11 @@ if [ ! -d "$LIBDIR" ]; then
 fi
 
 if [ -x "$BINDIR/nasal-bin" ]; then
-    exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" "$@"
+    if [ -z "$*" ]; then
+	exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" --interactive
+    else
+	exec "$BINDIR/nasal-bin" "$LIBDIR/driver.nas" "$@"
+    fi;
 fi
 
 echo "Cannot locate nasal-bin interpreter."
