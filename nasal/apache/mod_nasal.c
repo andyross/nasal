@@ -147,12 +147,29 @@ static naRef f_read(naContext c, naRef me, int argc, naRef* args)
     return naNil();
 }
 
+/* Utility to turn an apr_table_t into a nasal vector */
+struct tabdat { naContext ctx; naRef vec; };
+static int tabkeys(struct tabdat* td, char* k, const char* v)
+{
+    naVec_append(td->vec, naStr_fromdata(naNewString(td->ctx), k, strlen(k)));
+    return 1;
+}
+static naRef tabgen(naContext ctx, apr_table_t* tab)
+{
+    struct tabdat td = { ctx, naNewVector(ctx) };
+    apr_table_do((apr_table_do_callback_fn_t*)tabkeys, &td, tab);
+    return td.vec;
+}
+
+
 static naRef f_getcgi(naContext ctx, naRef me, int argc, naRef* args)
 {
+    naRef var;
     const char* val;
     struct nasal_request* nr = naGetUserData(ctx);
-    naRef var = args > 0 ? naStringValue(ctx, args[0]) : naNil();
     if(!nr) naRuntimeError(ctx, "getcgi() called outside of request");
+    if(argc == 0) return tabgen(ctx, nr->r->subprocess_env);
+    var = naStringValue(ctx, args[0]);
     if(naIsNil(var)) naRuntimeError(ctx, "Bad argument to getcgi()");
     val = apr_table_get(nr->r->subprocess_env, naStr_data(var));
     return val ? NASTR(val) : naNil();
@@ -160,10 +177,12 @@ static naRef f_getcgi(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_gethdr(naContext ctx, naRef me, int argc, naRef* args)
 {
+    naRef var;
     const char* val;
     struct nasal_request* nr = naGetUserData(ctx);
-    naRef var = args > 0 ? naStringValue(ctx, args[0]) : naNil();
     if(!nr) naRuntimeError(ctx, "gethdr() called outside of request");
+    if(argc == 0) return tabgen(ctx, nr->r->headers_in);
+    var = args > 0 ? naStringValue(ctx, args[0]) : naNil();
     if(naIsNil(var)) naRuntimeError(ctx, "Bad argument to gethdr()");
     val = apr_table_get(nr->r->headers_in, naStr_data(var));
     return val ? NASTR(val) : naNil();
@@ -232,7 +251,7 @@ static struct func funcs[] = {
 };
 static naRef make_syms(naContext ctx)
 {
-    naRef syms = naStdLib(ctx);
+    naRef syms = naInit_std(ctx);
     int i, n = sizeof(funcs)/sizeof(struct func);
     for(i=0; i<n; i++) {
         naRef code = naNewCCode(ctx, funcs[i].func);
@@ -262,16 +281,16 @@ static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
         return naNil();
     }
     syms = make_syms(ctx);
-    naHash_set(syms, naInternSymbol(NASTR("math")),  naMathLib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("bits")),  naBitsLib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("io")),    naIOLib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("regex")), naRegexLib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("unix")),  naUnixLib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("utf8")),  naUtf8Lib(ctx));
-    naHash_set(syms, naInternSymbol(NASTR("sqlite")),  naSQLiteLib(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("utf8")), naInit_utf8(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("math")), naInit_math(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("bits")), naInit_bits(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("io")), naInit_io(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("unix")), naInit_unix(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("regex")), naInit_regex(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("sqlite")), naInit_sqlite(ctx));
     copy_hash(ctx, cfg->namespace, syms); 
 
-    result = naCall(ctx, code, 0, 0, naNil(), syms);
+    result = naCall(ctx, code, 0, &code, naNil(), syms);
     if(naIsNil(result) && naGetError(ctx)) {
         dumpStack(ctx, cmd->server);
         *err = "runtime error in Nasal file";
@@ -292,11 +311,11 @@ static int nasal_handle_request(request_rec *r)
     struct nasal_request nreq;
     naContext ctx;
     naRef handler;
+    const char* ct;
     struct nasal_cfg *cfg = ap_get_module_config(r->server->module_config,
                                                  &nasal_module);
     /* Is it ours? */
-    handler = naHash_cget(cfg->handlers, (char*)r->handler);
-    if(naIsNil(handler))
+    if(naIsNil(handler = naHash_cget(cfg->handlers, (char*)r->handler)))
         return DECLINED;
 
     ctx = naNewContext();
@@ -322,9 +341,10 @@ static int nasal_handle_request(request_rec *r)
     }
     naFreeContext(ctx);
 
-    /* FIXME: check r->headers_out for Content-Type and set it (as
-     * "content-type" -- lower cased!) to the r->content_type field
-     * instead.  Apache ignores the headers. */
+    /* Apache ignores this header and wants it to be set on the
+     * request_rec instead: */
+    if((ct = apr_table_get(r->headers_out, "content-type")))
+        r->content_type = ct;
 
     return r->status < 400 ? OK : r->status;
 }

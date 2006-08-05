@@ -58,7 +58,10 @@ var gen_template = func(s, filename) {
     var sym = "__nhtm" ~ last;
     syms[sym] = substr(s, last);
     body ~= "print(" ~ sym ~ ")}";
-    return bind(compile(init ~ body, filename), syms, caller()[1])();
+    var code = compile(init ~ body, filename);
+    code = bind(code, new_nasal_env(), nil);
+    code = bind(code, syms, code);
+    return code();
 }
 
 #

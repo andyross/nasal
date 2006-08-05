@@ -2,25 +2,28 @@
 var Regex = {
     # Create a new regular expression
     new : func(pattern, opts="") {
-	return { _re : comp(pattern, opts), _matches : nil,
+	return { _re : comp(pattern, opts), _matches : nil, _next : 0,
 		 parents : [Regex]  }
     },
 
     # Clear previous match information
-    reset : func { me._str = nil; me._matches = nil; },
+    reset : func { me._str = nil; me._matches = nil; me._next = 0; },
 
     # Runs the string through the regex, returns non-zero for a
     # successful match.  Call repeatedly with the same (or nil) str
     # argument to do continued matching from the end of the last match
     # (as for perl m//g expressions).
-    match : func(str=nil) {
-	var start = 0;
-	if(me._matches != nil and (str == nil or me._str == str))
-	    start = me._matches[-1];
+    match : func(str=nil, start=0) {
+	if(!start and me._next > 0 and (str == nil or me._str == str))
+	    start = me._next;
 	me._str = str;
 	me._matches = exec(me._re, me._str, start);
-	return size(me._matches)/2;
+	if(size(me._matches)) { me._next = me._matches[1]; return 1; }
+	return 0;
     },
+
+    # Returns the index after the last successful match
+    next : func { me._next },
 
     # As match, but returns a list of zero or more substrings
     # corresponding to the matched groups.  More useful as an
@@ -46,6 +49,9 @@ var Regex = {
     # Start index in the input string of the specified group match
     group_start : func(n) { return me._matches[2*n]; },
 
+    # Returns the index of the character after (!) the specified group
+    group_end : func(n) { return me._matches[2*n+1]; },
+
     # Length of the specified group match
     group_len : func(n) { return me._matches[2*n+1] - me._matches[2*n]; },
 
@@ -56,11 +62,11 @@ var Regex = {
 # the evaluated expression.  As with perl, the expression can contain
 # $1-$9 and $variable references.  Arbitrary nasal code can be
 # included inside {} delimeters.  The group matches are available as
-# both $1-$9 (which are non-standard Nasal symbols), and as g1-g9, for
+# both $1-$9 (which are non-standard Nasal symbols), and as _1-_9, for
 # use in subexpressions, for example to decode %xx URL hex strings:
 #     r = regex.new('%([0-9a-fA-F]{2})');
-#     r.sub(line, "${ chr(compile("0x" ~ g1)()) }");
-Regex.sub = func(expr, str, gflag=0) {
+#     r.sub(line, "${ chr(compile("0x" ~ _1)()) }");
+Regex.sub = func(str, expr, gflag=0) {
     var start = 0;
     var result = "";
     
@@ -77,7 +83,6 @@ Regex.sub = func(expr, str, gflag=0) {
 	    var gi = 2*gs;
 	    var g = substr(str, ov[gi], ov[gi+1]-ov[gi]);
 	    groupsyms["_"~gs] = g;
-	    groupsyms["g"~gs] = g;
 	}
 	var prefix = substr(str, start, ov[0]-start);
 	var subst = iexpr();
@@ -94,8 +99,8 @@ var new = Regex.new;
 
 # Some conveniences
 var match   = func(re, s, opts="")      { Regex.new(re, opts).match(s) }
-var sub     = func(re, sub, s, opts="") { Regex.new(re, opts).sub(sub, s) }
-var sub_all = func(re, sub, s, opts="") { Regex.new(re, opts).sub(sub, s, 1) }
+var sub     = func(re, s, sub, opts="") { Regex.new(re, opts).sub(sub, s) }
+var sub_all = func(re, s, sub, opts="") { Regex.new(re, opts).sub(sub, s, 1) }
 
 # Generates a callable function object from an interpolation
 # string. Takes a function object as the lexical environment in which

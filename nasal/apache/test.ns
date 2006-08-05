@@ -1,43 +1,37 @@
-# This is a Nasal HTTP handler function. Just print the value of a
-# bunch of CGI variables and headers, and echo the POST data if there
-# is any.
+# This is a nasal "servlet" handler.  This file is executed only once,
+# and its return value is a function that will handle requests for
+# this page.  Code at the top level can be used to store data, import
+# other modules, define utility code, etc...
 
-var cgi_vars = [ "PATH", "SERVER_SIGNATURE", "SERVER_SOFTWARE",
-		 "SERVER_NAME", "SERVER_ADDR", "SERVER_PORT",
-		 "REMOTE_ADDR", "DOCUMENT_ROOT", "SERVER_ADMIN",
-		 "SCRIPT_FILENAME", "REMOTE_PORT",
-		 "GATEWAY_INTERFACE", "SERVER_PROTOCOL",
-		 "REQUEST_METHOD", "QUERY_STRING", "REQUEST_URI",
-		 "SCRIPT_NAME", "CONTENT_LENGTH" ];
-
-var read_headers = ["Content-Length", "Host", "Cookie"];
-
-#
-# The above is initialization code to set up useful variables, etc...
-# We now return a function to use as the actual handler.
-#
-return func {
-    sethdr("XNasalHandler1", "Woo hoo!");
+func {
+    # Set an output header and a status code
+    sethdr("X-NasalHandler1", "Woo hoo!");
     setstatus(201);
 
-    print("handler", 1, "\n");
-    foreach(v; cgi_vars)
+    # mod_nasal defaults to text/html, but we're just print()ing text:
+    sethdr("Content-Type", "text/plain");
+
+    # Dump out our input data:
+    print("\"CGI\" style input variables:\n");
+    foreach(v; getcgi())
 	print("  ", v, ": ", getcgi(v), "\n");
+    print("\n");
 
-    foreach(h; read_headers)
+    print("Input HTTP headers:\n");
+    foreach(h; gethdr())
 	print("  ", h, ": ", gethdr(h), "\n");
-    
+    print("\n");
 
+    # Now read whatever input data we got with the request.  read()
+    # will return nil at end-of-request.  Then check it against what
+    # the client said it was going to send.
     var total = 0;
     while(var s = read()) {
 	print("read ", size(s), ":\n", s, "\n");
 	total += size(s);
     }
-
-
     if(!getcgi("CONTENT_LENGTH") or total == gethdr("ConTeNt-length"))
 	print("read sizes match!\n");
     else
 	print("READ SIZE MISMATCH!\n");
-
 }

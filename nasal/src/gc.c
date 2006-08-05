@@ -130,7 +130,7 @@ static void naCode_gcclean(struct naCode* o)
 
 static void naGhost_gcclean(struct naGhost* g)
 {
-    if(g->ptr) g->gtype->destroy(g->ptr);
+    if(g->ptr && g->gtype->destroy) g->gtype->destroy(g->ptr);
     g->ptr = 0;
 }
 

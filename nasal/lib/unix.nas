@@ -19,15 +19,6 @@ var _splitcmd = func(s) {
     return cmd;
 }
 
-# FIXME: all the copying here could plausibly be a performance
-# problem.  Consider wrapping libc's getenv() instead.
-var getenv = func(v) {
-    prefix = v ~ "=";
-    foreach(e; environ()) {
-        if(find(prefix, e) == 0) { return substr(e, size(v)+1); }
-    }
-}
-
 var _pathfind = func(f) {
     if(find("/", f) >= 0) { return f; }
     var path = getenv("PATH");
@@ -56,6 +47,15 @@ var _run = func(cmdv, fin=nil, fout=nil, closeinchild...)
         if(fin != nil)  { io.close(fin); }
         if(fout != nil) { io.close(fout); }
         return pid;
+    }
+}
+
+# FIXME: all the copying here could plausibly be a performance
+# problem.  Consider wrapping libc's getenv() instead.
+var getenv = func(v) {
+    prefix = v ~ "=";
+    foreach(e; environ()) {
+        if(find(prefix, e) == 0) { return substr(e, size(v)+1); }
     }
 }
 

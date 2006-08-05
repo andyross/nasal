@@ -139,7 +139,7 @@ int main(int argc, char** argv)
 #ifdef HAVE_SQLITE
     naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naInit_sqlite(ctx));
 #endif
-#ifdef HAVE_SQLITE
+#ifdef HAVE_READLINE
     naHash_set(namespace, naInternSymbol(NASTR("readline")),
                naInit_readline(ctx));
 #endif

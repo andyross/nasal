@@ -90,6 +90,7 @@ var clone_hash = func(h) {
     return result;
 }
 
+# Duplicated from the io library, which we can't import here:
 var readfile = func(file) {
     var sz = io.stat(file)[7];
     var buf = bits.buf(sz);

@@ -47,18 +47,19 @@ static naRef f_comp(naContext c, naRef me, int argc, naRef* args)
 
 static naRef f_exec(naContext c, naRef me, int argc, naRef* args)
 {
-    int i, n, ovector[30];
+    int i, n, i0, ovector[30];
     struct Regex* r = argc > 0 ? naGhost_ptr(args[0]) : 0;
     naRef result, str = argc > 1 ? naStringValue(c, args[1]) : naNil();
     naRef start = argc > 2 ? naNumValue(args[2]) : naNum(0);
     if(!r || naGhost_type(args[0]) != &naRegexGhostType || !IS_NUM(start))
         naRuntimeError(c, "bad argument to regex.study");
-    n = pcre_exec(r->re, r->extra, (char*)str.ref.ptr.str->data,
-                  str.ref.ptr.str->len, (int)start.num, 0, ovector, 30);
+    i0 = (int)start.num;
+    n = pcre_exec(r->re, r->extra, (char*)str.ref.ptr.str->data+i0,
+                  str.ref.ptr.str->len-i0, 0, 0, ovector, 30);
     result = naNewVector(c);
     if(n > 0) {
         naVec_setsize(result, n*2);
-        for(i=0; i<2*n; i++) naVec_set(result, i, naNum(ovector[i]));
+        for(i=0; i<2*n; i++) naVec_set(result, i, naNum(ovector[i]+i0));
     }
     return result;
 }

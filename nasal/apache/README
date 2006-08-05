@@ -7,12 +7,13 @@ A quick (but surprisingly complete) Nasal apache module.  Usage:
 2. Edit your httpd.conf or equivalent configuration files to add the
    following lines at the top level (or in a virtual host):
 
-     NasalHandler <nasal-cvs>/apache/nas-handler.nas nas
-     NasalHandler <nasal-cvs>/nasal/apache/nhtm-handler.nas nhtm
-     AddHandler nas .nas
+     NasalInit /usr/local/lib/nasal/driver.nas
+     NasalHandler <nasal-cvs>/apache/ns-handler.nas nas
+     NasalHandler <nasal-cvs>/apache/nhtm-handler.nas nhtm
+     AddHandler ns .ns
      AddHandler nhtm .nhtm
 
-3. Drop the test.nas (Nasal program handler) and test.nhtm (JSP-like
+3. Drop the test.ns (Nasal "servlet" handler) and test.nhtm (JSP-like
    template language) into your web tree and hit them.  Edit away.
    Try stuff.  Ask Andy for docs.
 
