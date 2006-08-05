@@ -1,0 +1,176 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<link rel="stylesheet" type="text/css" href="deb_fam.css">
+<style type="text/css">
+<!--
+.error {
+  color       : #FF0000;
+  font-weight : bold;
+}
+
+span.nopage {
+  background-color : #FFFF88;
+}
+
+a.wikipage:link { 
+  color            : #4444FF;
+  text-decoration : underline;
+}
+
+a.wikipage:visited {
+  color            : #4444FF;
+  text-decoration : underline;
+}
+
+a.wikipage:hover {
+  color           : #FF4444;
+  background-color: #DDDDDD;
+  text-decoration : underline;
+}
+
+div.partedit {
+  text-align : right;
+  font-size  : 80%;
+}
+
+td.today {
+  background-color : #FF8888;
+}
+
+td.have {
+  font-weight : bold;
+}
+
+.calendar td {
+  text-align : right;
+}
+      -->
+</style>
+<title>Nasal Module for SWIG - FreeStyleWiki</title></head>
+
+<body>
+ 
+<h1>Nasal Module for SWIG</h1>
+  
+<div class="day body section">
+<p>SWIG (Simplified Wrapper and Interface Generator, <a
+href="http://www.swig.org/" target="_blank">http://www.swig.org/</a>)
+is an interface compiler that connects programs written in C and C++
+with scripting languages. This module extends SWIG to produce wrapper
+code for Nasal(<a href="http://www.plausible.org/nasal/"
+target="_blank">http://www.plausible.org/nasal/</a>) written by Andy
+Ross.</p>
+
+<p>This module generates extension code for Nasal from interface
+files.</p>
+
+<h2><a name="p0">Download</a></h2>
+<ul>
+ <li> <a
+      href="http://gaku_n.tripod.com/swig-nasal/swig-nasal-0.2.tar.gz">swig-nasal-0.2.tar.gz</a> </li>
+</ul>
+<p>This file contains Nasal module for SWIG and patch for some files in
+SWIG.  This version is for Nasal 1.0.0 or later.</p>
+
+<h2><a name="p1">Compile and Install</a></h2>
+<p>First of all, you need to download SWIG source code (from <a
+href="http://www.swig.org/" target="_blank">http://www.swig.org/</a>)
+and decompress tarball.</p>
+<pre>$ tar zxf swig-1.3.29.tar.gz</pre>
+
+<p>Next, move to SWIG source directory, and decompress Nasal module
+tarball.</p>
+<pre>$ cd swig-1.3.29
+$ tar zxf /tmp/swig-nasal-0.2.tar.gz</pre>
+
+<p>This tarball contains file named swig-nasal.patch.  Applay this patch.</p>
+<pre>$ patch -p1 &lt; swig-nasal.patch</pre>
+<p>Run autogen.sh script, configure and make SWIG with Nasal
+support.</p>
+<pre>$ ./autogen.sh
+$ ./configure --prefix=/usr/local
+$ make</pre>
+
+<p>Finally, install the files.</p>
+<pre>$ make install</pre>
+
+<h2><a name="p2">Example</a></h2>
+<p><a href="http://www.swig.org/doc.html" target="_blank">SWIG
+documentation</a> describe the usage of SWIG.  Please read this document
+for the basic usage.</p>
+<p>To generate a Nasal extension code, run SWIG with -nasal option:</p>
+<pre>$ swig -nasal example.i</pre>
+<p>To generate the extension code for C++ code, add -c++ option:</p>
+<pre>$ swig -nasal -c++ example.i</pre>
+
+<p>Then, SWIG generates a file example_wrap.c (example_wrap.cxx, in the case of C++). In order to use the
+generated code in Nasal scripts, you need to compile Nasal with
+example_wrap.c.  In the generated code, initialization function is
+ named "naInit_(modulename)".  So, sample code using wrapped C/C++
+  code is fllowing:</p>
+
+<pre>#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;unistd.h&gt;
+
+#include "nasal.h"
+
+  
+<b>naRef naInit_example(naContext c);</b>  //Initialization function
+
+#define NASTR(s) naStr_fromdata(naNewString(ctx), (s), strlen((s)))
+int main(int argc, char** argv)
+{
+    *snip*
+    
+    // Create an interpreter context
+    ctx = naNewContext();
+
+    // Parse the code in the buffer.  The line of a fatal parse error
+    // is returned via the pointer.
+    code = naParseCode(ctx, NASTR(script), 1, buf, fdat.st_size, &errLine);
+    if(naIsNil(code)) {
+        fprintf(stderr, "Parse error: %s at line %d\n",
+                naGetError(ctx), errLine);
+        exit(1);
+    }
+    free(buf);
+
+    // Make a hash containing the standard library functions.  This
+    // will be the namespace for a new script
+    namespace = naInit_std(ctx);
+
+
+    // Add extra libraries as needed.
+    naHash_set(namespace, naInternSymbol(NASTR("math")), naInit_math(ctx));
+    <b>naHash_set(namespace, naInternSymbol(NASTR("example")), naInit_example(ctx));</b>   // wrapped functions are stored in the hash named "example"
+    ...</pre>
+
+<p>Then you can call the C/C++ functions described in example.i
+    (e.g. Foo(int n)) from Nasal code like this:</p>
+
+<pre>a = example.Foo(10);</pre>
+<p>You can also use the generated code in the similar way when you embed
+Nasal in your application.</p>
+<p>This module might have bugs. If you experience a problem, please let
+  us know by sending a message to <a href="mailto:gaku_n@infoseek.jp"
+  target="_blank">gaku_n@infoseek.jp</a>.</p>
+
+
+
+
+</div>
+<div class="footer">
+  Copyright (C) 2006
+<a href="mailto:gaku_n@infoseek.jp" target="_blank">Manabu NISHIYAMA</a><br>
+</div>
+<br><br>
+
+</body></html>
+<font delete='>

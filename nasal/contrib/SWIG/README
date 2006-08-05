@@ -1,0 +1,8 @@
+Nasal SWIG:
+
+This is a SWIG wrapper for Nasal written by Manabu Nishiyama.  SWIG
+(http://www.swig.org) is an "interface compiler" that automatically
+produces script engine wrappers for C and C++ libraries.
+
+See the documentation in doc/index.html for how to apply these changes
+to a SWIG source tree.
