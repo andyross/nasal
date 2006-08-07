@@ -27,7 +27,7 @@ static void marktemps(struct Context* c)
     int i;
     naRef r = naNil();
     for(i=0; i<c->ntemps; i++) {
-        r.ref.ptr.obj = c->temps[i];
+        SETPTR(r, c->temps[i]);
         mark(r);
     }
 }
@@ -214,7 +214,7 @@ struct naObj** naGC_get(struct naPool* p, int n, int* nout)
 static void markvec(naRef r)
 {
     int i;
-    struct VecRec* vr = r.ref.ptr.vec->rec;
+    struct VecRec* vr = PTR(r).vec->rec;
     if(!vr) return;
     for(i=0; i<vr->size; i++)
         mark(vr->array[i]);
@@ -223,7 +223,7 @@ static void markvec(naRef r)
 static void markhash(naRef r)
 {
     int i;
-    struct HashRec* hr = r.ref.ptr.hash->rec;
+    struct HashRec* hr = PTR(r).hash->rec;
     if(!hr) return;
     for(i=0; i < (1<<hr->lgalloced); i++) {
         struct HashNode* hn = hr->table[i];
@@ -244,22 +244,22 @@ static void mark(naRef r)
     if(IS_NUM(r) || IS_NIL(r))
         return;
 
-    if(r.ref.ptr.obj->mark == 1)
+    if(PTR(r).obj->mark == 1)
         return;
 
-    r.ref.ptr.obj->mark = 1;
-    switch(r.ref.ptr.obj->type) {
+    PTR(r).obj->mark = 1;
+    switch(PTR(r).obj->type) {
     case T_VEC: markvec(r); break;
     case T_HASH: markhash(r); break;
     case T_CODE:
-        mark(r.ref.ptr.code->srcFile);
-        for(i=0; i<r.ref.ptr.code->nConstants; i++)
-            mark(r.ref.ptr.code->constants[i]);
+        mark(PTR(r).code->srcFile);
+        for(i=0; i<PTR(r).code->nConstants; i++)
+            mark(PTR(r).code->constants[i]);
         break;
     case T_FUNC:
-        mark(r.ref.ptr.func->code);
-        mark(r.ref.ptr.func->namespace);
-        mark(r.ref.ptr.func->next);
+        mark(PTR(r).func->code);
+        mark(PTR(r).func->namespace);
+        mark(PTR(r).func->next);
         break;
     }
 }

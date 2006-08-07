@@ -214,7 +214,7 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     subc = naSubContext(c);
     subc->callParent = c;
     c->callChild = subc;
-    vr = IS_NIL(callargs) ? 0 : callargs.ref.ptr.vec->rec;
+    vr = IS_NIL(callargs) ? 0 : PTR(callargs).vec->rec;
     result = naCall(subc, args[0], vr ? vr->size : 0, vr ? vr->array : 0,
                     callme, callns);
     if(argc > 1 && IS_VEC(args[argc-1])) {
@@ -361,7 +361,7 @@ static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
     result = naNewVector(ctx);
     naVec_append(result, frame->locals);
     naVec_append(result, frame->func);
-    naVec_append(result, frame->func.ref.ptr.func->code.ref.ptr.code->srcFile);
+    naVec_append(result, PTR(PTR(frame->func).func->code).code->srcFile);
     naVec_append(result, naNum(naGetLine(ctx, fidx)));
     return result;
 }
@@ -375,8 +375,8 @@ static naRef f_closure(naContext ctx, naRef me, int argc, naRef* args)
     if(!IS_FUNC(func) || IS_NIL(idx))
         naRuntimeError(ctx, "bad arguments to closure()");
     i = (int)idx.num;
-    f = func.ref.ptr.func;
-    while(i > 0 && f) { i--; f = f->next.ref.ptr.func; }
+    f = PTR(func).func;
+    while(i > 0 && f) { i--; f = PTR(f->next).func; }
     if(!f) return naNil();
     return f->namespace;
 }
@@ -402,8 +402,8 @@ static naRef f_find(naContext ctx, naRef me, int argc, naRef* args)
     if(argc < 2 || !IS_STR(args[0]) || !IS_STR(args[1]))
         naRuntimeError(ctx, "bad/missing argument to find");
     if(argc > 2) start = (int)(naNumValue(args[2]).num);
-    return naNum(find(args[0].ref.ptr.str->data, args[0].ref.ptr.str->len,
-                      args[1].ref.ptr.str->data, args[1].ref.ptr.str->len,
+    return naNum(find(PTR(args[0]).str->data, PTR(args[0]).str->len,
+                      PTR(args[1]).str->data, PTR(args[1]).str->len,
                       start));
 }
 
@@ -457,9 +457,9 @@ static naRef f_bind(naContext ctx, naRef me, int argc, naRef* args)
     naRef next = argc > 2 ? args[2] : naNil();
     if(!IS_FUNC(func) || (!IS_NIL(next) && !IS_FUNC(next)) || !IS_HASH(hash))
         naRuntimeError(ctx, "bad argument to bind");
-    func = naNewFunc(ctx, func.ref.ptr.func->code);
-    func.ref.ptr.func->namespace = hash;
-    func.ref.ptr.func->next = next;
+    func = naNewFunc(ctx, PTR(func).func->code);
+    PTR(func).func->namespace = hash;
+    PTR(func).func->next = next;
     return func;
 }
 

@@ -4,51 +4,7 @@
 extern "C" {
 #endif
 
-/* Rather than play elaborate and games with platform-dependent
- * endianness headers, just detect the platforms we support. */
-#if defined(_M_X86)   || defined(i386)    || defined(__x86_64) || \
-    defined(__ia64__) || defined(_M_IA64) || defined(__ARMEL__) 
-# define NASAL_LE
-#elif defined(__sparc) || defined(__ppc__) || defined(__mips) || \
-      defined(__ARMEB__)
-# define NASAL_BE
-#else
-# error Unrecognized CPU architecture
-#endif
-
-// This is a nasal "reference".  They are always copied by value, and
-// contain either a pointer to a garbage-collectable nasal object
-// (string, vector, hash) or a floating point number.  Keeping the
-// number here is an optimization to prevent the generation of
-// zillions of tiny "number" object that have to be collected.  Note
-// sneaky hack: on little endian systems, placing reftag after ptr and
-// putting 1's in the top 13 (except the sign bit) bits makes the
-// double value a NaN, and thus unmistakable (no actual number can
-// appear as a reference, and vice versa).  Swap the structure order
-// on 32 bit big-endian systems.  On 64 bit sytems of either
-// endianness, reftag and the double won't be coincident anyway.
-#define NASAL_REFTAG 0x7ff56789 // == 2,146,789,257 decimal
-typedef union {
-    double num;
-    struct {
-#ifdef NASAL_BE
-        int reftag; // Big-endian 32 bit systems need this here!
-#endif
-        union {
-            struct naObj* obj;
-            struct naStr* str;
-            struct naVec* vec;
-            struct naHash* hash;
-            struct naCode* code;
-            struct naFunc* func;
-            struct naCCode* ccode;
-            struct naGhost* ghost;
-        } ptr;
-#ifndef NASAL_BE
-        int reftag; // Little-endian 32 bit systems need this here!
-#endif
-    } ref;
-} naRef;
+#include "naref.h"
 
 typedef struct Context* naContext;
     

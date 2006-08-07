@@ -46,12 +46,11 @@ void naRethrowError(naContext subc)
 }
 
 #define END_PTR ((void*)1)
-#define IS_END(r) (IS_REF((r)) && (r).ref.ptr.obj == END_PTR)
+#define IS_END(r) (IS_REF((r)) && PTR((r)).obj == END_PTR)
 static naRef endToken()
 {
     naRef r;
-    r.ref.reftag = NASAL_REFTAG;
-    r.ref.ptr.obj = END_PTR;
+    SETPTR(r, END_PTR);
     return r;
 }
 
@@ -131,7 +130,7 @@ static void containerSet(struct Context* ctx, naRef box, naRef key, naRef val)
     else if(IS_HASH(box)) naHash_set(box, key, val);
     else if(IS_VEC(box))  naVec_set(box, checkVec(ctx, box, key), val);
     else if(IS_STR(box)) {
-        if(box.ref.ptr.str->hashcode)
+        if(PTR(box).str->hashcode)
             ERR(ctx, "cannot change immutable string");
         naStr_data(box)[checkStr(ctx, box, key)] = (char)numify(ctx, val);
     } else ERR(ctx, "insert into non-container");
@@ -255,14 +254,14 @@ void naFreeContext(struct Context* c)
 static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
 {
     int i;
-    struct naCode* c = f->func.ref.ptr.func->code.ref.ptr.code;
+    struct naCode* c = PTR(PTR(f->func).func->code).code;
 
     // Set the argument symbols, and put any remaining args in a vector
     if(nargs < c->nArgs)
         naRuntimeError(ctx, "too few function args (have %d need %d)",
             nargs, c->nArgs);
     for(i=0; i<c->nArgs; i++)
-        naHash_newsym(f->locals.ref.ptr.hash,
+        naHash_newsym(PTR(f->locals).hash,
                       &c->constants[c->argSyms[i]], &args[i]);
     args += c->nArgs;
     nargs -= c->nArgs;
@@ -270,7 +269,7 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
         naRef val = nargs > 0 ? args[i] : c->constants[c->optArgVals[i]];
         if(IS_CODE(val))
             val = bindFunction(ctx, &ctx->fStack[ctx->fTop-2], val);
-        naHash_newsym(f->locals.ref.ptr.hash, &c->constants[c->optArgSyms[i]], 
+        naHash_newsym(PTR(f->locals).hash, &c->constants[c->optArgSyms[i]], 
                       &val);
     }
     args += c->nOptArgs;
@@ -278,8 +277,8 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
         naRef argsv = naNewVector(ctx);
         naVec_setsize(argsv, nargs > 0 ? nargs : 0);
         for(i=0; i<nargs; i++)
-            argsv.ref.ptr.vec->rec->array[i] = *args++;
-        naHash_newsym(f->locals.ref.ptr.hash, &c->restArgSym, &argsv);
+            PTR(argsv).vec->rec->array[i] = *args++;
+        naHash_newsym(PTR(f->locals).hash, &c->restArgSym, &argsv);
     }
 }
 
@@ -297,9 +296,9 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs,
 
     // Just do native calls right here, and don't touch the stack
     // frames; return the current one (unless it's a tail call!).
-    if(frame[0].ref.ptr.func->code.ref.ptr.obj->type == T_CCODE) {
+    if(PTR(PTR(frame[0]).func->code).obj->type == T_CCODE) {
         naRef obj = mcall ? frame[-1] : naNil();
-        naCFunction fp = frame[0].ref.ptr.func->code.ref.ptr.ccode->fptr;
+        naCFunction fp = PTR(PTR(frame[0]).func->code).ccode->fptr;
         naRef result = (*fp)(ctx, obj, nargs, frame + 1);
         ctx->opTop -= nargs + 1 + mcall;
         PUSH(result);
@@ -356,8 +355,8 @@ static naRef evalEquality(int op, naRef ra, naRef rb)
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
 {
     naRef result = naNewFunc(ctx, code);
-    result.ref.ptr.func->namespace = f->locals;
-    result.ref.ptr.func->next = f->func;
+    PTR(result).func->namespace = f->locals;
+    PTR(result).func->next = f->func;
     return result;
 }
 
@@ -365,7 +364,7 @@ static int getClosure(struct naFunc* c, naRef sym, naRef* result)
 {
     while(c) {
         if(naHash_get(c->namespace, sym, result)) return 1;
-        c = c->next.ref.ptr.func;
+        c = PTR(c->next).func;
     }
     return 0;
 }
@@ -374,7 +373,7 @@ static naRef getLocal2(struct Context* ctx, struct Frame* f, naRef sym)
 {
     naRef result;
     if(!naHash_get(f->locals, sym, &result))
-        if(!getClosure(f->func.ref.ptr.func, sym, &result))
+        if(!getClosure(PTR(f->func).func, sym, &result))
             naRuntimeError(ctx, "undefined symbol: %s", naStr_data(sym));
     return result;
 }
@@ -383,14 +382,14 @@ static void getLocal(struct Context* ctx, struct Frame* f,
                      naRef* sym, naRef* out)
 {
     struct naFunc* func;
-    struct naStr* str = sym->ref.ptr.str;
-    if(naHash_sym(f->locals.ref.ptr.hash, str, out))
+    struct naStr* str = PTR(*sym).str;
+    if(naHash_sym(PTR(f->locals).hash, str, out))
         return;
-    func = f->func.ref.ptr.func;
-    while(func && func->namespace.ref.ptr.hash) {
-        if(naHash_sym(func->namespace.ref.ptr.hash, str, out))
+    func = PTR(f->func).func;
+    while(func && PTR(func->namespace).hash) {
+        if(naHash_sym(PTR(func->namespace).hash, str, out))
             return;
-        func = func->next.ref.ptr.func;
+        func = PTR(func->next).func;
     }
     // Now do it again using the more general naHash_get().  This will
     // only be necessary if something has created the value in the
@@ -401,7 +400,7 @@ static void getLocal(struct Context* ctx, struct Frame* f,
 
 static int setClosure(naRef func, naRef sym, naRef val)
 {
-    struct naFunc* c = func.ref.ptr.func;
+    struct naFunc* c = PTR(func).func;
     if(c == 0) { return 0; }
     else if(naHash_tryset(c->namespace, sym, val)) { return 1; }
     else { return setClosure(c->next, sym, val); }
@@ -431,7 +430,7 @@ static const char* getMember_r(naRef obj, naRef field, naRef* out, int count)
     if(naHash_get(obj, field, out)) return "";
     if(!naHash_get(obj, globals->parentsRef, &p)) return 0;
     if(!IS_VEC(p)) return "object \"parents\" field not vector";
-    pv = p.ref.ptr.vec->rec;
+    pv = PTR(p).vec->rec;
     for(i=0; i<pv->size; i++) {
         const char* err = getMember_r(pv->array[i], field, out, count);
         if(err) return err; /* either an error or success */
@@ -461,7 +460,7 @@ static void evalEach(struct Context* ctx, int useIndex)
     int idx = (int)(ctx->opStack[ctx->opTop-1].num);
     naRef vec = ctx->opStack[ctx->opTop-2];
     if(!IS_VEC(vec)) ERR(ctx, "foreach enumeration of non-vector");
-    if(!vec.ref.ptr.vec->rec || idx >= vec.ref.ptr.vec->rec->size) {
+    if(!PTR(vec).vec->rec || idx >= PTR(vec).vec->rec->size) {
         PUSH(endToken());
         return;
     }
@@ -474,7 +473,7 @@ static void evalEach(struct Context* ctx, int useIndex)
 #define POP() ctx->opStack[--ctx->opTop]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
 #define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
-                   cd = f->func.ref.ptr.func->code.ref.ptr.code;
+    cd = PTR(PTR(f->func).func->code).code;
 static naRef run(struct Context* ctx)
 {
     struct Frame* f;
@@ -509,8 +508,7 @@ static naRef run(struct Context* ctx)
 #define BINOP(expr) do { \
     double l = IS_NUM(STK(2)) ? STK(2).num : numify(ctx, STK(2)); \
     double r = IS_NUM(STK(1)) ? STK(1).num : numify(ctx, STK(1)); \
-    STK(2).ref.reftag = ~NASAL_REFTAG; \
-    STK(2).num = expr; \
+    SETNUM(STK(2), expr);                                         \
     ctx->opTop--; } while(0)
 
         case OP_PLUS:  BINOP(l + r);         break;
@@ -636,19 +634,19 @@ static naRef run(struct Context* ctx)
             break;
         case OP_FCALL:
             f = setupFuncall(ctx, ARG(), 0, 0);
-            cd = f->func.ref.ptr.func->code.ref.ptr.code;
+            cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_FTAIL:
             f = setupFuncall(ctx, ARG(), 0, 1);
-            cd = f->func.ref.ptr.func->code.ref.ptr.code;
+            cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_MCALL:
             f = setupFuncall(ctx, ARG(), 1, 0);
-            cd = f->func.ref.ptr.func->code.ref.ptr.code;
+            cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_MTAIL:
             f = setupFuncall(ctx, ARG(), 1, 1);
-            cd = f->func.ref.ptr.func->code.ref.ptr.code;
+            cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_RETURN:
             a = STK(1);
@@ -712,8 +710,8 @@ int naGetLine(struct Context* ctx, int frame)
     struct Frame* f;
     frame = findFrame(ctx, &ctx, frame);
     f = &ctx->fStack[ctx->fTop-1-frame];
-    if(IS_FUNC(f->func) && IS_CODE(f->func.ref.ptr.func->code)) {
-        struct naCode* c = f->func.ref.ptr.func->code.ref.ptr.code;
+    if(IS_FUNC(f->func) && IS_CODE(PTR(f->func).func->code)) {
+        struct naCode* c = PTR(PTR(f->func).func->code).code;
         unsigned short* p = c->lineIps + c->nLines - 2;
         while(p >= c->lineIps && p[0] > f->ip)
             p -= 2;
@@ -727,22 +725,22 @@ naRef naGetSourceFile(struct Context* ctx, int frame)
     naRef f;
     frame = findFrame(ctx, &ctx, frame);
     f = ctx->fStack[ctx->fTop-1-frame].func;
-    f = f.ref.ptr.func->code;
-    return f.ref.ptr.code->srcFile;
+    f = PTR(f).func->code;
+    return PTR(f).code->srcFile;
 }
 
 char* naGetError(struct Context* ctx)
 {
     if(IS_STR(ctx->dieArg))
-        return (char*)ctx->dieArg.ref.ptr.str->data;
+        return (char*)PTR(ctx->dieArg).str->data;
     return ctx->error[0] ? ctx->error : 0;
 }
 
 naRef naBindFunction(naContext ctx, naRef code, naRef closure)
 {
     naRef func = naNewFunc(ctx, code);
-    func.ref.ptr.func->namespace = closure;
-    func.ref.ptr.func->next = naNil();
+    PTR(func).func->namespace = closure;
+    PTR(func).func->next = naNil();
     return func;
 }
 
@@ -750,8 +748,8 @@ naRef naBindToContext(naContext ctx, naRef code)
 {
     naRef func = naNewFunc(ctx, code);
     struct Frame* f = &ctx->fStack[ctx->fTop-1];
-    func.ref.ptr.func->namespace = f->locals;
-    func.ref.ptr.func->next = f->func;
+    PTR(func).func->namespace = f->locals;
+    PTR(func).func->next = f->func;
     return func;
 }
 
@@ -771,8 +769,8 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     naTempSave(ctx, obj);
     naTempSave(ctx, locals);
 
-    if(IS_CCODE(func.ref.ptr.func->code)) {
-        naCFunction fp = func.ref.ptr.func->code.ref.ptr.ccode->fptr;
+    if(IS_CCODE(PTR(func).func->code)) {
+        naCFunction fp = PTR(PTR(func).func->code).ccode->fptr;
         result = (*fp)(ctx, obj, argc, args);
         if(!ctx->callParent) naModUnlock(ctx);
         return result;
@@ -781,7 +779,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     if(IS_NIL(locals))
         locals = naNewHash(ctx);
     if(!IS_FUNC(func))
-        (func = naNewFunc(ctx, func)).ref.ptr.func->namespace = locals;
+        PTR(func = naNewFunc(ctx, func)).func->namespace = locals;
     if(!IS_NIL(obj))
         naHash_set(locals, globals->meRef, obj);
 

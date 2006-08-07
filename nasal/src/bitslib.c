@@ -32,7 +32,7 @@ static void setfld(naContext c, unsigned char* s, int slen,
 
 static naRef dofld(naContext c, int argc, naRef* args, int sign)
 {
-    struct naStr* s = argc > 0 ? args[0].ref.ptr.str : 0;
+    struct naStr* s = argc > 0 ? PTR(args[0]).str : 0;
     int bit = argc > 1 ? (int)naNumValue(args[1]).num : -1;
     int len = argc > 2 ? (int)naNumValue(args[2]).num : -1;
     unsigned int f;
@@ -56,7 +56,7 @@ static naRef f_fld(naContext c, naRef me, int argc, naRef* args)
 
 static naRef f_setfld(naContext c, naRef me, int argc, naRef* args)
 {
-    struct naStr* s = argc > 0 ? args[0].ref.ptr.str : 0;
+    struct naStr* s = argc > 0 ? PTR(args[0]).str : 0;
     int bit = argc > 1 ? (int)naNumValue(args[1]).num : -1;
     int len = argc > 2 ? (int)naNumValue(args[2]).num : -1;
     naRef val = argc > 3 ? naNumValue(args[3]) : naNil();

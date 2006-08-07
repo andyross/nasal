@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "nasal.h"
+#include "data.h"
 
 void checkError(naContext ctx)
 {
@@ -39,7 +40,7 @@ void* threadtop(void* param)
 {
     naContext ctx = naNewContext();
     naRef func = naNil();
-    func.ref.ptr.func = param;
+    SETPTR(func, param);
     naCall(ctx, func, 0, 0, naNil(), naNil());
     checkError(ctx);
     naFreeContext(ctx);
@@ -54,10 +55,10 @@ static naRef newthread(naContext c, naRef me, int argc, naRef* args)
 #ifndef _WIN32
     pthread_t th;
     naSave(c, args[0]);
-    pthread_create(&th, 0, threadtop, args[0].ref.ptr.obj);
+    pthread_create(&th, 0, threadtop, PTR(args[0]).obj);
 #else
     naSave(c, args[0]);
-    CreateThread(0, 0, threadtop, args[0].ref.ptr.obj, 0, 0);
+    CreateThread(0, 0, threadtop, PTR(args[0]).obj, 0, 0);
 #endif
     return naNil();
 }

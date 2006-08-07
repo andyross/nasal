@@ -32,9 +32,9 @@ static naRef f_read(naContext c, naRef me, int argc, naRef* args)
     naRef len = argc > 2 ? naNumValue(args[2]) : naNil();
     if(!g || !MUTABLE(str) || !IS_NUM(len))
         naRuntimeError(c, "bad argument to read()");
-    if(str.ref.ptr.str->len < (int)len.num)
+    if(PTR(str).str->len < (int)len.num)
         naRuntimeError(c, "string not big enough for read");
-    return naNum(g->type->read(c, g->handle, (char*)str.ref.ptr.str->data,
+    return naNum(g->type->read(c, g->handle, (char*)PTR(str).str->data,
                                (int)len.num));
 }
 
@@ -44,8 +44,8 @@ static naRef f_write(naContext c, naRef me, int argc, naRef* args)
     naRef str = argc > 1 ? args[1] : naNil();
     if(!g || !IS_STR(str))
         naRuntimeError(c, "bad argument to write()");
-    return naNum(g->type->write(c, g->handle, (char*)str.ref.ptr.str->data,
-                                str.ref.ptr.str->len));
+    return naNum(g->type->write(c, g->handle, (char*)PTR(str).str->data,
+                                PTR(str).str->len));
 }
 
 static naRef f_seek(naContext c, naRef me, int argc, naRef* args)
@@ -134,8 +134,8 @@ static naRef f_open(naContext c, naRef me, int argc, naRef* args)
     naRef file = argc > 0 ? naStringValue(c, args[0]) : naNil();
     naRef mode = argc > 1 ? naStringValue(c, args[1]) : naNil();
     if(!IS_STR(file)) naRuntimeError(c, "bad argument to open()");
-    f = fopen((char*)file.ref.ptr.str->data,
-              IS_STR(mode) ? (const char*)mode.ref.ptr.str->data : "r");
+    f = fopen((char*)PTR(file).str->data,
+              IS_STR(mode) ? (const char*)PTR(mode).str->data : "r");
     if(!f) naRuntimeError(c, strerror(errno));
     return naIOGhost(c, f);
 }
@@ -188,7 +188,7 @@ static naRef f_stat(naContext ctx, naRef me, int argc, naRef* args)
     struct stat s;
     naRef result, path = argc > 0 ? naStringValue(ctx, args[0]) : naNil();
     if(!IS_STR(path)) naRuntimeError(ctx, "bad argument to stat()");
-    if(stat((char*)path.ref.ptr.str->data, &s) < 0) {
+    if(stat((char*)PTR(path).str->data, &s) < 0) {
         if(errno == ENOENT) return naNil();
         naRuntimeError(ctx, strerror(errno));
     }

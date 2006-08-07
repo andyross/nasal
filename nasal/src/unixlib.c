@@ -93,7 +93,7 @@ static naRef f_opendir(naContext ctx, naRef me, int argc, naRef* args)
     if(!(d = opendir(naStr_data(args[0]))))
         naRuntimeError(ctx, strerror(errno));
     result = naNewGhost(ctx, &DirGhostType, naAlloc(sizeof(DIR*)));
-    *(DIR**)result.ref.ptr.ghost->ptr = d;
+    *(DIR**)PTR(result).ghost->ptr = d;
     return result;
 }
 

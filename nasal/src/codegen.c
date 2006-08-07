@@ -694,7 +694,7 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
 
     // Now make a code object
     codeObj = naNewCode(p->context);
-    code = codeObj.ref.ptr.code;
+    code = PTR(codeObj).code;
 
     // Parse the argument list, if any
     code->restArgSym = globals->argRef;

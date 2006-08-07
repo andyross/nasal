@@ -79,8 +79,8 @@ void printRefDEBUG(naRef r)
         printf("<nil>\n");
     } else if(IS_STR(r)) {
         printf("\"");
-        for(i=0; i<r.ref.ptr.str->len; i++)
-            printf("%c", r.ref.ptr.str->data[i]);
+        for(i=0; i<PTR(r).str->len; i++)
+            printf("%c", PTR(r).str->data[i]);
         printf("\"\n");
     } else if(IS_VEC(r)) {
         printf("<vec>\n");
@@ -229,16 +229,16 @@ void dumpTokenList(struct Token* t, int prefix)
 
 // Prints bytecode listing
 void dumpByteCode(naRef codeObj) {
-    unsigned short *byteCode = codeObj.ref.ptr.code->byteCode;
+    unsigned short *byteCode = PTR(codeObj).code->byteCode;
     int ip = 0, op, c;
     naRef a;
-    while(ip < codeObj.ref.ptr.code->codesz) {
+    while(ip < PTR(codeObj).code->codesz) {
         op = byteCode[ip++];
         printf("%8d %-12s",ip-1,opStringDEBUG(op));
         switch(op) {
             case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
                 c=byteCode[ip++];
-                a=codeObj.ref.ptr.code->constants[c];
+                a=PTR(codeObj).code->constants[c];
                 printf(" %-4d ",c);
                 if(IS_CODE(a)) {
                     printf("(CODE)\n[\n");
