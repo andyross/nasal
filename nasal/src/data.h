@@ -30,6 +30,14 @@
 #define _ULP(r) ((unsigned long long)((r).ptr))
 #define REFPTR(r) (_ULP(r) & REFMAGIC)
 #define IS_REF(r) ((_ULP(r) & ~REFMAGIC) == ~REFMAGIC)
+
+// Portability note: this cast from a pointer type to naPtr (a union)
+// is not defined in ISO C, it's a GCC extention that doesn't work on
+// (at least) either the SUNWspro or MSVC compilers.  Unfortunately,
+// fixing this would require abandoning the naPtr union for a set of
+// PTR_<type>() macros, which is a ton of work and a lot of extra
+// code.  And as all enabled 64 bit platforms are gcc anyway, and the
+// 32 bit fallback code works in any case, this is acceptable for now.
 #define PTR(r) ((naPtr)((struct naObj*)(_ULP(r) & REFMAGIC)))
 
 #define SETPTR(r, p) ((r).ptr = (void*)((unsigned long long)p | ~REFMAGIC))
@@ -46,7 +54,7 @@
 #define IS_REF(r) ((r).ref.reftag == NASAL_REFTAG)
 #define PTR(r) ((r).ref.ptr)
 
-#define SETPTR(r, p) ((r).ref.ptr.obj = p, (r).ref.reftag = NASAL_REFTAG)
+#define SETPTR(r, p) ((r).ref.ptr.obj = (void*)p, (r).ref.reftag = NASAL_REFTAG)
 #define SETNUM(r, n) ((r).ref.reftag = ~NASAL_REFTAG, (r).num = n)
 
 #endif /* platform stuff */
