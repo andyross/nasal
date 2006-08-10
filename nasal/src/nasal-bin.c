@@ -123,26 +123,23 @@ int main(int argc, char** argv)
 
     // Add application-specific functions (in this case, "print" and
     // the math library) to the namespace if desired.
-    naHash_set(namespace, naInternSymbol(NASTR("print")),
-               naNewFunc(ctx, naNewCCode(ctx, print)));
-    naHash_set(namespace, naInternSymbol(NASTR("thread")),
-               naNewFunc(ctx, naNewCCode(ctx, newthread)));
+    naAddSym(ctx, namespace, "print", naNewFunc(ctx, naNewCCode(ctx, print)));
+    naAddSym(ctx, namespace, "thread", naNewFunc(ctx, naNewCCode(ctx, newthread)));
 
     // Add extra libraries as needed.
-    naHash_set(namespace, naInternSymbol(NASTR("utf8")), naInit_utf8(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("math")), naInit_math(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("bits")), naInit_bits(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("io")), naInit_io(ctx));
-    naHash_set(namespace, naInternSymbol(NASTR("unix")), naInit_unix(ctx));
+    naAddSym(ctx, namespace, "utf8", naInit_utf8(ctx));
+    naAddSym(ctx, namespace, "math", naInit_math(ctx));
+    naAddSym(ctx, namespace, "bits", naInit_bits(ctx));
+    naAddSym(ctx, namespace, "io", naInit_io(ctx));
+    naAddSym(ctx, namespace, "unix", naInit_unix(ctx));
 #ifdef HAVE_PCRE
-    naHash_set(namespace, naInternSymbol(NASTR("regex")), naInit_regex(ctx));
+    naAddSym(ctx, namespace, "regex", naInit_regex(ctx));
 #endif
 #ifdef HAVE_SQLITE
-    naHash_set(namespace, naInternSymbol(NASTR("sqlite")), naInit_sqlite(ctx));
+    naAddSym(ctx, namespace, "sqlite", naInit_sqlite(ctx));
 #endif
 #ifdef HAVE_READLINE
-    naHash_set(namespace, naInternSymbol(NASTR("readline")),
-               naInit_readline(ctx));
+    naAddSym(ctx, namespace, "readline", naInit_readline(ctx));
 #endif
 
     // Bind the "code" object from naParseCode into a "function"
