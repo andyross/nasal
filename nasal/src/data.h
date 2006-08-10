@@ -47,7 +47,7 @@
 #define PTR(r) ((r).ref.ptr)
 
 #define SETPTR(r, p) ((r).ref.ptr.obj = p, (r).ref.reftag = NASAL_REFTAG)
-#define SETNUM(r, n) ((r).num = n, (r).ref.reftag = ~NASAL_REFTAG)
+#define SETNUM(r, n) ((r).ref.reftag = ~NASAL_REFTAG, (r).num = n)
 
 #endif /* platform stuff */
 

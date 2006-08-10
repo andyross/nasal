@@ -2,7 +2,7 @@ bin_PROGRAMS = nasal-bin
 
 lib_LTLIBRARIES = libnasal.la
 
-include_HEADERS = nasal.h
+include_HEADERS = nasal.h naref.h
 
 dist_bin_SCRIPTS = nasal
 

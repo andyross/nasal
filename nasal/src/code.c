@@ -778,8 +778,10 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 
     if(IS_NIL(locals))
         locals = naNewHash(ctx);
-    if(!IS_FUNC(func))
-        PTR(func = naNewFunc(ctx, func)).func->namespace = locals;
+    if(!IS_FUNC(func)) {
+        func = naNewFunc(ctx, func);
+        PTR(func).func->namespace = locals;
+    }
     if(!IS_NIL(obj))
         naHash_set(locals, globals->meRef, obj);
 

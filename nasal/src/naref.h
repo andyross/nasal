@@ -5,7 +5,7 @@
  * platform-dependent endianness headers, just detect the platforms we
  * support.  This list is simpler and smaller, yet still quite
  * complete. */
-#if defined(__x86_64) && defined(__linux__)
+#if (defined(__x86_64) && defined(__linux__)) || defined(__sparcv9)
 #   define NASAL_44BIT_ADDR
 #elif defined(_M_X86)   || defined(i386)    || defined(__x86_64) || \
     defined(__ia64__) || defined(_M_IA64) || defined(__ARMEL__) 
