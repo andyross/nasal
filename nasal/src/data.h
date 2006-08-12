@@ -3,17 +3,16 @@
 
 #include "nasal.h"
 
-#if defined(NASAL_44BIT_ADDR)
+#if defined(NASAL_NAN64)
 
 // On 64 bit systems, Nasal non-numeric references are stored with a
-// bitmask that sets the top 20 bits.  As a double, this is a
+// bitmask that sets the top 16 bits.  As a double, this is a
 // signalling NaN that cannot itself be produced by normal numerics
 // code.  The pointer value can be reconstructed if (and only if) we
 // are guaranteed that all memory that can be poitned to by a naRef
-// (i.e. all memory returned by naAlloc) lives in the bottom 44 bits
-// of memory.  I have only verified and tested this with 64 bit linux,
-// but Win64, Solaris and Irix seem to have similar policies with
-// address spaces:
+// (i.e. all memory returned by naAlloc) lives in the bottom 48 bits
+// of memory.  Linux on x86_64, Win64, Solaris and Irix all have such
+// policies with address spaces:
 //
 // http://msdn.microsoft.com/library/en-us/win64/win64/virtual_address_space.asp
 // http://docs.sun.com/app/docs/doc/816-5138/6mba6ua5p?a=view
@@ -23,9 +22,12 @@
 // In the above, MS guarantees 44 bits of process address space, SGI
 // 40, and Sun 43 (Solaris *does* place the stack in the "negative"
 // address space at 0xffff..., but we don't care as naRefs will never
-// point there).  So we choose 44 as the conservative compromise.
+// point there).  Linux doesn't document this rigorously, but testing
+// shows that it allows 47 bits of address space (and current x86_64
+// implementations are limited to 48 bits of virtual space anyway). So
+// we choose 48 as the conservative compromise.
 
-#define REFMAGIC ((1UL<<44) - 1)
+#define REFMAGIC ((1UL<<48) - 1)
 
 #define _ULP(r) ((unsigned long long)((r).ptr))
 #define REFPTR(r) (_ULP(r) & REFMAGIC)

@@ -6,7 +6,9 @@
  * support.  This list is simpler and smaller, yet still quite
  * complete. */
 #if (defined(__x86_64) && defined(__linux__)) || defined(__sparcv9)
-#   define NASAL_44BIT_ADDR
+/* Win64 and Irix should work with this too, but have not been
+ * tested */
+#   define NASAL_NAN64
 #elif defined(_M_X86)   || defined(i386)    || defined(__x86_64) || \
     defined(__ia64__) || defined(_M_IA64) || defined(__ARMEL__) 
 # define NASAL_LE
@@ -28,10 +30,10 @@ typedef union {
     struct naGhost* ghost;
 } naPtr;
 
-#if defined(NASAL_44BIT_ADDR)
+#if defined(NASAL_NAN64)
 
 /* On suppoted 64 bit platforms (those where all memory returned from
- * naAlloc() is guaranteed to lie between 0 and 2^44-1) we union the
+ * naAlloc() is guaranteed to lie between 0 and 2^48-1) we union the
  * double with the pointer, and use fancy tricks (see data.h) to make
  * sure all pointers are stored as NaNs. */
 typedef union { double num; void* ptr; } naRef;

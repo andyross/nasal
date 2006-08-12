@@ -17,7 +17,20 @@ import("utf8");
 #   in UTF8.
 
 # The Tag class implements a DOM-like parse tree.  Simply call
-# xml.parse() with your string and inspect the returned Tag.
+# xml.parse() with your string and inspect the returned Tag with these
+# methods:
+#
+# name():            returns the name (w/o namespace prefix) of the tag
+# namespace():       the fully qualified namespace URI of the tag
+# attr(name, ns?):   the specified attribute, or nil
+# attrs():           all attributes in a list of [name, namespace] pairs
+# parent():          the Tag's parent node, or nil
+# child(index):      the specified child, or nil.  Even children (0, 2,
+#                    etc...) are always text strings.  Odd indices refer
+#                    to Tag objects.
+# tag(name, ns?):    the first sub-tag with the specified name
+# tags(name, ns?):   list of all tags with the specified name
+# text():            the first text node, without leading/trailing whitespace
 
 parse = func(str) {
     var tp = TagParser.new();
@@ -91,6 +104,7 @@ Parser.new = func(handler) {
     var p = { parents : [Parser] };
     p.reset(handler);
 
+    # All the regexes in one place.  Feel the line noise!
     p.textRE = regex.new('^([^<]+)');
     p.commentRE = regex.new('^<!--(?:[^-]|(?:-[^-])|(?:--[^>]))*-->');
     p.procRE = regex.new('^<\?([^\s]+)\s+((?:[^?]|\?[^>])*)\?>');
@@ -140,8 +154,6 @@ Parser.feed = func(str) {
 	return 0;
     }
     while(next < usz) {
-	#print("loop: ", substr(src, next), "\n");
-
 	if(me.attrs != nil) {
 	    if(m(me.sqRE)) {
 		me.attrs[me.sqRE.group(1)] = me.decode(me.sqRE.group(2));

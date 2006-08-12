@@ -271,6 +271,35 @@
     nlink, uid, gid, rdef, size, atime, mtime, ctime.  Errors are
     signaled as exceptions as per die().
 
+</dl><h3>Thread & Synchronization Library</h3><dl>
+
+<p>Nasal's threadsafety implementation uses an internal, minimal
+synchronization library.  The <code>thread</code> module exposes those
+primitives to script code.
+
+<dt>thread.newthread(func)
+<dd>Spawns a new thread that begins running in the specified function closure.
+
+<dt>thread.newlock()
+<dd>Creates and returns a new mutex lock.
+
+<dt>thread.lock(lock)
+<dd>Locks a mutex.
+
+<dt>thread.unlock(lock)
+<dd>Unlocks a mutex.
+
+<dt>thread.newsem()
+<dd>Creates and returns a new semaphore object.
+
+<dt>thread.semdown(sem)
+<dd>Executes a "down" operation on the semaphore, waiting until a
+    separate thread calls semup() if needed.
+
+<dt>thread.semup(sem)
+<dd>Executes an "up" operation on the semaphore, increasing the
+    internal count and waking up one waiting thread if needed.
+
 </dl><h3>Unix Library</h3><dl>
 
 <dt>unix.pipe()
@@ -381,7 +410,6 @@ the <code>interactive</code> module to implement the interactive nasal
 interpreter.
 <dt>readline(prompt="> ")
 <dd>Read and return a line of input from the user, or nil at end-of-stream.
-
 
 </dl>
 

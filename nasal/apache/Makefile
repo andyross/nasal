@@ -17,7 +17,8 @@ APACHECTL=apachectl
 
 NASAL_SRCS=bitslib.c code.c codegen.c gc.c hash.c iolib.c lex.c lib.c	\
            mathlib.c misc.c parse.c regexlib.c sqlitelib.c string.c	\
-           thread-posix.c thread-win32.c unixlib.c utf8lib.c vector.c
+           thread-posix.c thread-win32.c threadlib.c unixlib.c		\
+           utf8lib.c vector.c
 
 CFLAGS=-I ../src -Wc,-Wall
 LIBS=-lsqlite3 -lpcre

@@ -1,3 +1,4 @@
+<%! import("io"); %>
 <html>
 <head><title>Nasal Template Test</title></head>
 <body>
@@ -10,18 +11,24 @@
 <p><i>Note that the above variable is local to a specific httpd
 process.  If you are using the default prefork MPM, you will see a
 separate count for each process; hit reload a few times to see the
-count increment.  You can use the threaded MPM to share data across
-many requests if you like, but don't; there are synchronization
-primitives in mod_nasal.c yet.</i>
+count increment.  You can use the worker MPM to share data across many
+requests if you like, but be aware of the synchronization issues that
+entails.</i>
 
 <p>A loop:
 <% foreach(a; [1, 2, 3, 4, 5]) { %>
 &nbsp;&nbsp;Loop iteration: <b><%= a %></b><br>
 <% } %>
 
+<p>The contents of the local <code>/etc/mtab</code> file:
+<pre>
+<%= io.readfile("/etc/mtab") %>
+</pre>
+
 <p>Some initialization code, which will run *before* the page is executed:
 <%! var local_to_page = 123456789; %>
 <p>(No, you don't see anything.  That's the point.  The code ran
    during page complication time!).
+
 </body>
 </html>

@@ -1,3 +1,4 @@
+# Version info, be sure to bump with each release
 AC_INIT(nasal, 1.1pre, andy@plausible.org)
 AC_SUBST(LIBTOOL_VERSION_INFO, 0:0:0)
 

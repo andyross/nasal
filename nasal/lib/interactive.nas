@@ -34,7 +34,7 @@ var run = func {
 	var result = call(code, arg, nil, locals, err);
 	if(size(err)) {
 	    print(sprintf("%s at %s line %d\n", err[0], err[1], err[2]));
-	    for(var i=3; i<size(err); i+=1)
+	    for(var i=3; i<size(err); i+=2)
 		print(sprintf("  called from %s line %d\n", err[i], err[i+1]));
 	    continue;
 	}

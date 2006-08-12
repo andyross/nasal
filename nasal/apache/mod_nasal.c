@@ -10,13 +10,6 @@
 
 #include "nasal.h"
 
-/* To build (assuming there's a libnasal.a in the local directory):
- *   apxs -i -a -c -Wc,-Wall -Wc,-Werror -L. -lnasal mod_nasal.c
- *
- * The -Werror is to force a failure before it tries to install a
- * module with warnings.  Then just restart apache.
- */
-
 #define LOGERR(svr, ...) \
     ap_log_error(__FILE__, __LINE__, APLOG_ERR, 0, (svr), __VA_ARGS__)
 
@@ -31,11 +24,6 @@ struct nasal_request {
     const char* buf;
     apr_size_t len;
 };
-
-/* TODO: APR synchronization functions:
- * mutex_new, mutex_lock, mutex_unlock, cond_new, cond_wait,
- * cond_signal, cond_broadcast
- */
 
 /* Nasal environments are server-specific.  The handlers is a hash
  * table to look up handler functions from their names (defined with
@@ -284,6 +272,7 @@ static naRef run_file(naContext ctx, struct nasal_cfg* cfg, const char* file,
     naHash_set(syms, naInternSymbol(NASTR("utf8")), naInit_utf8(ctx));
     naHash_set(syms, naInternSymbol(NASTR("math")), naInit_math(ctx));
     naHash_set(syms, naInternSymbol(NASTR("bits")), naInit_bits(ctx));
+    naHash_set(syms, naInternSymbol(NASTR("thread")), naInit_thread(ctx));
     naHash_set(syms, naInternSymbol(NASTR("io")), naInit_io(ctx));
     naHash_set(syms, naInternSymbol(NASTR("unix")), naInit_unix(ctx));
     naHash_set(syms, naInternSymbol(NASTR("regex")), naInit_regex(ctx));

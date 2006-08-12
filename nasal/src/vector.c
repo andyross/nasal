@@ -69,7 +69,6 @@ int naVec_append(naRef vec, naRef o)
     return 0;
 }
 
-// FIXME: need to use naGC_swapfree here!
 void naVec_setsize(naRef vec, int sz)
 {
     int i;
@@ -80,7 +79,7 @@ void naVec_setsize(naRef vec, int sz)
     for(i=0; i<sz; i++)
         nv->array[i] = (v && i < v->size) ? v->array[i] : naNil();
     naFree(v);
-    PTR(vec).vec->rec = nv;
+    naGC_swapfree((void**)&(PTR(vec).vec->rec), nv);
 }
 
 naRef naVec_removelast(naRef vec)
