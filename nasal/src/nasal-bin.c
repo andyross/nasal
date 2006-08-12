@@ -31,38 +31,6 @@ void checkError(naContext ctx)
     }
 }
 
-
-#ifdef _WIN32
-DWORD WINAPI threadtop(LPVOID param)
-#else
-void* threadtop(void* param)
-#endif
-{
-    naContext ctx = naNewContext();
-    naRef func = naNil();
-    SETPTR(func, param);
-    naCall(ctx, func, 0, 0, naNil(), naNil());
-    checkError(ctx);
-    naFreeContext(ctx);
-    return 0;
-}
-
-// A brutally simple "create a thread" API, taking a single function.
-// Useful for test purposes, but for little else.  Note that there are
-// no synchronization primitives defined!
-static naRef newthread(naContext c, naRef me, int argc, naRef* args)
-{
-#ifndef _WIN32
-    pthread_t th;
-    naSave(c, args[0]);
-    pthread_create(&th, 0, threadtop, PTR(args[0]).obj);
-#else
-    naSave(c, args[0]);
-    CreateThread(0, 0, threadtop, PTR(args[0]).obj, 0, 0);
-#endif
-    return naNil();
-}
-
 // A Nasal extension function (prints its argument list to stdout)
 static naRef print(naContext c, naRef me, int argc, naRef* args)
 {
@@ -124,7 +92,6 @@ int main(int argc, char** argv)
     // Add application-specific functions (in this case, "print" and
     // the math library) to the namespace if desired.
     naAddSym(ctx, namespace, "print", naNewFunc(ctx, naNewCCode(ctx, print)));
-    naAddSym(ctx, namespace, "thread", naNewFunc(ctx, naNewCCode(ctx, newthread)));
 
     // Add extra libraries as needed.
     naAddSym(ctx, namespace, "utf8", naInit_utf8(ctx));
@@ -132,6 +99,7 @@ int main(int argc, char** argv)
     naAddSym(ctx, namespace, "bits", naInit_bits(ctx));
     naAddSym(ctx, namespace, "io", naInit_io(ctx));
     naAddSym(ctx, namespace, "unix", naInit_unix(ctx));
+    naAddSym(ctx, namespace, "thread", naInit_thread(ctx));
 #ifdef HAVE_PCRE
     naAddSym(ctx, namespace, "regex", naInit_regex(ctx));
 #endif

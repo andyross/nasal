@@ -2,7 +2,7 @@
 #include "data.h"
 #include "code.h"
 
-#define MIN_BLOCK_SIZE 256
+#define MIN_BLOCK_SIZE 32
 
 static void reap(struct naPool* p);
 static void mark(naRef r);
@@ -108,7 +108,7 @@ static void bottleneck()
     if(g->waitCount >= g->nThreads - 1) {
         freeDead();
         if(g->needGC) garbageCollect();
-        if(g->waitCount) naSemUpAll(g->sem, g->waitCount);
+        if(g->waitCount) naSemUp(g->sem, g->waitCount);
         g->bottleneck = 0;
     }
 }

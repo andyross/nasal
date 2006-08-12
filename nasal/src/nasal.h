@@ -92,6 +92,7 @@ naRef naInit_bits(naContext c);
 naRef naInit_io(naContext c);
 naRef naInit_regex(naContext c);
 naRef naInit_unix(naContext c);
+naRef naInit_thread(naContext c);
 naRef naInit_utf8(naContext c);
 naRef naInit_sqlite(naContext c);
 naRef naInit_readline(naContext c);

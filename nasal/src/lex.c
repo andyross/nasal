@@ -340,6 +340,7 @@ void naLex(struct Parser* p)
             i = lexStringLiteral(p, i, c);
             break;
         default:
+            // FIXME: doesn't see numbers beginning with "." (e.g. .001)
             if(c >= '0' && c <= '9') i = lexNumLiteral(p, i);
             else handled = 0;
         }

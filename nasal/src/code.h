@@ -105,11 +105,13 @@ extern struct Globals* globals;
 
 // Threading low-level functions
 void* naNewLock();
+void naFreeLock(void* lock);
 void naLock(void* lock);
 void naUnlock(void* lock);
 void* naNewSem();
+void naFreeSem(void* sem);
 void naSemDown(void* sem);
-void naSemUpAll(void* sem, int count);
+void naSemUp(void* sem, int count);
 
 void naCheckBottleneck();
 

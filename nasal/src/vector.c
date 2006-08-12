@@ -69,6 +69,7 @@ int naVec_append(naRef vec, naRef o)
     return 0;
 }
 
+// FIXME: need to use naGC_swapfree here!
 void naVec_setsize(naRef vec, int sz)
 {
     int i;
