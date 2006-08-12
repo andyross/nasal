@@ -1,0 +1,59 @@
+<!-- Really simple example of parsing HTML/CGI form arguments in mod_nasal -->
+<%!
+# Functions to parse CGI form arguments, defined once
+var parseArgs = func(s) {
+    var result = {};
+    foreach(arg; split("&", s)) {
+        if((var eq = find("=", arg)) >= 0) {
+	    var key = urldec(substr(arg, 0, eq));
+	    var val = urldec(substr(arg, eq+1));
+	    result[key] = val;
+	}
+    }
+    return result;
+}
+var queryArgs = func { parseArgs(getcgi("QUERY_STRING")) }
+var postArgs = func {
+    var data = "";
+    while((var s = read()) != nil) data ~= s;
+    return parseArgs(data);
+}
+var getarg = func(h, arg) { contains(h, arg) ? h[arg] : "&lt;unset&gt;" }
+%>
+<%
+# First thing: parse out our query and post arguments into hashes
+var Qargs = queryArgs(); var Pargs = postArgs();
+%>
+<html>
+<head><title></title></head>
+<body>
+
+<form action="form.nhtm" method="POST">
+
+<table>
+<tr><th>Input Tag
+    <th>Query value<th>POST value
+    <th>Submit Value:
+<tr><td>Guitar
+    <td><%= getarg(Qargs, "Guitar") %><td><%= getarg(Pargs, "Guitar") %>
+    <td><input type="text" name="Guitar">
+<tr><td>Bass
+    <td><%= getarg(Qargs, "Bass") %><td><%= getarg(Pargs, "Bass") %>
+    <td><input type="text" name="Bass">
+<tr><td>Drums
+    <td><%= getarg(Qargs, "Drums") %><td><%= getarg(Pargs, "Drums") %>
+    <td><input type="text" name="Drums">
+<tr><td>Vocals
+    <td><%= getarg(Qargs, "Vocals") %><td><%= getarg(Pargs, "Vocals") %>
+    <td><input type="text" name="Vocals">
+
+<tr><td><td><td><td><input type="submit" value="Submit">
+
+</table>
+
+</form>
+
+<a href="form.nhtm?Guitar=Eddie&Bass=Michael&Drums=Alex&Vocals=Sammy">Try this link to see some query string parameters.</a>
+
+</body>
+</html>
