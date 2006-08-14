@@ -13,7 +13,6 @@ static naRef keep_this;
 
 #define NASTR(s) naStr_fromdata(naNewString(ctx), (s), strlen((s)))
 
-///////////// utils to simplify argument handling ////////////
 static naRef arg_str(naContext c, naRef *a,int n, char *f) {
     naRef r = naStringValue(c,a[n]);
     if(!IS_STR(r))
@@ -35,8 +34,6 @@ static void check_argc(naContext c, int argc, int n, char *f) {
     if(argc!=n) naRuntimeError(c,"%s() takes %d args, not %d",f,n,argc);
 }
 
-//////////////////////////////////////////////////////
-
 char *completion_wrapper(const char *text, int state)
 {
     naContext ctx;
@@ -55,8 +52,6 @@ char *completion_wrapper(const char *text, int state)
     if(s!=NULL) s=strdup(s); //readline should free it, so we must dup it.
     return s;
 }
-
-//////////////////////////////////////////////////////
 
 static naRef f_readline(naContext ctx, naRef me, int argc, naRef* args)
 {

@@ -702,14 +702,17 @@ int naStackDepth(struct Context* ctx)
 
 static int findFrame(naContext ctx, naContext* out, int fn)
 {
-    if(fn < ctx->fTop) { *out = ctx; return fn; }
-    return findFrame(ctx->callChild, out, fn - ctx->fTop);}
+    int sd = naStackDepth(ctx->callChild);
+    if(fn < sd) return findFrame(ctx->callChild, out, fn);
+    *out = ctx;
+    return ctx->fTop - 1 - (fn - sd);
+}
 
 int naGetLine(struct Context* ctx, int frame)
 {
     struct Frame* f;
     frame = findFrame(ctx, &ctx, frame);
-    f = &ctx->fStack[ctx->fTop-1-frame];
+    f = &ctx->fStack[frame];
     if(IS_FUNC(f->func) && IS_CODE(PTR(f->func).func->code)) {
         struct naCode* c = PTR(PTR(f->func).func->code).code;
         unsigned short* p = c->lineIps + c->nLines - 2;
@@ -724,7 +727,7 @@ naRef naGetSourceFile(struct Context* ctx, int frame)
 {
     naRef f;
     frame = findFrame(ctx, &ctx, frame);
-    f = ctx->fStack[ctx->fTop-1-frame].func;
+    f = ctx->fStack[frame].func;
     f = PTR(f).func->code;
     return PTR(f).code->srcFile;
 }
