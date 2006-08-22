@@ -41,7 +41,7 @@ var _run = func(cmdv, fin=nil, fout=nil, closeinchild...)
     if((var pid = fork()) == 0) {
         if(fin != nil)  { dup2(fin, io.stdin); io.close(fin); }
         if(fout != nil) { dup2(fout, io.stdout); io.close(fout); }
-        foreach(f; closeinchild) { print("__CLOSE__ !\n"); io.close(f); print("__CLOSED__!\n"); }
+        foreach(f; closeinchild) { io.close(f); }
         exec(prog, cmdv, environ());
     } else {
         if(fin != nil)  { io.close(fin); }

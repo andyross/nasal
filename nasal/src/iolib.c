@@ -11,7 +11,7 @@ naGhostType naIOGhostType = { ghostDestroy };
 
 static struct naIOGhost* ioghost(naRef r)
 {
-    if(naGhost_type(r) == &naIOGhostType)
+    if(naGhost_type(r) == &naIOGhostType && IOGHOST(r)->handle)
         return naGhost_ptr(r);
     return 0;
 }

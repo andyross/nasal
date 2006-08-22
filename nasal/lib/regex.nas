@@ -99,8 +99,8 @@ var new = Regex.new;
 
 # Some conveniences
 var match   = func(re, s, opts="")      { Regex.new(re, opts).match(s) }
-var sub     = func(re, s, sub, opts="") { Regex.new(re, opts).sub(sub, s) }
-var sub_all = func(re, s, sub, opts="") { Regex.new(re, opts).sub(sub, s, 1) }
+var sub     = func(re, expr, s, opts="") { Regex.new(re, opts).sub(s, expr) }
+var sub_all = func(re, expr, s, opts="") { Regex.new(re, opts).sub(s, expr, 1) }
 
 # Generates a callable function object from an interpolation
 # string. Takes a function object as the lexical environment in which

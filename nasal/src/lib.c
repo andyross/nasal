@@ -195,6 +195,10 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
     return naBindToContext(c, code);
 }
 
+// FIXME: need a place to save the current IP when we get an error so
+// that it can be reset if we get a die()/naRethrowError() situation
+// later.  Right now, the IP on the stack trace is the line of the
+// die() call, when it should be this one...
 static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;
