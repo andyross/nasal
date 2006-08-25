@@ -17,3 +17,15 @@ been tested successfuly with httpd 2.0.54 and 2.2.3.  Usage:
 3. Drop the test.ns (Nasal "servlet" handler) and test.nhtm (JSP-like
    template language) into your web tree and hit them.  Edit away.
    Try stuff.  Ask Andy for docs.
+
+Extra steps that would probably be advised:
+
++ Add index.nhtm to your DirectoryIndex directive(s) along with
+  index.html, index.php, etc...
+
++ Add a section to disallow downloading the source code of *.nas
+  modules that you are using in your web tree, e.g.:
+   <Files *.nas>
+     Order Allow, Deny
+     Deny from all
+   </Files>

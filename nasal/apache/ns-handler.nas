@@ -35,6 +35,7 @@ return func {
     
     # Nope, compile it
     var code = compile(readfile(file), file);
+    code = bind(code, new_nasal_env(), nil);
     var handler = code();
     if(typeof(handler) != "func")
 	die("nasal handler ", file, " did not return a function");

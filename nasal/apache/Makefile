@@ -11,8 +11,8 @@ SUDO=sudo
 # Apache versions.
 APXS=apxs
 APACHECTL=apachectl
-#APXS=apxs2           # Ubuntu/Debian
-#APACHECTL=apache2ctl # Ubuntu/Debian
+APXS=apxs2           # Ubuntu/Debian
+APACHECTL=apache2ctl # Ubuntu/Debian
 
 
 NASAL_SRCS=bitslib.c code.c codegen.c gc.c hash.c iolib.c lex.c lib.c	\

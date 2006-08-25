@@ -102,8 +102,7 @@ static naRef f_readdir(naContext ctx, naRef me, int argc, naRef* args)
     struct dirent* dent;
     if(argc < 1 || !IS_GHOST(args[0]) || naGhost_type(args[0]) != &DirGhostType)
         naRuntimeError(ctx, "bad argument to readdir");
-    if(!(dent = readdir(*(DIR**)naGhost_ptr(args[0]))) && errno)
-        naRuntimeError(ctx, strerror(errno));
+    dent = readdir(*(DIR**)naGhost_ptr(args[0]));
     return dent ? NEWCSTR(ctx, dent->d_name) : naNil();
 }
 
