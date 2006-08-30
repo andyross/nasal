@@ -216,8 +216,6 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     // re-throws the same error.  That happens at the next OP_RETURN
     // or naSubContext().
     subc = naSubContext(c);
-    subc->callParent = c;
-    c->callChild = subc;
     vr = IS_NIL(callargs) ? 0 : PTR(callargs).vec->rec;
     result = naCall(subc, args[0], vr ? vr->size : 0, vr ? vr->array : 0,
                     callme, callns);
@@ -352,7 +350,6 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
-// FIXME: handle ctx->callParent frames too!
 static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
 {
     int fidx;

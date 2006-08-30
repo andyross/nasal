@@ -225,7 +225,7 @@ struct Context* naNewContext()
 struct Context* naSubContext(struct Context* super)
 {
     struct Context* ctx = naNewContext();
-    if(ctx->callChild) naFreeContext(ctx->callChild);
+    if(super->callChild) naFreeContext(super->callChild);
     ctx->callParent = super;
     super->callChild = ctx;
     return ctx;
@@ -282,8 +282,7 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
     }
 }
 
-static struct Frame* setupFuncall(struct Context* ctx, int nargs,
-                                  int mcall, int tail)
+static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
 {
     naRef *frame;
     struct Frame* f;
@@ -294,8 +293,7 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs,
     if(!IS_FUNC(frame[0]))
         ERR(ctx, "function/method call invoked on uncallable object");
 
-    // Just do native calls right here, and don't touch the stack
-    // frames; return the current one (unless it's a tail call!).
+    // Just do native calls right here
     if(PTR(PTR(frame[0]).func->code).obj->type == T_CCODE) {
         naRef obj = mcall ? frame[-1] : naNil();
         naCFunction fp = PTR(PTR(frame[0]).func->code).ccode->fptr;
@@ -305,15 +303,8 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs,
         return &(ctx->fStack[ctx->fTop-1]);
     }
     
-    // Tail calls aren't allowed at the top level, because otherwise
-    // code called from a single-statement code block
-    // (e.g. import("...") from the interactive interpreter) won't
-    // have a caller().
-    if(ctx->fTop == 1) tail = 0;
-
-    if(tail) ctx->fTop--;
-    else if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
-
+    if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
+    
     // Note: assign nil first, otherwise the naNew() can cause a GC,
     // which will now (after fTop++) see the *old* reference as a
     // markable value!
@@ -633,19 +624,11 @@ static naRef run(struct Context* ctx)
             }
             break;
         case OP_FCALL:
-            f = setupFuncall(ctx, ARG(), 0, 0);
-            cd = PTR(PTR(f->func).func->code).code;
-            break;
-        case OP_FTAIL:
-            f = setupFuncall(ctx, ARG(), 0, 1);
+            f = setupFuncall(ctx, ARG(), 0);
             cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_MCALL:
-            f = setupFuncall(ctx, ARG(), 1, 0);
-            cd = PTR(PTR(f->func).func->code).code;
-            break;
-        case OP_MTAIL:
-            f = setupFuncall(ctx, ARG(), 1, 1);
+            f = setupFuncall(ctx, ARG(), 1);
             cd = PTR(PTR(f->func).func->code).code;
             break;
         case OP_RETURN:

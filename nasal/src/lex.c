@@ -124,12 +124,13 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->lastChild = 0;
 
     // Context sensitivity hack: a "-" following a binary operator of
-    // higher precedence (MUL and DIV, basically) must be a unary
-    // negation.  Needed to get precedence right in the parser for
-    // expressiong like "a * -2"
-    if(type == TOK_MINUS && tok->prev)
-        if(tok->prev->type == TOK_MUL || tok->prev->type == TOK_DIV)
+    // equal or higher precedence must be a unary negation.  Needed to
+    // get precedence right in the parser for expressiong like "a * -2"
+    if(type == TOK_MINUS && tok->prev) {
+        int pt = tok->prev->type;
+        if(pt==TOK_PLUS||pt==TOK_MINUS||pt==TOK_CAT||pt==TOK_MUL||pt==TOK_DIV)
             tok->type = type = TOK_NEG;
+    }
 
     if(!p->tree.children) p->tree.children = tok;
     if(p->tree.lastChild) p->tree.lastChild->next = tok;
@@ -319,6 +320,7 @@ static int tryLexemes(struct Parser* p, int index, int* lexemeOut)
     return best;
 }
 
+#define ISNUM(c) ((c) >= '0' && (c) <= '9')
 void naLex(struct Parser* p)
 {
     int i = 0;
@@ -340,8 +342,8 @@ void naLex(struct Parser* p)
             i = lexStringLiteral(p, i, c);
             break;
         default:
-            // FIXME: doesn't see numbers beginning with "." (e.g. .001)
-            if(c >= '0' && c <= '9') i = lexNumLiteral(p, i);
+            if(ISNUM(c) || (c == '.' && (i+1)<p->len && ISNUM(p->buf[i+1])))
+                i = lexNumLiteral(p, i);
             else handled = 0;
         }
 

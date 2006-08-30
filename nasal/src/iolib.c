@@ -135,7 +135,7 @@ static naRef f_open(naContext c, naRef me, int argc, naRef* args)
     naRef mode = argc > 1 ? naStringValue(c, args[1]) : naNil();
     if(!IS_STR(file)) naRuntimeError(c, "bad argument to open()");
     f = fopen((char*)PTR(file).str->data,
-              IS_STR(mode) ? (const char*)PTR(mode).str->data : "r");
+              IS_STR(mode) ? (const char*)PTR(mode).str->data : "rb");
     if(!f) naRuntimeError(c, strerror(errno));
     return naIOGhost(c, f);
 }

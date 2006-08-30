@@ -53,8 +53,6 @@ char* opStringDEBUG(int op)
     case OP_MARK: return "MARK";
     case OP_UNMARK: return "UNMARK";
     case OP_BREAK: return "BREAK";
-    case OP_FTAIL: return "FTAIL";
-    case OP_MTAIL: return "MTAIL";
     case OP_SETSYM: return "SETSYM";
     case OP_DUP2: return "DUP2";
     case OP_JMPLOOP: return "JMPLOOP";
@@ -248,7 +246,7 @@ void dumpByteCode(naRef codeObj) {
                     printRefDEBUG(a);
             break;
             case OP_JIFNOT: case OP_JIFEND: case OP_JMP: case OP_JMPLOOP:
-            case OP_FCALL: case OP_MCALL: case OP_FTAIL: case OP_MTAIL:
+            case OP_FCALL: case OP_MCALL:
                 printf(" %d\n",byteCode[ip++]);
             break;
             default:

@@ -101,31 +101,6 @@ static int lastExprInBlock(struct Token* t)
     return 0;
 }
 
-// Returns true if the node is in "tail context" -- either a child of
-// a return, the last child of a func block, or else the
-// last child of an if/elsif/if that is itself in tail context.
-static int tailContext(struct Token* t)
-{
-    if(t->parent && t->parent->type == TOK_RETURN)
-        return 1;
-    else if(!lastExprInBlock(t))
-        return 0;
-
-    // Walk up the tree.  It is ok to see semicolons, else's, elsifs
-    // and curlies.  If we reach the top or a func, then we are in
-    // tail context.  If we hit an if, then we are in tail context
-    // only if the "if" node is.
-    while((t = t->parent) != 0)
-        switch(t->type) {
-        case TOK_SEMI: case TOK_LCURL: break;
-        case TOK_ELSE: case TOK_ELSIF: break;
-        case TOK_TOP:  case TOK_FUNC:  return 1;
-        case TOK_IF:                   return tailContext(t);
-        default:                       return 0;
-        }
-    return 0;
-}
-
 static int genScalarConstant(struct Parser* p, struct Token* t)
 {
     // These opcodes are for special-case use in other constructs, but
@@ -293,8 +268,6 @@ static void genFuncall(struct Parser* p, struct Token* t)
         genExpr(p, LEFT(t));
     }
     if(RIGHT(t)) nargs = genList(p, RIGHT(t), 0);
-    if(tailContext(t))
-        op = op == OP_FCALL ? OP_FTAIL : OP_MTAIL;
     emitImmediate(p, op, nargs);
 }
 
