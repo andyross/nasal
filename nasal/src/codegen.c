@@ -91,16 +91,6 @@ static int findConstantIndex(struct Parser* p, struct Token* t)
     return internConstant(p, c);
 }
 
-static int lastExprInBlock(struct Token* t)
-{
-    if(!t->parent) return 1;
-    if(t->parent->type == TOK_TOP || t->parent->type == TOK_LCURL) return 1;
-    if(t->parent->type == TOK_SEMI)
-        if(!t->next || t->next->type == TOK_EMPTY)
-            return 1;
-    return 0;
-}
-
 static int genScalarConstant(struct Parser* p, struct Token* t)
 {
     // These opcodes are for special-case use in other constructs, but

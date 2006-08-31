@@ -744,7 +744,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 {
     int i;
     naRef result;
-    if(!ctx->callParent) naModLock(ctx);
+    if(!ctx->callParent) naModLock();
 
     // We might have to allocate objects, which can call the GC.  But
     // the call isn't on the Nasal stack yet, so the GC won't find our
@@ -758,7 +758,7 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     if(IS_CCODE(PTR(func).func->code)) {
         naCFunction fp = PTR(PTR(func).func->code).ccode->fptr;
         result = (*fp)(ctx, obj, argc, args);
-        if(!ctx->callParent) naModUnlock(ctx);
+        if(!ctx->callParent) naModUnlock();
         return result;
     }
 
@@ -792,12 +792,12 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 naRef naContinue(naContext ctx)
 {
     naRef result;
-    if(!ctx->callParent) naModLock(ctx);
+    if(!ctx->callParent) naModLock();
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
         return naNil();
     }
     result = run(ctx);
-    if(!ctx->callParent) naModUnlock(ctx);
+    if(!ctx->callParent) naModUnlock();
     return result;
 }

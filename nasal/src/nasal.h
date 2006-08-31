@@ -16,17 +16,18 @@ naContext naNewContext();
 void naFreeContext(naContext c);
 
 // Use this when making a call to a new context "underneath" a
-// preexisting context.  It allows stack walking to see through the
-// boundary, and eliminates the need to release the mod lock.
+// preexisting context on the same stack.  It allows stack walking to
+// see through the boundary, and eliminates the need to release the
+// mod lock (i.e. must be called with the mod lock held!)
 naContext naSubContext(naContext super);
 
-// The context supports a user data pointer that C code can use to
+// The naContext supports a user data pointer that can be used to
 // store data specific to an naCall invocation without exposing it to
 // Nasal as a ghost.
 void naSetUserData(naContext c, void* p);
 void* naGetUserData(naContext c);
 
-// Save this object in the context, preventing it (and objects
+// "Save" this object in the context, preventing it (and objects
 // referenced by it) from being garbage collected.
 void naSave(naContext ctx, naRef obj);
 
@@ -35,41 +36,49 @@ void naSave(naContext ctx, naRef obj);
 // temporaries to protect them before passing back into a naCall.
 void naTempSave(naContext c, naRef r);
 
-// Parse a buffer in memory into a code object.
+// Parse a buffer in memory into a code object.  The srcFile parameter
+// is a Nasal string representing the "file" from which the code is
+// read.  The "first line" is typically 1, but is settable for
+// situations where the Nasal code is embedded in another context with
+// its own numbering convetions.  If an error occurs, returns nil and
+// sets the errLine pointer to point to the line at fault.  The string
+// representation of the error can be retrieved with naGetError() on
+// the context.
 naRef naParseCode(naContext c, naRef srcFile, int firstLine,
                   char* buf, int len, int* errLine);
 
 // Binds a bare code object (as returned from naParseCode) with a
 // closure object (a hash) to act as the outer scope / namespace.
-// FIXME: this API is weak.  It should expose the recursive nature of
-// closures, and allow for extracting the closure and namespace
-// information from function objects.
 naRef naBindFunction(naContext ctx, naRef code, naRef closure);
 
 // Similar, but it binds to the current context's closure (i.e. the
 // namespace at the top of the current call stack).
 naRef naBindToContext(naContext ctx, naRef code);
 
-// Call a code or function object with the specified arguments "on" the
-// specified object and using the specified hash for the local
+// Call a code or function object with the specified arguments "on"
+// the specified object and using the specified hash for the local
 // variables.  Passing a null args array skips the parameter variables
 // (e.g. "arg") assignments; to get a zero-length arg instead, pass in
 // argc==0 and a non-null args vector.  The obj or locals parameters
-// may be nil.
-naRef naCall(naContext ctx, naRef func, int argc, naRef* args, naRef obj, naRef locals);
+// may be nil.  Will attempt to acquire the mod lock, so call
+// naModUnlock() first if the lock is already held.
+naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
+             naRef obj, naRef locals);
 
 // As naCall(), but continues execution at the operation after a
 // previous die() call or runtime error.  Useful to do "yield"
 // semantics, leaving the context in a condition where it can be
 // restarted from C code.  Cannot be used currently to restart a
-// failed operation.
+// failed operation.  Will attempt to acquire the mod lock, so call
+// naModUnlock() first if the lock is already held.
 naRef naContinue(naContext ctx);
 
 // Throw an error from the current call stack.  This function makes a
 // longjmp call to a handler in naCall() and DOES NOT RETURN.  It is
 // intended for use in library code that cannot otherwise report an
 // error via the return value, and MUST be used carefully.  If in
-// doubt, return naNil() as your error condition.  Works like printf().
+// doubt, return naNil() as your error condition.  Works like
+// printf().
 void naRuntimeError(naContext c, const char* fmt, ...);
 
 // "Re-throws" a runtime error caught from the subcontext.  Acts as a
@@ -97,7 +106,7 @@ naRef naInit_utf8(naContext c);
 naRef naInit_sqlite(naContext c);
 naRef naInit_readline(naContext c);
 
-// Current line number & error message
+// Context stack inspection, frame zero is the "top"
 int naStackDepth(naContext ctx);
 int naGetLine(naContext ctx, int frame);
 naRef naGetSourceFile(naContext ctx, int frame);
@@ -180,7 +189,9 @@ int          naIsGhost(naRef r);
 // processing and/or blocking I/O.  Note that naModLock() may need to
 // block to allow garbage collection to occur, and that garbage
 // collection by other threads may be blocked until naModUnlock() is
-// called.
+// called.  It must also be UNLOCKED by threads that hold a lock
+// already before making a naCall() or naContinue() call -- these
+// functions will attempt to acquire the lock again.
 void naModLock();
 void naModUnlock();
 
