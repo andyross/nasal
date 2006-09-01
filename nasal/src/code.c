@@ -293,12 +293,14 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
     if(!IS_FUNC(frame[0]))
         ERR(ctx, "function/method call invoked on uncallable object");
 
+    ctx->opFrame = ctx->opTop - (nargs + 1 + mcall);
+
     // Just do native calls right here
     if(PTR(PTR(frame[0]).func->code).obj->type == T_CCODE) {
         naRef obj = mcall ? frame[-1] : naNil();
         naCFunction fp = PTR(PTR(frame[0]).func->code).ccode->fptr;
         naRef result = (*fp)(ctx, obj, nargs, frame + 1);
-        ctx->opTop -= nargs + 1 + mcall;
+        ctx->opTop = ctx->opFrame;
         PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);
     }
@@ -313,7 +315,7 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
     f->locals = naNewHash(ctx);
     f->func = frame[0];
     f->ip = 0;
-    f->bp = ctx->opTop - (nargs + 1 + mcall);
+    f->bp = ctx->opFrame;
 
     if(mcall)
         naHash_set(f->locals, globals->meRef, frame[-1]);
@@ -797,6 +799,7 @@ naRef naContinue(naContext ctx)
         if(!ctx->callParent) naModUnlock(ctx);
         return naNil();
     }
+    ctx->opTop = ctx->opFrame;
     result = run(ctx);
     if(!ctx->callParent) naModUnlock();
     return result;

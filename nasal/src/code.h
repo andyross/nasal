@@ -69,6 +69,7 @@ struct Context {
     struct Frame fStack[MAX_RECURSION];
     int fTop;
     naRef opStack[MAX_STACK_DEPTH];
+    int opFrame; // like Frame::bp, but for C functions
     int opTop;
     int markStack[MAX_MARK_DEPTH];
     int markTop;
