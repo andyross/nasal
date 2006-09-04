@@ -800,6 +800,7 @@ naRef naContinue(naContext ctx)
         return naNil();
     }
     ctx->opTop = ctx->opFrame;
+    PUSH(naNil());
     result = run(ctx);
     if(!ctx->callParent) naModUnlock();
     return result;
