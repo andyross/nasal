@@ -239,7 +239,7 @@ static naRef g2n(naContext ctx, const GValue *in)
 
 static void init_all_types()
 {
-    GType x; // dummy, so the value doesn't get dropped
+    volatile GType x; // dummy, so the calls don't get optimized out
 #define GT(t) (x = (gtk_##t##_get_type)())
     GT(about_dialog); GT(accel_flags); GT(accel_group); GT(accel_label);
     GT(accel_map); GT(accessible); GT(action); GT(action_group);
