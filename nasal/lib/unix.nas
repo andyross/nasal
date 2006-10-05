@@ -57,6 +57,7 @@ var getenv = func(v) {
     foreach(e; environ()) {
         if(find(prefix, e) == 0) { return substr(e, size(v)+1); }
     }
+    return nil;
 }
 
 # Runs a subcommand and returns its exit code
