@@ -109,6 +109,10 @@ int main(int argc, char** argv)
 #ifdef HAVE_READLINE
     naAddSym(ctx, namespace, "readline", naInit_readline(ctx));
 #endif
+#ifdef HAVE_GTK
+    naAddSym(ctx, namespace, "gtk", naInit_gtk(ctx));
+    naAddSym(ctx, namespace, "cairo", naInit_cairo(ctx));
+#endif
 
     // Bind the "code" object from naParseCode into a "function"
     // object.  This is optional, really -- we could also just pass

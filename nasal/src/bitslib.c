@@ -5,10 +5,10 @@
 // bits (i.e. an unsigned int).  Using a 64 bit integer would stretch
 // that beyond what is representable in the double result, but
 // requires portability work.
-
-#define BIT(s,l,n) s[l-1-((n)>>3)] & (1<<((n)&7))
-#define CLRB(s,l,n) s[l-1-((n)>>3)] &= ~(1<<((n)&7))
-#define SETB(s,l,n) s[l-1-((n)>>3)] |= 1<<((n)&7)
+#define MSK(n) (1 << (7 - ((n) & 7)))
+#define BIT(s,l,n) s[(n)>>3] & MSK(n)
+#define CLRB(s,l,n) s[(n)>>3] &= ~MSK(n)
+#define SETB(s,l,n) s[(n)>>3] |= MSK(n)
 
 static unsigned int fld(naContext c, unsigned char* s,
                         int slen, int bit, int flen)

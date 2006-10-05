@@ -105,6 +105,8 @@ naRef naInit_thread(naContext c);
 naRef naInit_utf8(naContext c);
 naRef naInit_sqlite(naContext c);
 naRef naInit_readline(naContext c);
+naRef naInit_gtk(naContext ctx);
+naRef naInit_cairo(naContext ctx);
 
 // Context stack inspection, frame zero is the "top"
 int naStackDepth(naContext ctx);
