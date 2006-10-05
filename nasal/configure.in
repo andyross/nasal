@@ -21,4 +21,15 @@ AC_SEARCH_LIBS(tgetstr, [ncurses curses]) dnl:: libreadline needs curses
 AC_SEARCH_LIBS(readline, readline, [AC_DEFINE(HAVE_READLINE,[],readline)])
 AM_CONDITIONAL(HAVE_READLINE, test x$ac_cv_search_readline != xno)
 
+AC_ARG_ENABLE(gtk,
+   [  --enable-gtk            enable Gtk+ integration library (default=no)],
+   [nasal_try_gtk=yes])
+if test x$nasal_try_gtk = xyes; then
+  PKG_CHECK_MODULES(GTK, gtk+-2.0, [AC_DEFINE([HAVE_GTK],[],gtk)])
+  nasal_have_gtk=yes
+  CFLAGS="$CFLAGS $GTK_CFLAGS"
+  LIBS="$LIBS $GTK_LIBS"
+fi
+AM_CONDITIONAL(HAVE_GTK, test x$nasal_have_gtk = xyes)
+
 AC_OUTPUT([Makefile src/Makefile lib/Makefile])

@@ -873,6 +873,14 @@ static naRef f_cairo_create(naContext ctx, naRef me, int argc, naRef* args)
     return new_cairoGhost(ctx,cr);
 }
 
+static naRef f_set_submenu(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GObject *mitem = arg_object(ctx,args,0,"set_submenu");
+    GObject *subm = arg_object(ctx,args,1,"set_submenu");
+    gtk_menu_item_set_submenu((void*)mitem, (void*)subm);
+    return naNil();
+}
+
 static naCFuncItem funcs[] = {
 //special methods    
     { "list_store_new", f_list_store_new },
@@ -906,6 +914,7 @@ static naCFuncItem funcs[] = {
     { "emit", f_emit },
     { "timeout_add", f_timeout_add },
     { "source_remove", f_source_remove },
+    { "set_submenu", f_set_submenu },
 //extra's, to be moved to gtkx module?
     { "widget_modify_font", f_widget_modify_font },
     { "rc_parse_string", f_rc_parse_string },
