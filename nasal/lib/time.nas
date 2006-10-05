@@ -1,5 +1,6 @@
 import("math", "mod");
 import("io");
+import("bits");
 
 # Portable, general and cross-platform calendar and time zone handling
 # written in pure Nasal.  Uses POSIX time zone files directly, no
@@ -96,12 +97,15 @@ var _parsetz = func(buf) {
 	tz.times[i] = word();
     tz.ttypes = substr(buf, off, timecnt);
     off += timecnt;
+    tz.type0 = nil; # Type to use for times before the 1st transition
     tz.types = setsize([], typecnt);
     for(var i=0; i<typecnt; i+=1) {
 	tz.types[i] = { isstd:0, isgmt:0 };
 	tz.types[i].gmtoff  = word();
 	tz.types[i].isdst   = buf[off]; off += 1;
 	tz.types[i].abbrind = buf[off]; off += 1;
+	if(tz.type0 == nil and tz.types[i].isdst == 0)
+	    tz.type0 = tz.types[i]; # Pick the 1st non-DST type
     }
     for(var i=0; i<typecnt; i+=1) {
 	var start = off + tz.types[i].abbrind;
@@ -116,6 +120,10 @@ var _parsetz = func(buf) {
 	tz.types[i].isstd = buf[(off+=1)-1];
     for(var i=0; i<ttisgmtcnt; i+=1)
 	tz.types[i].isgmt = buf[(off+=1)-1];
+    if(size(tz.times) == 0) {
+	tz.times = [0];
+	tz.ttypes = "\x00"
+    }
     return tz;
 }
 
@@ -124,7 +132,7 @@ var zone_path = "/usr/share/zoneinfo";
 
 var timezone = func(tz=nil) {
     if(contains(zones, tz)) return zones[tz];
-    if(tz == nil) tz = "/etc/localtime";
+    if(tz == nil) tz = "/etc/localtime"; # FIXME: check $TZ
     else tz = zone_path ~ "/" ~ tz;
     return (zones[tz] = _parsetz(io.readfile(tz)));
 }
@@ -132,18 +140,23 @@ var timezone = func(tz=nil) {
 # Binary search a time zone definition
 var _tzsearch = func(e, tz, togmt) {
     if(tz == nil) tz = timezone();
-    if(e >= tz.times[-1]) { 
-	var off = tz.types[tz.ttypes[-1]].gmtoff;
+    var off = 0;
+    if(e >= tz.times[-1]) {
+	off = tz.types[tz.ttypes[-1]].gmtoff;
+	return togmt ? e-off : e+off;
+    } elsif(e < tz.times[0]) {
+	off = tz.type0.gmtoff;
 	return togmt ? e-off : e+off;
     }
     var lo = 0; var hi = size(tz.times) - 1;
     while(hi - lo > 1) {
 	var mid = int((hi+lo)/2);
-	var off = tz.types[tz.ttypes[mid]].gmtoff;
+	off = tz.types[tz.ttypes[mid]].gmtoff;
 	var e2 = e - (togmt ? off : 0);
 	if(tz.times[mid] > e2) hi = mid;
 	else                   lo = mid;
     }
+    off = tz.types[tz.ttypes[lo]].gmtoff;
     return togmt ? e-off : e+off;
 }
 
