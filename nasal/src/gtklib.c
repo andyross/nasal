@@ -187,14 +187,7 @@ static void n2g(naContext ctx, naRef in, GValue *out)
         g_value_set_string(out,naStr_data(naStringValue(ctx,in)));
     } else
     if(G_VALUE_HOLDS_OBJECT(out)) {
-        if(naIsNil(in))
-            g_value_set_object(out,G_OBJECT(NULL));
-        else
-        if(naIsHash(in))
-            g_value_set_object(out,ghost2object(naHash_cget(in,"object")));
-        else
-            g_value_set_object(out,ghost2object(in));
-        
+        g_value_set_object(out,ghost2object(in));
     } else
         naRuntimeError(ctx,"Can't convert to type %s\n",G_VALUE_TYPE_NAME(out));
 #undef CHECK_NUM
@@ -219,29 +212,22 @@ static naRef g2n(naContext ctx, const GValue *in)
     if(G_VALUE_HOLDS_STRING(in)) {
         const gchar *str = g_value_get_string(in);
         return NASTR(str);
-    } else
-    if(G_VALUE_HOLDS_OBJECT(in)) {
-        naRef a = new_objectGhost(ctx,g_value_get_object(in));
-        naRef wrap = naHash_cget(namespace,"_object");
-        return naIsFunc(wrap)?naCall(naSubContext(ctx),wrap,1,&a,naNil(),naNil()):a;
-    } else
-    if(G_VALUE_HOLDS(in,GTK_TYPE_TREE_PATH)) {
+    } else if(G_VALUE_HOLDS_OBJECT(in)) {
+        return new_objectGhost(ctx,g_value_get_object(in));
+    } else if(G_VALUE_HOLDS(in,GTK_TYPE_TREE_PATH)) {
         gchar *path = gtk_tree_path_to_string((GtkTreePath*)g_value_get_boxed(in));
         naRef ret = NASTR(path);
         g_free(path);
         return ret;
-    } else
-    if(G_VALUE_HOLDS_FLAGS(in)) {
+    } else if(G_VALUE_HOLDS_FLAGS(in)) {
         return flags2vec(ctx,g_value_get_flags(in),G_VALUE_TYPE(in));
-    } else
-    if(G_VALUE_HOLDS_ENUM(in)) {
+    } else if(G_VALUE_HOLDS_ENUM(in)) {
         return enum2nasal(ctx,g_value_get_enum(in),G_VALUE_TYPE(in));
-    } else
-    if(G_VALUE_HOLDS(in,GDK_TYPE_EVENT))
+    } else if(G_VALUE_HOLDS(in,GDK_TYPE_EVENT)) {
         return wrap_gdk_event(ctx,g_value_get_boxed(in));
-    else
+    } else {
         naRuntimeError(ctx,"Can't convert from type %s\n",G_VALUE_TYPE_NAME(in));
-
+    }
     return naNil();
 #undef CHECK_NUM
 }
@@ -376,9 +362,10 @@ typedef struct {
 static void nasal_marshal  (GClosure *closure, GValue *retval, guint n_parms,
     const GValue *parms, gpointer hint, gpointer marshal_data)
 {
-    naRef result, args[n_parms+1];
+    naRef result, *args;
     naContext ctx = naNewContext();
     int i;
+    args = g_alloca(sizeof(naRef) * (n_parms+1));
     for(i=0;i<n_parms;i++)
         args[i] = g2n(ctx,&parms[i]);
 
@@ -441,12 +428,14 @@ static naRef f_connect(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *obj;
+    GObjectClass *klass;
+    GParameter *parms;
+    int i,p,n_parms = (argc-1)/2;
     naRef t_name = arg_str(ctx,args,0,"new");
     GType t = g_type_from_name(naStr_data(t_name));
     if(!t) naRuntimeError(ctx,"No such type: %s",naStr_data(t_name));
-    GObjectClass *klass = G_OBJECT_CLASS(g_type_class_ref(t));
-    int i,p,n_parms = (argc-1)/2;
-    GParameter parms[n_parms];
+    klass = G_OBJECT_CLASS(g_type_class_ref(t));
+    parms = g_alloca(sizeof(GParameter) * n_parms);
     for(i=1,p=0;i<argc;i+=2,p++) {
         GValue gval = {0,};
         naRef nprop = naStringValue(ctx,args[i]);

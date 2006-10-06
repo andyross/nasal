@@ -110,7 +110,8 @@ int main(int argc, char** argv)
     naAddSym(ctx, namespace, "readline", naInit_readline(ctx));
 #endif
 #ifdef HAVE_GTK
-    naAddSym(ctx, namespace, "gtk", naInit_gtk(ctx));
+    // Gtk goes in as "_gtk" -- there is a higher level wrapper module
+    naAddSym(ctx, namespace, "_gtk", naInit_gtk(ctx));
     naAddSym(ctx, namespace, "cairo", naInit_cairo(ctx));
 #endif
 
