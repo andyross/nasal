@@ -219,16 +219,18 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     vr = IS_NIL(callargs) ? 0 : PTR(callargs).vec->rec;
     result = naCall(subc, args[0], vr ? vr->size : 0, vr ? vr->array : 0,
                     callme, callns);
-    if(argc > 1 && IS_VEC(args[argc-1])) {
-        naRef v = args[argc-1];
-        if(!IS_NIL(subc->dieArg)) naVec_append(v, subc->dieArg);
-        else if(naGetError(subc))
-            naVec_append(v, NEWCSTR(subc, naGetError(subc)));
-        if(naVec_size(v)) {
-            int i, sd = naStackDepth(subc);
+    if(naGetError(subc)) {
+        if(argc < 2 || !IS_VEC(args[argc-1])) {
+            naRethrowError(subc);
+        } else {
+            int i, sd;
+            naRef errv = args[argc-1];
+            if(!IS_NIL(subc->dieArg)) naVec_append(errv, subc->dieArg);
+            else naVec_append(errv, NEWCSTR(subc, naGetError(subc)));
+            sd = naStackDepth(subc);
             for(i=0; i<sd; i++) {
-                naVec_append(v, naGetSourceFile(subc, i));
-                naVec_append(v, naNum(naGetLine(subc, i)));
+                naVec_append(errv, naGetSourceFile(subc, i));
+                naVec_append(errv, naNum(naGetLine(subc, i)));
             }
         }
     }
