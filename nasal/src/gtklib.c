@@ -688,17 +688,15 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
         return g2n(ctx,&retval);
 }
 
+// FIXME: needs to detect bad types and toss an error
 static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
 {
     gint i;
-    int sz = naIsVector(args[0])?naVec_size(args[0]):0;
-    GType *types = malloc(sizeof(GType)*sz);
+    GType *types = g_alloca(sizeof(GType)*argc);
     GtkListStore *w;
-
-    for(i=0;i<sz;i++)
-        types[i] = g_type_from_name(naStr_data(naVec_get(args[0],i)));
-
-    w = gtk_list_store_newv(sz,types);
+    for(i=0;i<argc;i++)
+        types[i] = g_type_from_name(naStr_data(args[i]));
+    w = gtk_list_store_newv(argc,types);
     return new_objectGhost(ctx,G_OBJECT(w));
 }
 
@@ -783,16 +781,13 @@ static naRef f_column_add_cell(naContext ctx, naRef me, int argc, naRef* args)
     GtkTreeViewColumn *col = GTK_TREE_VIEW_COLUMN(arg_object(ctx,args,0,fn));
     GtkCellRenderer *cell = GTK_CELL_RENDERER(arg_object(ctx,args,1,fn));
     gboolean expand = arg_num(ctx,args,2,fn);
-    naRef v = args[3];
     int i;
-    if(!naIsVector(v))
-        naRuntimeError(ctx,"arg 3 not a vector");
         
     gtk_tree_view_column_pack_start(col,cell,expand);
     gtk_tree_view_column_clear_attributes(col,cell);
-    for(i=0;i<naVec_size(v);i+=2) {
-        const gchar *attr = naStr_data(naVec_get(v,i));
-        gint c = naNumValue(naVec_get(v,i+1)).num;
+    for(i=3;i<argc-1;i+=2) {
+        const gchar *attr = naStr_data(args[i]);
+        gint c = naNumValue(args[i+1]).num;
         gtk_tree_view_column_add_attribute(col,cell,attr,c);
     }
     
