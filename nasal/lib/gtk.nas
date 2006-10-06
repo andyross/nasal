@@ -44,30 +44,41 @@ init();
 
 _genConstructors("GObject");
 
+# Makes a "flattened" call to a function, unwrapping any vectors it
+# finds in the args list.  e.g. _flatcall(foo, a, [b, c]) results in
+# foo(a, b, c).  Used for converting simple argument vectors into the
+# varargs style used by the low-level API.
+var _flatcall = func(fn, args...) {
+    var flat = [];
+    foreach(a; args) {
+	if(typeof(a) != "vector") append(flat, a);
+	foreach(elem; a) append(flat, elem);
+    }
+    call(fn, flat);
+}
+
 GObjectClass = {
     get: func(p) {get(me.object,p);},
-    set: func(props...) {set(me.object,props);},
+    set: func(props...) {_flatcall(set,me.object,props);},
     connect: func(sig,cb,data=nil) {connect(me.object,sig,cb,data);},
-    emit: func(sig,args...) {emit(me.object,sig,args);},
+    emit: func(sig,args...) {_flatcall(emit,me.object,sig,args);},
 };
 
 GtkBoxClass = {
     pack_start: func(c,e=1,f=1,p=0) {
-        emit(me.object,"add",[c.object]);
-        child_set(me.object,c.object,
-            ["expand",e,"fill",f,"padding",p,"pack-type","start"]);
+        emit(me.object,"add",c.object);
+        _flatcall(child_set,me.object,c.object,
+		  ["expand",e,"fill",f,"padding",p,"pack-type","start"]);
     },
     pack_end: func(c,e=1,f=1,p=0) {
-        emit(me.object,"add",[c.object]);
-        child_set(me.object,c.object,
-            ["expand",e,"fill",f,"padding",p,"pack-type","end"]);
+        emit(me.object,"add",c.object);
+        _flatcall(child_set,me.object,c.object,
+		  ["expand",e,"fill",f,"padding",p,"pack-type","end"]);
     },
 };
 
 GtkContainerClass = {
-    add: func(c) {
-        emit(me.object,"add",[c.object]);
-    },
+    add: func(c) { emit(me.object,"add",c.object); },
 };
 
 GtkWidgetClass = {
@@ -90,7 +101,7 @@ GtkListStoreClass = {
     append: func { list_store_append(me.object); },
     remove: func(row) { list_store_remove(me.object,row); },
     set_row: func(row,args...) {
-        list_store_set(me.object,row,args);
+        _flatcall(list_store_set,me.object,row,args);
     },
     get_row: func(row,col) {
         tree_model_get(me.object,row,col);

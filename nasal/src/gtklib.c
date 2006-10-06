@@ -139,6 +139,8 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
             SET_NUM("focus",ev->crossing.focus);
             SET_FLAGS("state",ev->button.state,GDK_TYPE_MODIFIER_TYPE);
         break;
+    default:
+        return naNil();
     }
     return h;
 #undef SET_NUM
@@ -429,19 +431,21 @@ static naRef f_signal_connect(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_object_new(naContext ctx, naRef me, int argc, naRef* args)
 {
+    GParameter* parms;
+    GObjectClass *klass;
+    int i,p,n_parms;
     GObject *obj;
     naRef t_name = arg_str(ctx,args,0,"new");
     GType t = g_type_from_name(naStr_data(t_name));
     if(!t) naRuntimeError(ctx,"No such type: %s",naStr_data(t_name));
-    GObjectClass *klass = G_OBJECT_CLASS(g_type_class_ref(t));
-    naRef props = argc>1?args[1]:naNil();
-    int i,p,n_parms = naIsVector(props)?naVec_size(props)/2:0;
-    GParameter parms[n_parms];
-    for(i=0,p=0;i<n_parms*2;i+=2,p++) {
+    klass = G_OBJECT_CLASS(g_type_class_ref(t));
+    n_parms = (argc - 1)/2;
+    parms = g_alloca(n_parms * sizeof(GParameter));
+    for(i=1,p=0;i<argc-1;i+=2,p++) {
         GValue gval = {0,};
-        naRef nprop = naStringValue(ctx,naVec_get(props,i));
+        naRef nprop = naStringValue(ctx,args[i]);
         gchar *prop = naIsString(nprop)?naStr_data(nprop):"Not a string";
-        naRef nval = naVec_get(props,i+1);
+        naRef nval = args[i+1];
         GParamSpec *pspec = g_object_class_find_property(klass, prop);
         if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
         g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
@@ -459,10 +463,9 @@ static naRef f_object_set(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *obj = arg_object(ctx,args,0,"set");
     int i;
-    naRef props = argc>1?args[1]:naNil();
-    for(i=0;i<naVec_size(props);i+=2) {
-        gchar *prop = naStr_data(naVec_get(props,i));
-        naRef nval = naVec_get(props,i+1);
+    for(i=1;i<argc-1;i+=2) {
+        gchar *prop = naStr_data(args[i]);
+        naRef nval = args[i+1];
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
         GParamSpec* pspec = g_object_class_find_property (class, prop);
@@ -496,18 +499,17 @@ static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
     GObject *obj = arg_object(ctx,args,0,fn);
     GObject *child = arg_object(ctx,args,1,fn);
     int i;
-    naRef props = args[2];
-    for(i=0;i<naVec_size(props);i+=2) {
-        gchar *prop = naStr_data(naVec_get(props,i));
-        naRef nval = naVec_get(props,i+1);
+    for(i=2;i<argc-1;i+=2) {
+        gchar *prop = naStr_data(args[i]);
+        naRef nval = args[i+1];
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
         GParamSpec* pspec = gtk_container_class_find_child_property (class, prop);
         if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
         g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
         n2g(ctx,nval,&gval);
-        gtk_container_child_set_property(
-            GTK_CONTAINER(obj),GTK_WIDGET(child),prop,&gval);
+        gtk_container_child_set_property(GTK_CONTAINER(obj),
+                                         GTK_WIDGET(child),prop,&gval);
     }
     return naNil();
 }
@@ -572,8 +574,8 @@ static gboolean _timer_wrapper(long id)
     naModLock();
 
     if(naGetError(ctx))
-        printf("Error in timer %d: %s\n",id,naGetError(ctx));
-
+        printf("Error in timer %d: %s\n",(int)id,naGetError(ctx));
+    
     naFreeContext(ctx);
     return (gboolean)naNumValue(result).num;
 }
@@ -601,7 +603,6 @@ static naRef f_timeout_add(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_source_remove(naContext ctx, naRef me, int argc, naRef* args)
 {
-    naRef v;
     gulong tag;
     if(argc<1) return naNil();
     tag = naNumValue(args[0]).num;
@@ -664,7 +665,7 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
     guint sig_id = g_signal_lookup(signame,itype);
     GSignalQuery sigq;
     GValue *parms, retval={0,};
-    int p,i;
+    int i;
 
     if(!sig_id) naRuntimeError(ctx,"No such signal: %s",signame);
     g_signal_query(sig_id,&sigq);
@@ -689,7 +690,6 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
 {
-    char *fn = "list_store_new";
     gint i;
     int sz = naIsVector(args[0])?naVec_size(args[0]):0;
     GType *types = malloc(sizeof(GType)*sz);
@@ -723,20 +723,17 @@ static naRef f_list_store_set(naContext ctx, naRef me, int argc, naRef* args)
     GtkListStore *w = GTK_LIST_STORE(arg_object(ctx,args,0,fn));
     GtkTreeIter iter;
     const gchar *path = naStr_data(arg_str(ctx,args,1,fn));
-    naRef v = args[2];
     int i;
-    if(!naIsVector(v))
-        naRuntimeError(ctx,"arg 2 not a vector");
     if(!gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(w),&iter,path))
         naRuntimeError(ctx,"No such tree path: %s",path);
         
-    for(i=0;i<naVec_size(v);i+=2) {
-        gint column = naNumValue(naVec_get(v,i)).num;
+    for(i=2;i<argc-1;i+=2) {
+        gint column = naNumValue(args[i]).num;
         GType coltype = gtk_tree_model_get_column_type(GTK_TREE_MODEL(w),column);
         GValue value = {0,};
 
         g_value_init(&value,coltype);
-        n2g(ctx,naVec_get(v,i+1),&value);
+        n2g(ctx,args[i+1],&value);
         gtk_list_store_set_value(w,&iter,column,&value);
     }
         
@@ -779,7 +776,6 @@ static naRef f_tree_model_get(naContext ctx, naRef me, int argc, naRef* args)
     g_value_unset(&value);
     return retval;
 }
-
 
 static naRef f_column_add_cell(naContext ctx, naRef me, int argc, naRef* args)
 {
