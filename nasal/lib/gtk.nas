@@ -3,6 +3,19 @@
 # classes with proper inheritance on demand.
 # We also add some special methods to some classes here.
 
+# Makes a "flattened" call to a function, unwrapping any vectors it
+# finds in the args list.  e.g. _flatcall(foo, a, [b, c]) results in
+# foo(a, b, c).  Used for converting simple argument vectors into the
+# varargs style used by the low-level API.
+var _flatcall = func(fn, args...) {
+    var flat = [];
+    foreach(var a; args) {
+	if(typeof(a) != "vector") append(flat, a);
+	foreach(var elem; a) append(flat, elem);
+    }
+    call(fn, flat);
+}
+
 var _ns = caller(0)[0];
 
 var _object = func(o) {
@@ -14,7 +27,7 @@ var _object = func(o) {
 var _genConstructors = func(t) {
     if(substr(t,0,3)=="Gtk") {
         _ns[substr(t,3)] = func(props...) {
-            {parents:[_genClass(t)],object:new(t,props)};
+            {parents:[_genClass(t)],object:_flatcall(new,t,props)};
         }
     }
     foreach(var child;type_children(t))
@@ -43,19 +56,6 @@ var _genClass = func(t) {
 init();
 
 _genConstructors("GObject");
-
-# Makes a "flattened" call to a function, unwrapping any vectors it
-# finds in the args list.  e.g. _flatcall(foo, a, [b, c]) results in
-# foo(a, b, c).  Used for converting simple argument vectors into the
-# varargs style used by the low-level API.
-var _flatcall = func(fn, args...) {
-    var flat = [];
-    foreach(a; args) {
-	if(typeof(a) != "vector") append(flat, a);
-	foreach(elem; a) append(flat, elem);
-    }
-    call(fn, flat);
-}
 
 GObjectClass = {
     get: func(p) {get(me.object,p);},
@@ -95,7 +95,7 @@ GtkTextViewClass = {
 };
 
 ListStore_new = func(args...) {
-    _object(list_store_new(args));
+    _object(call(list_store_new, args));
 }
 GtkListStoreClass = {
     append: func { list_store_append(me.object); },
