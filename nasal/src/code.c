@@ -343,6 +343,22 @@ static naRef evalEquality(int op, naRef ra, naRef rb)
     return naNum((op==OP_EQ) ? result : !result);
 }
 
+static naRef evalCat(naContext ctx, naRef l, naRef r)
+{
+    if(IS_VEC(l) && IS_VEC(r)) {
+        int i, ls = naVec_size(l), rs = naVec_size(r);
+        naRef v = naNewVector(ctx);
+        naVec_setsize(v, ls + rs);
+        for(i=0; i<ls; i+=1) naVec_set(v, i, naVec_get(l, i));
+        for(i=0; i<rs; i+=1) naVec_set(v, i+ls, naVec_get(r, i));
+        return v;
+    } else {
+        naRef a = stringify(ctx, l);
+        naRef b = stringify(ctx, r);
+        return naStr_concat(naNewString(ctx), a, b);
+    }
+}
+
 // When a code object comes out of the constant pool and shows up on
 // the stack, it needs to be bound with the lexical context.
 static naRef bindFunction(struct Context* ctx, struct Frame* f, naRef code)
@@ -512,7 +528,6 @@ static naRef run(struct Context* ctx)
         case OP_LTE:   BINOP(l <= r ? 1 : 0); break;
         case OP_GT:    BINOP(l >  r ? 1 : 0); break;
         case OP_GTE:   BINOP(l >= r ? 1 : 0); break;
-
 #undef BINOP
 
         case OP_EQ: case OP_NEQ:
@@ -524,12 +539,8 @@ static naRef run(struct Context* ctx)
             ctx->opTop--;
             break;
         case OP_CAT:
-            // stringify can call the GC, so don't take stuff off the stack!
-            a = stringify(ctx, ctx->opStack[ctx->opTop-1]);
-            b = stringify(ctx, ctx->opStack[ctx->opTop-2]);
-            c = naStr_concat(naNewString(ctx), b, a);
-            ctx->opTop -= 2;
-            PUSH(c);
+            STK(2) = evalCat(ctx, STK(2), STK(1));
+            ctx->opTop -= 1;
             break;
         case OP_NEG:
             STK(1) = naNum(-numify(ctx, STK(1)));

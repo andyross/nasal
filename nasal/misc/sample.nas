@@ -227,6 +227,13 @@ print(ascii_lc("ABCDEFG"), "\n"); # prints "abcdefg"
 #
 next_to_last = list1[-2];
 
+#
+# Rememberthat strings look syntactically like vectors of bytes, so
+# conversely, the "~" concatenation operator works equally well to
+# concatenate vectors:
+#
+joined_list = [1, 2, 3] ~ [4, 5, 6];
+
 ###
 ### Now some fun examples:
 ###
