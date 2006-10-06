@@ -29,12 +29,21 @@ _isa = func(obj,class) {
 # Neat trick: for all the functions in the low-level _gtk module,
 # create a wrapper version here that automagically converts ghosts
 # to/from GObject hashes for the benefit of the code below, which can
-# then use them interchangably.  Note that a function in the argument
-# list (i.e. a connect() callback) automatically gets wrapped, too!
+# then use them interchangably.  Note that a "callback" function in
+# the argument list (i.e. a connect() callback) automatically gets
+# wrapped, too!
+var _wrapcb = func(cb) {
+    func {
+	forindex(var i; arg)
+	    if (typeof(arg[i]) == "ghost") arg[i] = _object(arg[i]);
+	var result = call(cb, arg);
+	return isa(result, GObjectClass) ? result.object : result;
+    }
+}
 var _wrapfn = func(fn) {
     func {
 	forindex(var i; arg) {
-	    if   (typeof(arg[i]) == "func")   arg[i] = _wrapfn(arg[i]);
+	    if   (typeof(arg[i]) == "func")   arg[i] = _wrapcb(arg[i]);
 	    elsif(_isa(arg[i], GObjectClass)) arg[i] = arg[i].object;
 	}
 	var result = call(fn, arg);
