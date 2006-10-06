@@ -37,7 +37,7 @@ var _wrapcb = func(cb) {
 	forindex(var i; arg)
 	    if (typeof(arg[i]) == "ghost") arg[i] = _object(arg[i]);
 	var result = call(cb, arg);
-	return isa(result, GObjectClass) ? result.object : result;
+	return _isa(result, GObjectClass) ? result.object : result;
     }
 }
 var _wrapfn = func(fn) {
@@ -57,9 +57,7 @@ foreach(sym; keys(_gtk)) {
 
 var _genConstructors = func(t) {
     if(substr(t,0,3)=="Gtk") {
-        _ns[substr(t,3)] = func(args...) {
-            {parents:[_genClass(t)],object:call(new,[t]~args)};
-        }
+	_ns[substr(t,3)] = func { call(new,[t]~arg) };
     }
     foreach(var child;type_children(t))
         _genConstructors(child);
