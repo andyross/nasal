@@ -161,7 +161,7 @@ static naRef contains(naContext c, naRef me, int argc, naRef* args)
     return naHash_get(hash, key, &key) ? naNum(1) : naNum(0);
 }
 
-static naRef typeOf(naContext c, naRef me, int argc, naRef* args)
+static naRef f_typeof(naContext c, naRef me, int argc, naRef* args)
 {
     naRef r = argc > 0 ? args[0] : naNil();
     char* t = "unknown";
@@ -172,8 +172,21 @@ static naRef typeOf(naContext c, naRef me, int argc, naRef* args)
     else if(naIsHash(r)) t = "hash";
     else if(naIsFunc(r)) t = "func";
     else if(naIsGhost(r)) t = "ghost";
-    r = NEWCSTR(c, t);
-    return r;
+    return NEWCSTR(c, t);
+}
+
+static naRef f_ghosttype(naContext c, naRef me, int argc, naRef* args)
+{
+    naRef g = argc > 0 ? args[0] : naNil();
+    if(!naIsGhost(g))
+        naRuntimeError(c, "ghosttype argument not ghost");
+    if(naGhost_type(g)->name) {
+        return NEWCSTR(c, naGhost_type(g)->name);
+    } else {
+        char buf[32];
+        sprintf(buf, "%p", naGhost_type(g));
+        return NEWCSTR(c, buf);
+    }
 }
 
 static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
@@ -220,7 +233,7 @@ static naRef f_call(naContext c, naRef me, int argc, naRef* args)
     result = naCall(subc, args[0], vr ? vr->size : 0, vr ? vr->array : 0,
                     callme, callns);
     if(naGetError(subc)) {
-        if(argc < 2 || !IS_VEC(args[argc-1])) {
+        if(argc <= 2 || !IS_VEC(args[argc-1])) {
             naRethrowError(subc);
         } else {
             int i, sd;
@@ -481,7 +494,8 @@ static naCFuncItem funcs[] = {
     { "substr", substr },
     { "chr", f_chr },
     { "contains", contains },
-    { "typeof", typeOf },
+    { "typeof", f_typeof },
+    { "ghosttype", f_ghosttype },
     { "compile", f_compile },
     { "call", f_call },
     { "die", f_die },

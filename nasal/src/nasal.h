@@ -169,6 +169,7 @@ void naHash_keys(naRef dst, naRef hash);
 // Ghost utilities:
 typedef struct naGhostType {
     void (*destroy)(void* ghost);
+    const char* name;
 } naGhostType;
 naRef        naNewGhost(naContext c, naGhostType* t, void* ghost);
 naGhostType* naGhost_type(naRef ghost);

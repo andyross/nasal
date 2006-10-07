@@ -26,6 +26,9 @@ _isa = func(obj,class) {
     return 0;
 }
 
+var _gtype = ghosttype(_gtk.new("GObject"));
+var _isgobj = func(o) { typeof(o) == "ghost" and ghosttype(o) == _gtype }
+
 # Neat trick: for all the functions in the low-level _gtk module,
 # create a wrapper version here that automagically converts ghosts
 # to/from GObject hashes for the benefit of the code below, which can
@@ -35,7 +38,7 @@ _isa = func(obj,class) {
 var _wrapcb = func(cb) {
     func {
 	forindex(var i; arg)
-	    if (typeof(arg[i]) == "ghost") arg[i] = _object(arg[i]);
+	    if (_isgobj(args[i])) arg[i] = _object(arg[i]);
 	var result = call(cb, arg);
 	return _isa(result, GObjectClass) ? result.object : result;
     }
@@ -47,7 +50,7 @@ var _wrapfn = func(fn) {
 	    elsif(_isa(arg[i], GObjectClass)) arg[i] = arg[i].object;
 	}
 	var result = call(fn, arg);
-	return (typeof(result) == "ghost") ? _object(result) : result;
+	return _isgobj(result) ? _object(result) : result;
     }
 }
 foreach(sym; keys(_gtk)) {
@@ -56,9 +59,8 @@ foreach(sym; keys(_gtk)) {
 }
 
 var _genConstructors = func(t) {
-    if(substr(t,0,3)=="Gtk") {
+    if(substr(t,0,3)=="Gtk")
 	_ns[substr(t,3)] = func { call(new,[t]~arg) };
-    }
     foreach(var child;type_children(t))
         _genConstructors(child);
 }
