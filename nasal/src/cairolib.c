@@ -12,7 +12,7 @@ static void cairoGhostDestroy(cairoGhost *g) { free(g); }
 
 static naGhostType cairoGhostType = { (void(*)(void*))cairoGhostDestroy };
 
-naRef new_cairoGhost(naContext ctx, cairo_t *cr) {
+naRef naNewCairoGhost(naContext ctx, cairo_t *cr) {
     cairoGhost *g = malloc(sizeof(cairoGhost));
     g->cr = cr;
     return naNewGhost(ctx,&cairoGhostType,g);

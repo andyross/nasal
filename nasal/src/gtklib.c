@@ -10,6 +10,9 @@
 
 #include "nasal.h"
 
+// From cairolib.c
+naRef naNewCairoGhost(naContext ctx, cairo_t *cr);
+
 /*
 TODO:
 - fix the rough edges of args handling
@@ -844,13 +847,11 @@ static naRef f_parent_type(naContext ctx, naRef me, int argc, naRef* args)
     return par?NASTR(g_type_name(par)):naNil();
 }
 
-naRef new_cairoGhost(naContext ctx, cairo_t *cr);
-
 static naRef f_cairo_create(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkWidget *o = GTK_WIDGET(arg_object(ctx,args,0,"cairo_create"));
     cairo_t *cr = gdk_cairo_create(GDK_DRAWABLE(o->window));
-    return new_cairoGhost(ctx,cr);
+    return naNewCairoGhost(ctx,cr);
 }
 
 static naRef f_set_submenu(naContext ctx, naRef me, int argc, naRef* args)
@@ -858,6 +859,12 @@ static naRef f_set_submenu(naContext ctx, naRef me, int argc, naRef* args)
     GtkMenuItem *mitem = GTK_MENU_ITEM(arg_object(ctx,args,0,"set_submenu"));
     GtkWidget *subm = GTK_WIDGET(arg_object(ctx,args,1,"set_submenu"));
     gtk_menu_item_set_submenu(mitem, subm);
+    return naNil();
+}
+
+static naRef f_rc_parse_string(naContext ctx, naRef me, int argc, naRef* args)
+{
+    gtk_rc_parse_string(naStr_data(arg_str(ctx,args,0,"rc_parse_string")));
     return naNil();
 }
 
@@ -879,6 +886,7 @@ static naCFuncItem funcs[] = {
     { "widget_cairo_create", f_cairo_create },
     { "widget_queue_draw", f_queue_draw },
     { "widget_show_all", f_show_all },
+    { "rc_parse_string", f_rc_parse_string },
 //core stuff
     { "parent_type", f_parent_type },
     { "get_type", f_get_type },
