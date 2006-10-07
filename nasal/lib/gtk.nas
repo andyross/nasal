@@ -1,22 +1,47 @@
-# Copyright 2006, Jonatan Liljedahl, Andrew Ross
-# Distributable under the GNU LGPL v.2, see COPYING for details
-
-# High level class wrapper for GTK.
-# Generates constructors for all Gtk types, which creates the
-# classes with proper inheritance on demand.
-# We also add some special methods to some classes here.
-
 import("_gtk");
 
-var _ns = caller(0)[0];
+# Map of type names to a list of [method,function] pairs.  The method
+# will become a callable Nasal method on the class.  The function is
+# the name of the underlying _gtk function: it will have the "me"
+# reference passed as its first argument.
+var class_methods = {
+    "GObject" : [["get", "get"],
+		 ["set", "set"],
+		 ["connect", "connect"],
+		 ["emit", "emit"]],
+    "GtkContainer" : [["child_get", "child_get"],
+		      ["child_set", "child_set"]],
+    "GtkBox" : [["pack_start", "box_pack_start"],
+		["pack_end", "box_pack_end"]],
+    "GtkWidget" : [["show_all", "widget_show_all"],
+		   ["cairo_create", "widget_cairo_create"],
+		   ["queue_draw", "widget_queue_draw"]],
+    "GtkTextView" : [["insert", "text_view_insert"],
+		     ["scroll_to_cursor", "text_view_scroll_to_cursor"]],
+    "GtkTreeView" : [["append_column", "tree_view_append_column"],
+		     ["get_selection", "tree_view_get_selection"]],
+    "GtkTreeSelection" : [["get_selected", "tree_selection_get_selected"]],
+    "GtkMenuItem" : [["set_submenu", "menu_item_set_submenu"]],
+    "GtkListStore" : [["append", "list_store_append"],
+		      ["remove", "list_store_remove"],
+		      ["set_row", "list_store_set"],
+		      ["get_row", "tree_model_get"],
+		      ["clear", "list_store_clear"]],
+    "GtkTreeViewColumn" : [["add_cell", "tree_view_column_add_cell"]],
+};
 
-var _object = func(o) {
-    var t = get_type(o);
-    _genClass(t);
-    {parents:[_ns[t~"Class"]],object:o};    
-}
+# Map of type name to a list of signals that should be mapped as
+# callable functions.  Note that this could actually be done
+# automatically by retrieving the list of signals from the GObject
+# type.  Maybe we don't care, though.  Most signals look just fine
+# when called with emit()...
+var class_signals = { "GtkWidget" : ["show"],
+		      "GtkContainer" : ["add"] };
 
-# OOP IS-A type predicate
+# Just one hard-coded function (shouldn't this be just ListStore()?)
+var ListStore_new = func { call(list_store_new, arg) }
+
+# OOP IS-A predicate
 _isa = func(obj,class) {
     if(!contains(obj, "parents")) return 0;
     foreach(var c; obj.parents) {
@@ -26,23 +51,23 @@ _isa = func(obj,class) {
     return 0;
 }
 
+# Cache the ghost type of a GObject
 var _gtype = ghosttype(_gtk.new("GObject"));
-var _isgobj = func(o) { typeof(o) == "ghost" and ghosttype(o) == _gtype }
+var _isgobj = func(o) { ghosttype(o) == _gtype }
 
-# Neat trick: for all the functions in the low-level _gtk module,
-# create a wrapper version here that automagically converts ghosts
-# to/from GObject hashes for the benefit of the code below, which can
-# then use them interchangably.  Note that a "callback" function in
-# the argument list (i.e. a connect() callback) automatically gets
-# wrapped, too!
+# Wraps a callback with a version that converts all passed ghosts to
+# objects, and unpacks returned objects into ghosts.
 var _wrapcb = func(cb) {
     func {
 	forindex(var i; arg)
-	    if (_isgobj(args[i])) arg[i] = _object(arg[i]);
+	    if (_isgobj(arg[i])) arg[i] = _object(arg[i]);
 	var result = call(cb, arg);
 	return _isa(result, GObjectClass) ? result.object : result;
     }
 }
+
+# Wraps a function with a version that converts all argument objects
+# to ghosts and converts returned ghosts to objects.
 var _wrapfn = func(fn) {
     func {
 	forindex(var i; arg) {
@@ -50,99 +75,57 @@ var _wrapfn = func(fn) {
 	    elsif(_isa(arg[i], GObjectClass)) arg[i] = arg[i].object;
 	}
 	var result = call(fn, arg);
-	return _isgobj(result) ? _object(result) : result;
+	return (_isgobj(result)) ? _object(result) : result;
     }
 }
+
+# Creates a new object from a GObject ghost reference
+var _object = func(ghost) {
+    return { parents : [_getClass(get_type(ghost))], object : ghost };
+}
+
+# Retrieves the specified class object by name
+var _getClass = func(t) {
+    return contains(_classes, t) ? _classes[t] : _initClass(t);
+}
+
+# Initializes a class object with proper the parent, methods, and signals.
+var _genMethod = func(fn) { return func { call(fn, [me] ~ arg) } }
+var _genSignal = func(sig) { return func { call(emit, [me, sig] ~ arg) } }
+var _initClass = func(type) {
+    var class = {};
+    if((var parent = parent_type(type)) != nil)
+	class.parents = [_initClass(parent)];
+    if(contains(class_methods, type))
+	foreach(var pair; class_methods[type])
+	    class[pair[0]] = _genMethod(_ns[pair[1]]);
+    if(contains(class_signals, type))
+	foreach(var sig; class_signals[type])
+	    class[sig] = _genSignal(sig);
+    return _classes[type] = class;
+}
+
+# For all the functions in the low-level _gtk module, create a wrapper
+# version here that automagically converts ghosts to/from GObject
+# hashes for the benefit of the code here, which can then use them
+# interchangably.  Note that a "callback" function in the argument
+# list (i.e. a connect() callback) automatically gets wrapped, too!
+var _ns = caller(0)[0];
+
 foreach(sym; keys(_gtk)) {
     if(typeof(_gtk[sym]) != "func") continue;
     _ns[sym] = _wrapfn(_gtk[sym]);
 }
 
+# Create our map of type name to class object
+var _classes = {};
+
+# Finally, generate constructors and create the root GObjectClass object.
+var _genConstructor = func(t) { return func { call(new, [t] ~ arg); } }
 var _genConstructors = func(t) {
-    if(substr(t,0,3)=="Gtk")
-	_ns[substr(t,3)] = func { call(new,[t]~arg) };
-    foreach(var child;type_children(t))
-        _genConstructors(child);
+    if(find("Gtk", t) == 0)
+	_ns[substr(t,3)] = _genConstructor(t);
+    foreach(var ch; _gtk.type_children(t))
+        _genConstructors(ch);
 }
-
-var _genClass = func(t) {
-    var classname = t~"Class";
-    if(!contains(_ns,classname))
-        _ns[classname] = {};
-    var class = _ns[classname];
-            
-    if(contains(class,"type")) {
-        return class;
-    } else {
-        var parent = parent_type(t);
-        class.type = t;
-        if(parent!=nil) {
-            _genClass(parent);
-            class.parents = [_ns[parent~"Class"]];
-        }
-    }
-    return class;
-}
-
-GObjectClass = {
-    get:     func(p)               { get(me,p) },
-    set:     func(args...)         { call(set,[me]~args) },
-    connect: func(sig,cb,data=nil) { connect(me,sig,cb,data) },
-    emit:    func(sig,args...)     { call(emit,[me,sig]~args) },
-};
-
-GtkBoxClass = {
-    pack_start: func(c,e=1,f=1,p=0) { box_pack_start(me,c,e,f,p); },
-    pack_end:   func(c,e=1,f=1,p=0) { box_pack_end(me,c,e,f,p); },
-};
-
-GtkContainerClass = {
-    add: func(c) { emit(me,"add",c); },
-    child_get: func(child,p) { child_get(me,child,p) },
-    child_set: func(child,args...) { call(child_set, [me,child] ~ args) },
-};
-
-GtkWidgetClass = {
-    show: func {emit(me,"show");},
-    show_all: func {widget_show_all(me);},
-    cairo_create: func {widget_cairo_create(me);},
-    queue_draw: func {widget_queue_draw(me);},
-};
-
-GtkTextViewClass = {
-    insert: func(s) {text_view_insert(me,s);},
-    scroll_to_cursor: func {text_view_scroll_to_cursor(me);},
-};
-
-ListStore_new = func(args...) {
-    call(list_store_new,args);
-}
-GtkListStoreClass = {
-    append:  func              { list_store_append(me); },
-    remove:  func(row)         { list_store_remove(me,row); },
-    set_row: func(row,args...) { call(list_store_set, [me,row] ~ args) },
-    get_row: func(row,col)     { tree_model_get(me,row,col) },
-    clear:   func              { list_store_clear(me); },
-    #TODO: get_all(), returns the whole list as nested vectors...
-};
-
-GtkTreeViewColumnClass = {
-    add_cell: func(cell,expand,args...) {
-        call(tree_view_column_add_cell,[me,cell,expand] ~ args);
-    },
-};
-
-GtkTreeViewClass = {
-    append_column: func(c) { tree_view_append_column(me,c) },
-    get_selection: func { tree_view_get_selection(me) }
-};
-
-GtkTreeSelectionClass = {
-    get_selected: func { tree_selection_get_selected(me) }
-};
-
-GtkMenuItemClass = {
-    set_submenu: func(sub) { menu_item_set_submenu(me,sub) }
-};
-
-_genConstructors("GObject");
+var GObjectClass = _genConstructors("GObject");
