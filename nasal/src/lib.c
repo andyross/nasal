@@ -178,8 +178,7 @@ static naRef f_typeof(naContext c, naRef me, int argc, naRef* args)
 static naRef f_ghosttype(naContext c, naRef me, int argc, naRef* args)
 {
     naRef g = argc > 0 ? args[0] : naNil();
-    if(!naIsGhost(g))
-        naRuntimeError(c, "ghosttype argument not ghost");
+    if(!naIsGhost(g)) return naNil();
     if(naGhost_type(g)->name) {
         return NEWCSTR(c, naGhost_type(g)->name);
     } else {
