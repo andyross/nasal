@@ -30,7 +30,7 @@ static naGhostType gObjectGhostType = { NULL };
 static naRef timers, closures;
 
 static naRef new_objectGhost(naContext ctx, GObject *o) {
-    return naNewGhost(ctx,&gObjectGhostType,o);
+    return o ? naNewGhost(ctx,&gObjectGhostType,o) : naNil();
 }
 
 static GObject *ghost2object(naRef r)
@@ -331,24 +331,24 @@ static void init_all_types()
 #undef GT
 }
 
-static GObject *arg_object(naContext c, naRef *a,int n, char *f)
+static GObject *arg_object(naContext c, naRef *a,int n, const char *f)
 {
     GObject *o = ghost2object(a[n]);
     if(!o) naRuntimeError(c,"Arg %d to gtk.%s() not a GObject",n+1,f);
     return o;
 }
-static naRef arg_str(naContext c, naRef *a,int n, char *f) {
+static naRef arg_str(naContext c, naRef *a,int n, const char *f) {
     naRef r = naStringValue(c,a[n]);
     if(!naIsString(r))
         naRuntimeError(c,"Arg %d to gtk.%s() not a string",n+1,f);
     return r;
 }
-static naRef arg_func(naContext c, naRef *a,int n, char *f) {
+static naRef arg_func(naContext c, naRef *a,int n, const char *f) {
     if(!naIsFunc(a[n]))
         naRuntimeError(c,"Arg %d to gtk.%s() not a func",n+1,f);
     return a[n];
 }
-static double arg_num(naContext c, naRef *a,int n, char *f) {
+static double arg_num(naContext c, naRef *a,int n, const char *f) {
     naRef r = naNumValue(a[n]);
     if(!naIsNum(r))
         naRuntimeError(c,"Arg %d to gtk.%s() not a num",n+1,f);
@@ -824,11 +824,8 @@ static naRef f_type_children(naContext ctx, naRef me, int argc, naRef* args)
     GType t = g_type_from_name(name);
     GType *childs = g_type_children(t,NULL), *p = childs;
     naRef v = naNewVector(ctx);
-    while(*p) {
-        char *s = (gchar*) g_type_name(*p);
-        naVec_append(v,NASTR(s));
-        p++;
-    }
+    for(p = childs; *p; p++)
+        naVec_append(v,NASTR(g_type_name(*p)));
     g_free(childs);
     return v;
 }
@@ -836,8 +833,7 @@ static naRef f_type_children(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_get_type(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *o = arg_object(ctx,args,0,"get_type");
-    const gchar *s = g_type_name(G_TYPE_FROM_INSTANCE(o));
-    return NASTR(s);
+    return NASTR(g_type_name(G_TYPE_FROM_INSTANCE(o)));
 }
 
 static naRef f_parent_type(naContext ctx, naRef me, int argc, naRef* args)
@@ -868,9 +864,118 @@ static naRef f_rc_parse_string(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
+// Parses LISP-like strings of the form:
+//   (gtk_accel_path "<Actions>/Whatever/Something" "<Shift><Control>q") 
+//   ...
+naRef f_accel_map_parse(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef s = arg_str(ctx, args, 0, "gtk.accel_map_parse");
+    GScanner* gs = g_scanner_new(0);
+    g_scanner_input_text(gs, naStr_data(s), naStr_len(s));
+    gtk_accel_map_load_scanner(gs);
+    g_scanner_destroy(gs);
+    return naNil();
+}
+
+// By convention: requires ctx and args local variables, and that the
+// function be named f_<name>
+#define GOBJARG(n) ((void*)arg_object(ctx, args, (n), (__func__+2)))
+#define NUMARG(n) arg_num(ctx, args, (n), (__func__+2))
+
+naRef f_window_add_accel_group(naContext ctx, naRef me, int argc, naRef* args)
+{
+    gtk_window_add_accel_group(GOBJARG(0), GOBJARG(1));
+    return naNil();
+}
+
+naRef f_action_set_accel_path(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef s = arg_str(ctx, args, 1, "action_set_accel_path");
+    gtk_action_set_accel_path(GOBJARG(0), naStr_data(s));
+    return naNil();
+}
+
+naRef f_action_group_add_action(naContext ctx, naRef me, int argc, naRef* args)
+{
+    gtk_action_group_add_action(GOBJARG(0), GOBJARG(1));
+    return naNil();
+}
+
+// Adds all action arguments as a radio group
+naRef f_action_group_add_radios(naContext ctx, naRef me, int argc, naRef* args)
+{
+    int i;
+    GSList* list = 0;
+    for(i=1; i<argc; i++) {
+        gtk_radio_action_set_group(GOBJARG(i), list);
+        list = gtk_radio_action_get_group(GOBJARG(i));
+        gtk_action_group_add_action(GOBJARG(0), GOBJARG(i));
+    }
+    return naNil();
+}
+
+naRef f_ui_manager_insert_action_group(naContext ctx, naRef me,
+                                       int argc, naRef* args)
+{
+    gtk_ui_manager_insert_action_group(GOBJARG(0), GOBJARG(1), (int)NUMARG(2));
+    return naNil();
+}
+
+naRef f_ui_manager_get_accel_group(naContext ctx, naRef me,
+                                   int argc, naRef* args)
+{
+    return new_objectGhost(ctx, (void*)gtk_ui_manager_get_accel_group(GOBJARG(0)));
+}
+
+naRef f_ui_manager_add_ui(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GError* err = 0;
+    naRef s = arg_str(ctx, args, 1, "ui_manager_add_ui");
+    int id = gtk_ui_manager_add_ui_from_string(GOBJARG(0), naStr_data(s),
+                                               naStr_len(s), &err);
+    if(!id) naRuntimeError(ctx, err->message);
+    return naNum(id);
+}
+
+naRef f_ui_manager_remove_ui(naContext ctx, naRef me, int argc, naRef* args)
+{
+    gtk_ui_manager_remove_ui(GOBJARG(0), (guint)NUMARG(1));
+    return naNil();
+}
+
+naRef f_ui_manager_get_widget(naContext ctx, naRef me, int argc, naRef* args)
+{
+    const char* s = naStr_data(arg_str(ctx, args, 1, "ui_manager_get_widget"));
+    return new_objectGhost(ctx, (void*)gtk_ui_manager_get_widget(GOBJARG(0), s));
+}
+
+naRef f_toggle_action_get_active(naContext ctx, naRef me, int argc, naRef* args)
+{
+    return naNum(gtk_toggle_action_get_active(GOBJARG(0)));
+}
+
+naRef f_toggle_action_set_active(naContext ctx, naRef me, int argc, naRef* args)
+{
+    gtk_toggle_action_set_active(GOBJARG(0), NUMARG(1) != 0);
+    return naNil();
+}
+
 static naCFuncItem funcs[] = {
-//special methods    
+// Needed to make UIManager & menus work (yuck!):
+    { "accel_map_parse", f_accel_map_parse },
+    { "window_add_accel_group", f_window_add_accel_group },
+    { "action_set_accel_path", f_action_set_accel_path },
+    { "action_group_add_action", f_action_group_add_action },
+    { "action_group_add_radios", f_action_group_add_radios },
+    { "ui_manager_insert_action_group", f_ui_manager_insert_action_group },
+    { "ui_manager_get_accel_group", f_ui_manager_get_accel_group },
+    { "ui_manager_add_ui", f_ui_manager_add_ui },
+    { "ui_manager_remove_ui", f_ui_manager_remove_ui },
+    { "ui_manager_get_widget", f_ui_manager_get_widget },
     { "menu_item_set_submenu", f_set_submenu },
+    { "toggle_action_get_active", f_toggle_action_get_active },
+    { "toggle_action_set_active", f_toggle_action_set_active },
+//special methods
     { "list_store_new", f_list_store_new },
     { "list_store_append", f_list_store_append },
     { "list_store_remove", f_list_store_remove },

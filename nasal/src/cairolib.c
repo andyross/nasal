@@ -8,7 +8,11 @@
 
 typedef struct { cairo_t *cr; } cairoGhost;
 
-static void cairoGhostDestroy(cairoGhost *g) { free(g); }
+static void cairoGhostDestroy(cairoGhost *g)
+{
+    cairo_destroy(g->cr);
+    free(g);
+}
 
 static naGhostType cairoGhostType = { (void(*)(void*))cairoGhostDestroy };
 

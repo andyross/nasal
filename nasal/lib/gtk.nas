@@ -38,9 +38,6 @@ var class_methods = {
 var class_signals = { "GtkWidget" : ["show"],
 		      "GtkContainer" : ["add"] };
 
-# Just one hard-coded function (shouldn't this be just ListStore()?)
-var ListStore_new = func { call(list_store_new, arg) }
-
 # OOP IS-A predicate
 _isa = func(obj,class) {
     if(!contains(obj, "parents")) return 0;
@@ -116,6 +113,9 @@ foreach(sym; keys(_gtk)) {
     if(typeof(_gtk[sym]) != "func") continue;
     _ns[sym] = _wrapfn(_gtk[sym]);
 }
+
+# GtkListStore has a special constructor.  Ugh.
+var ListStore_new = list_store_new;
 
 # Create our map of type name to class object
 var _classes = {};
