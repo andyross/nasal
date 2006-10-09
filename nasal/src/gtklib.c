@@ -28,45 +28,44 @@ static naGhostType gObjectGhostType = { NULL };
 
 static naRef timers, closures;
 
-static naRef new_objectGhost(naContext ctx, GObject *o) {
+static naRef new_objectGhost(naContext ctx, GObject *o)
+{
     return o ? naNewGhost(ctx,&gObjectGhostType,o) : naNil();
 }
 
 static GObject *ghost2object(naRef r)
 {
-    if(naGhost_type(r) != &gObjectGhostType)
-        return NULL;
-    return naGhost_ptr(r);
+    return (naGhost_type(r) == &gObjectGhostType) ? naGhost_ptr(r) : 0;
 }
 
 // Argument validation predicates
-naRef chkarg(naContext ctx, int n, int argc, naRef *argv, const char* fn)
+static naRef chkarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 {
-    if(n >= argc) naRuntimeError(ctx, "not enough arguments to gtk.%s", fn);
-    return argv[n];
+    if(n >= ac) naRuntimeError(ctx, "not enough arguments to gtk.%s", fn);
+    return av[n];
 }
-naRef strarg(naContext ctx, int n, int argc, naRef *argv, const char* fn)
+static naRef strarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 {
-    naRef r = naStringValue(ctx, chkarg(ctx, n, argc, argv, fn));
+    naRef r = naStringValue(ctx, chkarg(ctx, n, ac, av, fn));
     if(naIsNil(r)) naRuntimeError(ctx, "arg %d to gtk.%s not string", n+1, fn);
     return r;
 }
-naRef funcarg(naContext ctx, int n, int argc, naRef *argv, const char* fn)
+static naRef funcarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 {
-    naRef r = chkarg(ctx, n, argc, argv, fn);
+    naRef r = chkarg(ctx, n, ac, av, fn);
     if(!naIsFunc(r))
         naRuntimeError(ctx, "arg %d to gtk.%s not function", n+1, fn);
     return r;
 }
-double numarg(naContext ctx, int n, int argc, naRef *argv, const char* fn)
+static double numarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 {
-    naRef r = naNumValue(chkarg(ctx, n, argc, argv, fn));
+    naRef r = naNumValue(chkarg(ctx, n, ac, av, fn));
     if(naIsNil(r)) naRuntimeError(ctx, "arg %d to gtk.%s not number", n+1, fn);
     return r.num;
 }
-void* gobjarg(naContext ctx, int n, int argc, naRef *argv, const char* fn)
+static void* gobjarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 {
-    naRef r = chkarg(ctx, n, argc, argv, fn);
+    naRef r = chkarg(ctx, n, ac, av, fn);
     if(naGhost_type(r) != &gObjectGhostType)
         naRuntimeError(ctx, "argument %d to gtk.%s not GObject", n+1, fn);
     return naGhost_ptr(r);
@@ -86,7 +85,7 @@ static gchar *get_stack_trace(naContext ctx)
     n=snprintf(errbuf,sizeof(errbuf),"%s\n  at %s, line %d\n",
         naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
             naGetLine(ctx, 0));
-    for(i=1; i<naStackDepth(ctx); i++)
+    for(i=1; i<naStackDepth(ctx) && n < sizeof(errbuf); i++)
         n+=snprintf(&errbuf[n],sizeof(errbuf)-n, "  called from: %s, line %d\n",
             naStr_data(naGetSourceFile(ctx, i)),
             naGetLine(ctx, i));
@@ -192,7 +191,7 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
             SET_FLAGS("state",ev->button.state,GDK_TYPE_MODIFIER_TYPE);
         break;
     default:
-        return naNil(); // FIXME: can we throw an error here?
+        return naNil();
     }
     return h;
 #undef SET_NUM
@@ -202,7 +201,7 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
 static void n2g(naContext ctx, naRef in, GValue *out)
 {
 #define CHECK_NUM(T,t) \
-    if(G_VALUE_HOLDS_##T (out)) g_value_set_##t (out,naNumValue(in).num); else
+    if(G_VALUE_HOLDS_##T(out)) g_value_set_##t(out,naNumValue(in).num); else
 
     CHECK_NUM(BOOLEAN,boolean)
     CHECK_NUM(CHAR,char)
@@ -240,7 +239,7 @@ static void n2g(naContext ctx, naRef in, GValue *out)
 static naRef g2n(naContext ctx, const GValue *in)
 {
 #define CHECK_NUM(T,t) \
-    if(G_VALUE_HOLDS_##T (in)) return naNum(g_value_get_##t (in)); else
+    if(G_VALUE_HOLDS_##T(in)) return naNum(g_value_get_##t(in)); else
 
     CHECK_NUM(BOOLEAN,boolean)
     CHECK_NUM(CHAR,char)
@@ -276,6 +275,8 @@ static naRef g2n(naContext ctx, const GValue *in)
 #undef CHECK_NUM
 }
 
+// Frustrating.  Initialize all known GLib types so that the runtime
+// table is properly populated.  Wastes memory...
 static void init_all_types()
 {
     volatile GType x; // dummy, so the calls don't get optimized out
@@ -379,52 +380,50 @@ typedef struct {
     naRef tag;
 } NasalClosure;
 
-static void nasal_marshal  (GClosure *closure, GValue *retval, guint n_parms,
-    const GValue *parms, gpointer hint, gpointer marshal_data)
+static naRef do_call(naRef code, int argc, naRef* args)
 {
-    naRef result, *args;
     naContext ctx = naNewContext();
-    int i;
-    args = g_alloca(sizeof(naRef) * (n_parms+1));
-    for(i=0;i<n_parms;i++)
-        args[i] = g2n(ctx,&parms[i]);
-
-    args[i]=((NasalClosure*)closure)->data;
-
     naModUnlock();
-    result = naCall(ctx,((NasalClosure*)closure)->callback,n_parms+1,args,naNil(),naNil());
+    naRef result = naCall(ctx, code, argc, args, naNil(), naNil());
     naModLock();
-
     if(naGetError(ctx)) {
         gchar *trace = get_stack_trace(ctx);
-        g_printerr("Error in signal handler: %s",trace);
+        g_printerr("Nasal Error: %s", trace);
         g_free(trace);
     }
-
-    if(retval && G_VALUE_TYPE(retval))
-        n2g(ctx,result,retval);
     naFreeContext(ctx);
+    return result;
 }
 
-static void
-nasal_closure_finalize (gpointer notify_data, GClosure *closure)
+static void nasal_marshal(NasalClosure *closure, GValue *retval, guint n_parms,
+                          const GValue *parms, gpointer hint, gpointer data)
+{
+    int i;
+    naContext ctx = naNewContext();
+    naRef result, *args = g_alloca(sizeof(naRef) * (n_parms+1));
+    for(i=0;i<n_parms;i++)
+        args[i] = g2n(ctx,&parms[i]);
+    args[i]=closure->data;
+    result = do_call(closure->callback, n_parms+1, args);
+    if(retval && G_VALUE_TYPE(retval))
+        n2g(ctx,result,retval);
+}
+
+static void nasal_closure_finalize(gpointer notify_data, GClosure *closure)
 {
     naHash_delete(closures,((NasalClosure *)closure)->tag);
 }
 
-NasalClosure *new_nasal_closure (naContext ctx, naRef callback, naRef data)
+NasalClosure *new_nasal_closure(naContext ctx, naRef callback, naRef data)
 {
     GClosure *closure;
     NasalClosure *naclosure;
-
-    closure = g_closure_new_simple (sizeof (NasalClosure), NULL);
-    naclosure = (NasalClosure *) closure;
-
+    closure = g_closure_new_simple(sizeof(NasalClosure), NULL);
+    naclosure = (NasalClosure*)closure;
     naclosure->callback = callback;
     naclosure->data = data;
-
-    g_closure_add_finalize_notifier (closure, NULL, nasal_closure_finalize);
-    g_closure_set_marshal(closure,nasal_marshal);
+    g_closure_add_finalize_notifier(closure, NULL, nasal_closure_finalize);
+    g_closure_set_marshal(closure,(GClosureMarshal)nasal_marshal);
     return naclosure;
 }
 
@@ -436,8 +435,8 @@ static naRef f_connect(naContext ctx, naRef me, int argc, naRef* args)
     naRef data = argc>3?args[3]:naNil();
     NasalClosure *closure = new_nasal_closure(ctx,func,data);
     gulong tag = g_signal_connect_closure(w,s,(GClosure*)closure,FALSE);
-    closure->tag = naNum(tag);
     naRef v = naNewVector(ctx);
+    closure->tag = naNum(tag);
     naVec_append(v,func);
     naVec_append(v,data);
     naHash_set(closures,closure->tag,v);
@@ -457,8 +456,7 @@ static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
     parms = g_alloca(sizeof(GParameter) * n_parms);
     for(i=1,p=0;i<argc-1;i+=2,p++) {
         GValue gval = {0,};
-        naRef nprop = naStringValue(ctx,args[i]);
-        gchar *prop = naIsString(nprop)?naStr_data(nprop):"Not a string";
+        gchar *prop = naStr_data(STRARG(i));
         GParamSpec *pspec = g_object_class_find_property(klass, prop);
         if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
         g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
@@ -471,16 +469,15 @@ static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
     return new_objectGhost(ctx,obj);
 }
 
-
 static naRef f_set(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *obj = OBJARG(0);
     int i;
     for(i=1;i<argc-1;i+=2) {
-        gchar *prop = naStr_data(args[i]);
+        gchar *prop = naStr_data(STRARG(i));
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
-        GParamSpec* pspec = g_object_class_find_property (class, prop);
+        GParamSpec* pspec = g_object_class_find_property(class, prop);
         if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
         g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
         n2g(ctx,args[i+1],&gval);
@@ -496,7 +493,7 @@ static naRef f_get(naContext ctx, naRef me, int argc, naRef* args)
     naRef nval;
     GValue gval = {0,};
     GObjectClass *class = G_OBJECT_GET_CLASS(obj);
-    GParamSpec* pspec = g_object_class_find_property (class, prop);
+    GParamSpec* pspec = g_object_class_find_property(class, prop);
     if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
     g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
     g_object_get_property(obj,prop,&gval);
@@ -511,15 +508,15 @@ static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
     GObject *child = OBJARG(1);
     int i;
     for(i=2;i<argc-1;i+=2) {
-        gchar *prop = naStr_data(args[i]);
+        gchar *prop = naStr_data(STRARG(i));
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
-        GParamSpec* pspec = gtk_container_class_find_child_property (class, prop);
+        GParamSpec* pspec = gtk_container_class_find_child_property(class, prop);
         if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
         g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
         n2g(ctx,args[i+1],&gval);
-        gtk_container_child_set_property(
-            GTK_CONTAINER(obj),GTK_WIDGET(child),prop,&gval);
+        gtk_container_child_set_property(GTK_CONTAINER(obj),GTK_WIDGET(child),
+                                         prop,&gval);
     }
     return naNil();
 }
@@ -527,29 +524,26 @@ static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_child_get(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *obj = OBJARG(0);
-    GObject *child = OBJARG(1);
     gchar *prop = naStr_data(STRARG(2));
     naRef nval;
     GValue gval = {0,};
     GObjectClass *class = G_OBJECT_GET_CLASS(obj);
-    GParamSpec* pspec = gtk_container_class_find_child_property (class, prop);
+    GParamSpec* pspec = gtk_container_class_find_child_property(class, prop);
     if(!pspec) naRuntimeError(ctx,"No such property: %s",prop);
     g_value_init(&gval,G_PARAM_SPEC_VALUE_TYPE(pspec));
     gtk_container_child_get_property(GTK_CONTAINER(obj),
-                                     GTK_WIDGET(child),prop,&gval);
+                                     GTK_WIDGET(OBJARG(1)),prop,&gval);
     nval = g2n(ctx,&gval);
     g_value_unset(&gval);
     return nval;
 }
 
+// This used to to be wrapped under a static variable to allow it to
+// be called multiple times, but Andy couldn't understand why.
 static naRef f_init(naContext ctx, naRef me, int argc, naRef* args)
 {
-    static int do_init = 1;
-    if(do_init) {
-        gtk_init(NULL,NULL);
-        init_all_types();
-        do_init = 0;
-    }
+    gtk_init(NULL,NULL);
+    init_all_types();
     return naNil();
 }
 
@@ -567,9 +561,7 @@ static naRef f_main_quit(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_show_all(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GObject *w = OBJARG(0);
-    gtk_widget_show_all(GTK_WIDGET(w));
-
+    gtk_widget_show_all(OBJARG(0));
     return naNil();
 }
 
@@ -577,22 +569,9 @@ static gboolean _timer_wrapper(long id)
 {
     naContext ctx = naNewContext();
     naRef v, result, data;
-
     naHash_get(timers,naNum(id),&v);
-
     data = naVec_get(v,1);
-
-    naModUnlock();
-    result = naCall(ctx,naVec_get(v,0),1,&data,naNil(),naNil());
-    naModLock();
-
-    if(naGetError(ctx)) {
-        gchar *trace = get_stack_trace(ctx);
-        g_printerr("Error in timer %d: %s",(int)id,trace);
-        g_free(trace);
-    }
-
-    naFreeContext(ctx);
+    result = do_call(naVec_get(v, 0), 1, &data);
     return (gboolean)naNumValue(result).num;
 }
 
@@ -618,10 +597,8 @@ static naRef f_timeout_add(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_source_remove(naContext ctx, naRef me, int argc, naRef* args)
 {
-    gulong tag;
     if(argc<1) return naNil();
-    tag = naNumValue(args[0]).num;
-    g_source_remove(tag);
+    g_source_remove((gulong)NUMARG(0));
     return naNil();
 }
 
@@ -690,7 +667,7 @@ static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
     GtkListStore *w;
 
     for(i=0;i<argc;i++)
-        types[i] = g_type_from_name(naStr_data(args[i]));
+        types[i] = g_type_from_name(naStr_data(STRARG(i)));
 
     w = gtk_list_store_newv(argc,types);
     return new_objectGhost(ctx,G_OBJECT(w));
@@ -721,7 +698,7 @@ static naRef f_list_store_set(naContext ctx, naRef me, int argc, naRef* args)
         naRuntimeError(ctx,"No such tree path: %s",path);
 
     for(i=2;i<argc-1;i+=2) {
-        gint column = naNumValue(args[i]).num;
+        gint column = (gint)NUMARG(i);
         GType coltype = gtk_tree_model_get_column_type(GTK_TREE_MODEL(w),column);
         GValue value = {0,};
 
@@ -774,15 +751,13 @@ static naRef f_column_add_cell(naContext ctx, naRef me, int argc, naRef* args)
     GtkCellRenderer *cell = GTK_CELL_RENDERER(OBJARG(1));
     gboolean expand = (gboolean)NUMARG(2);
     int i;
-
     gtk_tree_view_column_pack_start(col,cell,expand);
     gtk_tree_view_column_clear_attributes(col,cell);
     for(i=3;i<argc-1;i+=2) {
-        const gchar *attr = naStr_data(args[i]);
-        gint c = naNumValue(args[i+1]).num;
+        const gchar *attr = naStr_data(STRARG(i));
+        gint c = (gint)NUMARG(i+1);
         gtk_tree_view_column_add_attribute(col,cell,attr,c);
     }
-
     return naNil();
 }
 
