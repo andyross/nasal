@@ -1,4 +1,4 @@
-/* Copyright 2006, Jonatan Liljedahl */
+/* Copyright 2006, Jonatan Liljedahl, Andrew Ross */
 /* Distributable under the GNU LGPL v.2, see COPYING for details */
 
 #include <stdlib.h>
@@ -17,7 +17,7 @@ naRef naNewCairoGhost(naContext ctx, cairo_t *cr);
 TODO:
 - fix the rough edges of args handling
 - remove/destroy signal handler
-- add all(?) gdk event types  
+- add all(?) gdk event types
 - add methods for TreeStore.
 */
 
@@ -103,7 +103,7 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
 
     SET_STR("type",v->value_nick);
     g_type_class_unref(tc);
-    
+
     switch(ev->type) {
         case GDK_KEY_PRESS:
         case GDK_KEY_RELEASE:
@@ -399,7 +399,7 @@ NasalClosure *new_nasal_closure (naContext ctx, naRef callback, naRef data)
 {
     GClosure *closure;
     NasalClosure *naclosure;
-  
+
     closure = g_closure_new_simple (sizeof (NasalClosure), NULL);
     naclosure = (NasalClosure *) closure;
 
@@ -439,7 +439,7 @@ static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
     if(!t) naRuntimeError(ctx,"No such type: %s",naStr_data(t_name));
     klass = G_OBJECT_CLASS(g_type_class_ref(t));
     parms = g_alloca(sizeof(GParameter) * n_parms);
-    for(i=1,p=0;i<argc;i+=2,p++) {
+    for(i=1,p=0;i<argc-1;i+=2,p++) {
         GValue gval = {0,};
         naRef nprop = naStringValue(ctx,args[i]);
         gchar *prop = naIsString(nprop)?naStr_data(nprop):"Not a string";
@@ -449,7 +449,7 @@ static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
         n2g(ctx,args[i+1],&gval);
         parms[p].name = prop;
         parms[p].value = gval;
-    } 
+    }
     obj = g_object_newv(t,n_parms,parms);
     g_type_class_unref(klass);
     return new_objectGhost(ctx,obj);
@@ -460,7 +460,7 @@ static naRef f_set(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *obj = arg_object(ctx,args,0,"set");
     int i;
-    for(i=1;i<argc;i+=2) {
+    for(i=1;i<argc-1;i+=2) {
         gchar *prop = naStr_data(args[i]);
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
@@ -486,7 +486,7 @@ static naRef f_get(naContext ctx, naRef me, int argc, naRef* args)
     g_object_get_property(obj,prop,&gval);
     nval = g2n(ctx,&gval);
     g_value_unset(&gval);
-    return nval;    
+    return nval;
 }
 
 static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
@@ -495,7 +495,7 @@ static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
     GObject *obj = arg_object(ctx,args,0,fn);
     GObject *child = arg_object(ctx,args,1,fn);
     int i;
-    for(i=2;i<argc;i+=2) {
+    for(i=2;i<argc-1;i+=2) {
         gchar *prop = naStr_data(args[i]);
         GValue gval = {0,};
         GObjectClass *class = G_OBJECT_GET_CLASS(obj);
@@ -525,7 +525,7 @@ static naRef f_child_get(naContext ctx, naRef me, int argc, naRef* args)
                                      GTK_WIDGET(child),prop,&gval);
     nval = g2n(ctx,&gval);
     g_value_unset(&gval);
-    return nval;    
+    return nval;
 }
 
 static naRef f_init(naContext ctx, naRef me, int argc, naRef* args)
@@ -563,11 +563,11 @@ static gboolean _timer_wrapper(long id)
 {
     naContext ctx = naNewContext();
     naRef v, result, data;
-    
+
     naHash_get(timers,naNum(id),&v);
 
     data = naVec_get(v,1);
-    
+
     naModUnlock();
     result = naCall(ctx,naVec_get(v,0),1,&data,naNil(),naNil());
     naModLock();
@@ -598,7 +598,7 @@ static naRef f_timeout_add(naContext ctx, naRef me, int argc, naRef* args)
     naVec_append(v,func);
     naVec_append(v,data);
     naHash_set(timers,naNum(id),v);
-    
+
     id++;
     return naNum(tag);
 }
@@ -661,7 +661,7 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
     parms = g_malloc0(sizeof(GValue)*(sigq.n_params+1));
     g_value_init(&parms[0],itype);
     g_value_set_instance(&parms[0],o);
-        
+
     for(p=0,i=2;i<argc;i++,p++) {
         GValue *parm = &parms[p+1];
         g_value_init(parm,sigq.param_types[p]);
@@ -697,7 +697,7 @@ static naRef f_list_store_append(naContext ctx, naRef me, int argc, naRef* args)
     GtkListStore *w = GTK_LIST_STORE(arg_object(ctx,args,0,fn));
     GtkTreeIter ti;
     naRef ret;
-    gchar *path;    
+    gchar *path;
     gtk_list_store_append(w,&ti);
     path = gtk_tree_model_get_string_from_iter(GTK_TREE_MODEL(w),&ti);
     ret = NASTR(path);
@@ -715,8 +715,8 @@ static naRef f_list_store_set(naContext ctx, naRef me, int argc, naRef* args)
 
     if(!gtk_tree_model_get_iter_from_string(GTK_TREE_MODEL(w),&iter,path))
         naRuntimeError(ctx,"No such tree path: %s",path);
-        
-    for(i=2;i<argc;i+=2) {
+
+    for(i=2;i<argc-1;i+=2) {
         gint column = naNumValue(args[i]).num;
         GType coltype = gtk_tree_model_get_column_type(GTK_TREE_MODEL(w),column);
         GValue value = {0,};
@@ -725,7 +725,7 @@ static naRef f_list_store_set(naContext ctx, naRef me, int argc, naRef* args)
         n2g(ctx,args[i+1],&value);
         gtk_list_store_set_value(w,&iter,column,&value);
     }
-        
+
     return naNil();
 }
 
@@ -774,15 +774,15 @@ static naRef f_column_add_cell(naContext ctx, naRef me, int argc, naRef* args)
     GtkCellRenderer *cell = GTK_CELL_RENDERER(arg_object(ctx,args,1,fn));
     gboolean expand = arg_num(ctx,args,2,fn);
     int i;
-        
+
     gtk_tree_view_column_pack_start(col,cell,expand);
     gtk_tree_view_column_clear_attributes(col,cell);
-    for(i=3;i<argc;i+=2) {
+    for(i=3;i<argc-1;i+=2) {
         const gchar *attr = naStr_data(args[i]);
         gint c = naNumValue(args[i+1]).num;
         gtk_tree_view_column_add_attribute(col,cell,attr,c);
     }
-    
+
     return naNil();
 }
 
@@ -808,10 +808,10 @@ static naRef f_tree_selection_get_selected(naContext ctx, naRef me, int argc, na
     GtkTreeIter iter;
     gchar *path;
     naRef ret;
-    
+
     if(!gtk_tree_selection_get_selected(o,&model,&iter))
         return naNil();
-        
+
     path = gtk_tree_model_get_string_from_iter(model,&iter);
     ret = NASTR(path);
     g_free(path);
@@ -865,7 +865,7 @@ static naRef f_rc_parse_string(naContext ctx, naRef me, int argc, naRef* args)
 }
 
 // Parses LISP-like strings of the form:
-//   (gtk_accel_path "<Actions>/Whatever/Something" "<Shift><Control>q") 
+//   (gtk_accel_path "<Actions>/Whatever/Something" "<Shift><Control>q")
 //   ...
 naRef f_accel_map_parse(naContext ctx, naRef me, int argc, naRef* args)
 {
@@ -982,9 +982,9 @@ static naCFuncItem funcs[] = {
     { "list_store_set", f_list_store_set },
     { "list_store_clear", f_list_store_clear },
     { "tree_view_get_selection", f_tree_view_get_selection },
-    { "tree_selection_get_selected", f_tree_selection_get_selected },
     { "tree_view_column_add_cell", f_column_add_cell },
     { "tree_view_append_column", f_append_column },
+    { "tree_selection_get_selected", f_tree_selection_get_selected },
     { "tree_model_get", f_tree_model_get },
     { "text_view_insert", f_text_insert},
     { "text_view_scroll_to_cursor", f_text_scroll_to_cursor},
