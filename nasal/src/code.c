@@ -768,6 +768,12 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     naTempSave(ctx, obj);
     naTempSave(ctx, locals);
 
+    // naRuntimeError() calls end up here:
+    if(setjmp(ctx->jumpHandle)) {
+        if(!ctx->callParent) naModUnlock(ctx);
+        return naNil();
+    }
+
     if(IS_CCODE(PTR(func).func->code)) {
         naCFunction fp = PTR(PTR(func).func->code).ccode->fptr;
         result = (*fp)(ctx, obj, argc, args);
@@ -793,10 +799,6 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 
     if(args) setupArgs(ctx, ctx->fStack, args, argc);
 
-    if(setjmp(ctx->jumpHandle)) {
-        if(!ctx->callParent) naModUnlock(ctx);
-        return naNil();
-    }
     result = run(ctx);
     if(!ctx->callParent) naModUnlock(ctx);
     return result;
