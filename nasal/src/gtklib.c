@@ -80,16 +80,19 @@ static void* gobjarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 
 static gchar *get_stack_trace(naContext ctx)
 {
-    char errbuf[256];
-    int i,n;
-    n=snprintf(errbuf,sizeof(errbuf),"%s\n  at %s, line %d\n",
-        naGetError(ctx), naStr_data(naGetSourceFile(ctx, 0)),
-            naGetLine(ctx, 0));
-    for(i=1; i<naStackDepth(ctx) && n < sizeof(errbuf); i++)
-        n+=snprintf(&errbuf[n],sizeof(errbuf)-n, "  called from: %s, line %d\n",
-            naStr_data(naGetSourceFile(ctx, i)),
-            naGetLine(ctx, i));
-    return g_strdup(errbuf);
+    int i;
+    char *buf = g_strdup_printf("%s\n  at %s, line %d\n", naGetError(ctx),
+        naStr_data(naGetSourceFile(ctx, 0)), naGetLine(ctx, 0));
+
+    for(i=1; i<naStackDepth(ctx); i++) {
+        char *o = buf;
+        char *s = g_strdup_printf("  called from: %s, line %d\n",
+            naStr_data(naGetSourceFile(ctx, i)), naGetLine(ctx, i));
+        buf = g_strconcat(buf,s,0);
+        g_free(o);
+        g_free(s);
+    }
+    return buf;
 }
 
 static guint vec2flags(naContext ctx, naRef in, GType t) {
@@ -380,18 +383,19 @@ typedef struct {
     naRef tag;
 } NasalClosure;
 
-static naRef do_call(naRef code, int argc, naRef* args)
+static naRef do_call(naContext ctx0, naRef code, int argc, naRef* args)
 {
-    naContext ctx = naNewContext();
+    naRef result;
+    naContext ctx = ctx0 ? ctx0 : naNewContext();
     naModUnlock();
-    naRef result = naCall(ctx, code, argc, args, naNil(), naNil());
+    result = naCall(ctx, code, argc, args, naNil(), naNil());
     naModLock();
     if(naGetError(ctx)) {
         gchar *trace = get_stack_trace(ctx);
         g_printerr("Nasal Error: %s", trace);
         g_free(trace);
     }
-    naFreeContext(ctx);
+    if(!ctx0) naFreeContext(ctx);
     return result;
 }
 
@@ -404,9 +408,10 @@ static void nasal_marshal(NasalClosure *closure, GValue *retval, guint n_parms,
     for(i=0;i<n_parms;i++)
         args[i] = g2n(ctx,&parms[i]);
     args[i]=closure->data;
-    result = do_call(closure->callback, n_parms+1, args);
+    result = do_call(ctx, closure->callback, n_parms+1, args);
     if(retval && G_VALUE_TYPE(retval))
         n2g(ctx,result,retval);
+    naFreeContext(ctx);
 }
 
 static void nasal_closure_finalize(gpointer notify_data, GClosure *closure)
@@ -567,11 +572,10 @@ static naRef f_show_all(naContext ctx, naRef me, int argc, naRef* args)
 
 static gboolean _timer_wrapper(long id)
 {
-    naContext ctx = naNewContext();
     naRef v, result, data;
     naHash_get(timers,naNum(id),&v);
     data = naVec_get(v,1);
-    result = do_call(naVec_get(v, 0), 1, &data);
+    result = do_call(0, naVec_get(v, 0), 1, &data);
     return (gboolean)naNumValue(result).num;
 }
 
