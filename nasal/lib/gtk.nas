@@ -30,14 +30,6 @@ var class_methods = {
     "GtkTreeViewColumn" : [["add_cell", "tree_view_column_add_cell"]],
 };
 
-# Map of type name to a list of signals that should be mapped as
-# callable functions.  Note that this could actually be done
-# automatically by retrieving the list of signals from the GObject
-# type.  Maybe we don't care, though.  Most signals look just fine
-# when called with emit()...
-#var class_signals = { "GtkWidget" : ["show"],
-#		      "GtkContainer" : ["add"] };
-
 # OOP IS-A predicate
 _isa = func(obj,class) {
     if(!contains(obj, "parents")) return 0;
@@ -106,11 +98,11 @@ var _initClass = func(type) {
     var class = {};
     if((var parent = parent_type(type)) != nil)
 	class.parents = [_initClass(parent)];
+    foreach(var sig; _gtk.get_signals(type))
+	class[_symize(sig)] = _genSignal(sig);
     if(contains(class_methods, type))
 	foreach(var pair; class_methods[type])
 	    class[pair[0]] = _genMethod(_ns[pair[1]]);
-    foreach(var sig; _gtk.get_signals(type))
-	class[_symize(sig)] = _genSignal(sig);
     return _classes[type] = class;
 }
 
