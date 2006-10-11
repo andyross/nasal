@@ -35,8 +35,8 @@ var class_methods = {
 # automatically by retrieving the list of signals from the GObject
 # type.  Maybe we don't care, though.  Most signals look just fine
 # when called with emit()...
-var class_signals = { "GtkWidget" : ["show"],
-		      "GtkContainer" : ["add"] };
+#var class_signals = { "GtkWidget" : ["show"],
+#		      "GtkContainer" : ["add"] };
 
 # OOP IS-A predicate
 _isa = func(obj,class) {
@@ -86,6 +86,19 @@ var _getClass = func(t) {
     return contains(_classes, t) ? _classes[t] : _initClass(t);
 }
 
+# GLib symbols have '-' characters in them that must be turned into
+# '_' to make them valid Nasal symbols.
+var _symize = func(s) {
+    var sym = s ~ "";
+    for(var i=0; i<size(sym); i+=1) {
+	if(sym[i] >= `A` and sym[i] <= `Z`) continue;
+	if(sym[i] >= `a` and sym[i] <= `z`) continue;
+	if(sym[i] >= `0` and sym[i] <= `9`) continue;
+	sym[i] = `_`;
+    }
+    return sym;
+}
+
 # Initializes a class object with proper the parent, methods, and signals.
 var _genMethod = func(fn) { return func { call(fn, [me] ~ arg) } }
 var _genSignal = func(sig) { return func { call(emit, [me, sig] ~ arg) } }
@@ -96,9 +109,8 @@ var _initClass = func(type) {
     if(contains(class_methods, type))
 	foreach(var pair; class_methods[type])
 	    class[pair[0]] = _genMethod(_ns[pair[1]]);
-    if(contains(class_signals, type))
-	foreach(var sig; class_signals[type])
-	    class[sig] = _genSignal(sig);
+    foreach(var sig; _gtk.get_signals(type))
+	class[_symize(sig)] = _genSignal(sig);
     return _classes[type] = class;
 }
 
