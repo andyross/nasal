@@ -55,13 +55,13 @@ gtk.connect(a, "activate", func { print("Open!\n") });
 gtk.action_group_add_action(actiongroup, a);
 
 a = gtk.new("GtkAction", "name", "Save", "label", "_Save",
-	    "stock-id", "gtk-open", "tooltip", "Save document");
+	    "stock-id", "gtk-save", "tooltip", "Save document");
 gtk.action_set_accel_path(a, "<Actions>/File/Save");
 gtk.connect(a, "activate", func { print("Save!\n") });
 gtk.action_group_add_action(actiongroup, a);
 
 a = gtk.new("GtkAction", "name", "Quit", "label", "_Quit",
-	    "stock-id", "gtk-open", "tooltip", "Quit document");
+	    "stock-id", "gtk-quit", "tooltip", "Quit document");
 gtk.action_set_accel_path(a, "<Actions>/File/Quit");
 gtk.connect(a, "activate", func { print("Quit!\n") });
 gtk.action_group_add_action(actiongroup, a);
