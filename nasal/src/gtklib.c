@@ -24,13 +24,16 @@ TODO:
 
 static naRef namespace;
 
-static naGhostType gObjectGhostType = { NULL };
+static void objectGhostDestroy(void* g) { g_object_unref(g); }
+
+static naGhostType gObjectGhostType = { objectGhostDestroy, "GObject" };
 
 static naRef timers, closures;
 
-static naRef new_objectGhost(naContext ctx, GObject *o)
+// Takes a reference to an existing object
+static naRef object2ghost(naContext ctx, GObject *o)
 {
-    return o ? naNewGhost(ctx,&gObjectGhostType,o) : naNil();
+    return o ? naNewGhost(ctx,&gObjectGhostType,g_object_ref_sink(o)) : naNil();
 }
 
 static GObject *ghost2object(naRef r)
@@ -259,7 +262,7 @@ static naRef g2n(naContext ctx, const GValue *in)
         const gchar *str = g_value_get_string(in);
         return NASTR(str);
     } else if(G_VALUE_HOLDS_OBJECT(in)) {
-        return new_objectGhost(ctx,g_value_get_object(in));
+        return object2ghost(ctx,g_value_get_object(in));
     } else if(G_VALUE_HOLDS(in,GTK_TYPE_TREE_PATH)) {
         gchar *path = gtk_tree_path_to_string((GtkTreePath*)g_value_get_boxed(in));
         naRef ret = NASTR(path);
@@ -471,7 +474,7 @@ static naRef f_new(naContext ctx, naRef me, int argc, naRef* args)
     }
     obj = g_object_newv(t,n_parms,parms);
     g_type_class_unref(klass);
-    return new_objectGhost(ctx,obj);
+    return object2ghost(ctx,obj);
 }
 
 static naRef f_set(naContext ctx, naRef me, int argc, naRef* args)
@@ -674,7 +677,7 @@ static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
         types[i] = g_type_from_name(naStr_data(STRARG(i)));
 
     w = gtk_list_store_newv(argc,types);
-    return new_objectGhost(ctx,G_OBJECT(w));
+    return object2ghost(ctx,G_OBJECT(w));
 }
 
 
@@ -776,7 +779,7 @@ static naRef f_append_column(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_tree_view_get_selection(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkTreeView *w = GTK_TREE_VIEW(OBJARG(0));
-    return new_objectGhost(ctx,G_OBJECT(gtk_tree_view_get_selection(w)));
+    return object2ghost(ctx,G_OBJECT(gtk_tree_view_get_selection(w)));
 }
 
 static naRef f_tree_selection_get_selected(naContext ctx, naRef me, int argc, naRef* args)
@@ -811,6 +814,26 @@ static naRef f_type_children(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_get_type(naContext ctx, naRef me, int argc, naRef* args)
 {
     return NASTR(g_type_name(G_TYPE_FROM_INSTANCE(OBJARG(0))));
+}
+
+static naRef f_get_signals(naContext ctx, naRef me, int argc, naRef* args)
+{
+    guint i, nsigs=0;
+    GType t = g_type_from_name(naStr_data(STRARG(0)));
+    naRef result = naNewVector(ctx);
+    GObjectClass* gc = g_type_class_ref(t); /* doesn't work w/o this */
+    guint *sigs = g_signal_list_ids(t, &nsigs);
+    for(i=0; i<nsigs; i++) {
+        GSignalQuery sq;
+        g_signal_query(sigs[i], &sq);
+        // Technically, should also test the flags against
+        // G_SIGNAL_ACTION, but *many* classes forget to set this, so
+        // it's basically useless.
+        if(sq.itype == t) naVec_append(result, NASTR(sq.signal_name));
+    }
+    g_free(sigs);
+    g_type_class_unref(gc);
+    return result;
 }
 
 static naRef f_parent_type(naContext ctx, naRef me, int argc, naRef* args)
@@ -892,7 +915,7 @@ naRef f_ui_manager_insert_action_group(naContext ctx, naRef me,
 naRef f_ui_manager_get_accel_group(naContext ctx, naRef me,
                                    int argc, naRef* args)
 {
-    return new_objectGhost(ctx, (void*)gtk_ui_manager_get_accel_group(OBJARG(0)));
+    return object2ghost(ctx, (void*)gtk_ui_manager_get_accel_group(OBJARG(0)));
 }
 
 naRef f_ui_manager_add_ui(naContext ctx, naRef me, int argc, naRef* args)
@@ -914,7 +937,7 @@ naRef f_ui_manager_remove_ui(naContext ctx, naRef me, int argc, naRef* args)
 naRef f_ui_manager_get_widget(naContext ctx, naRef me, int argc, naRef* args)
 {
     const char* s = naStr_data(STRARG(1));
-    return new_objectGhost(ctx, (void*)gtk_ui_manager_get_widget(OBJARG(0), s));
+    return object2ghost(ctx, (void*)gtk_ui_manager_get_widget(OBJARG(0), s));
 }
 
 naRef f_toggle_action_get_active(naContext ctx, naRef me, int argc, naRef* args)
@@ -961,6 +984,7 @@ static naCFuncItem funcs[] = {
     { "widget_show_all", f_show_all },
     { "rc_parse_string", f_rc_parse_string },
 //core stuff
+    { "get_signals", f_get_signals },
     { "parent_type", f_parent_type },
     { "get_type", f_get_type },
     { "type_children", f_type_children },
