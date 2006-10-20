@@ -3,6 +3,7 @@
 #include "httpd.h"
 #include "http_config.h"
 #include "http_protocol.h"
+#include "http_request.h"
 #include "util_filter.h"
 #include "util_script.h"
 #include "http_log.h"
@@ -205,6 +206,16 @@ static int hex(int c)
     return 0;
 }
 
+static naRef f_redirect(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef url = args > 0 ? naStringValue(ctx, args[0]) : naNil();
+    struct nasal_request* nr = naGetUserData(ctx);
+    if(!nr || naIsNil(url))
+        naRuntimeError(ctx, "Bad/missing argument to redirect");
+    ap_internal_redirect(naStr_data(url), nr->r);
+    return naNil();
+}
+
 static naRef f_urldec(naContext ctx, naRef me, int argc, naRef* args)
 {
     const char* url;
@@ -235,6 +246,7 @@ static struct func funcs[] = {
     { "gethdr", f_gethdr },
     { "sethdr", f_sethdr },
     { "setstatus", f_setstatus },
+    { "redirect", f_redirect },
     { "urldec", f_urldec },
 };
 static naRef make_syms(naContext ctx)
