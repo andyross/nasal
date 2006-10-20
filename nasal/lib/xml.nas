@@ -9,7 +9,7 @@ import("utf8");
 # + The parser is non-validating, so DOCTYPE is ignored.
 # + Internal DTD declarations are not supported (the grammar is rather
 #   stupidly recursive and would add significant complexity for such a
-#   minor and siused feature) and will cause a parse error.
+#   minor and rarely used feature) and will cause a parse error.
 # + The only encoding supported is UTF8 (and ASCII, which is a proper
 #   subset).  Actually, any encoding that exposes the markup
 #   characters (<>'"=) unambiguously will parse successfully, but
@@ -31,6 +31,21 @@ import("utf8");
 # tag(name, ns?):    the first sub-tag with the specified name
 # tags(name, ns?):   list of all tags with the specified name
 # text():            the first text node, without leading/trailing whitespace
+
+# The xml.Parser interface is a lower-level callback-based parser
+# (similar to expat, for example).  It does not do namespace
+# processing, and merely exposes the tag and attribute names
+# directly. Set it up with a handler object implementing the following
+# methods:
+#
+#    open(tagname, attr_hash)
+#    text(string)
+#    close(tagname)
+#    proc(name, string)  (for processing instructions: <?name string?>)
+#
+# Then call feed() to send it strings as you read them from the XML
+# input.  Call done() at the end to check that parsing has completed
+# successfully and that all the input data has been handled.
 
 parse = func(str) {
     var tp = TagParser.new();
@@ -84,20 +99,6 @@ Tag.text = func {
     return _wsRE.group(1);
 };
 
-# The xml.Parser interface is a lower-level callback-based parser
-# (similar to expat, for example).  It does not do namespace
-# processing, and merely exposes the tag and attribute names
-# directly. Set it up with a handler object implementing the following
-# methods:
-#
-#    open(tagname, attr_hash)
-#    text(string)
-#    close(tagname)
-#    proc(name, string)  (for processing instructions: <?name string?>)
-#
-# Then call feed() to send it strings as you read them from the XML
-# input.  Call done() at the end to check that parsing has completed
-# successfully and that all the input data has been handled.
 Parser = {};
 
 Parser.new = func(handler) {
@@ -248,10 +249,12 @@ Parser.decode = func(str) { me.entityRE.sub_all(str, "${entity(_1)}") }
 
 var _ents2 =
 { "&":"&amp;", ">":"&gt;", "<":"&lt;", "'":"&apos;", '"':"&quot;" };
-var encode = func(str) { regex.sub_all('([&<>"\'])', "${_ents2[_1]}", str); }
+
+var _entRE = regex.new('([&<>"\'])');
+var encode = func(str) { _entRE.sub(str, "${_ents2[_1]}", 1); }
 
 ########################################################################
-
+if(0) {
 import("io");
 import("bits");
 
@@ -286,4 +289,5 @@ foreach(f; arg) {
 #    for(var i=0; size(buf)-i >= SZ; i+=SZ)
 #	p.feed(substr(buf, i, SZ));
 #    p.feed(substr(buf, i));
+}
 }
