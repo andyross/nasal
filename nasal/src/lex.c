@@ -109,7 +109,20 @@ static int lineEnd(struct Parser* p, int line)
 static void newToken(struct Parser* p, int pos, int type,
                      char* str, int slen, double num)
 {
-    struct Token* tok;
+    struct Token *tok, *last = p->tree.lastChild;
+
+    /* Adjacent string literals get concatenated */
+    if(type == TOK_LITERAL && str) {
+        if(last && last->type == TOK_LITERAL) {
+            int i, len1 = last->strlen;
+            char* str2 = naParseAlloc(p, len1 + slen);
+            for(i=0; i<len1; i++) str2[i] = last->str[i];
+            for(i=0; i<slen; i++) str2[i+len1] = str[i];
+            last->str = str2;
+            last->strlen += slen;
+            return;
+        }
+    }
 
     tok = naParseAlloc(p, sizeof(struct Token));
     tok->type = type;
@@ -119,7 +132,7 @@ static void newToken(struct Parser* p, int pos, int type,
     tok->num = num;
     tok->parent = &p->tree;
     tok->next = 0;
-    tok->prev = p->tree.lastChild;
+    tok->prev = last;
     tok->children = 0;
     tok->lastChild = 0;
 
