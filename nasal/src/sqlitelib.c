@@ -135,7 +135,7 @@ static naRef f_exec(naContext c, naRef me, int argc, naRef* args)
     for(i=bindings; i<argc; i++) {
         int err=0, bidx=i-bindings+1;
         if(naIsString(args[i]))
-            err = sqlite3_bind_blob(STMTG(stmt)->stmt, bidx,
+            err = sqlite3_bind_text(STMTG(stmt)->stmt, bidx,
                                     naStr_data(args[i]),
                                     naStr_len(args[i]), SQLITE_TRANSIENT);
         else if(naIsNum(args[i]))
