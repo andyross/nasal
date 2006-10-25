@@ -8,6 +8,7 @@
 #include "util_script.h"
 #include "http_log.h"
 #include "apr_strings.h"
+#include "apr_md5.h"
 
 #include "nasal.h"
 
@@ -128,6 +129,20 @@ static naRef f_print(naContext c, naRef me, int argc, naRef* args)
     return naNil();
 }
 
+static naRef f_log_error(naContext c, naRef me, int argc, naRef* args)
+{
+    int i;
+    struct nasal_request* nr = naGetUserData(c);
+    if(!nr) naRuntimeError(c, "log_error() called outside of request");
+    for(i=0; i<argc; i++) {
+        naRef s = naStringValue(c, args[i]);
+        if(naIsNil(s)) continue;
+        ap_log_error(__FILE__, __LINE__, APLOG_ERR, 0, nr->r->server,
+                     naStr_data(s));
+    }
+    return naNil();
+}
+
 static naRef f_read(naContext c, naRef me, int argc, naRef* args)
 {
     struct nasal_request* nr = naGetUserData(c);
@@ -238,9 +253,25 @@ static naRef f_urldec(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+/* Why is this here?  Because Apache has a handy MD5 implementation
+ * built in, it's really useful for password databases, and Nasal
+ * doesn't have a crypto library yet */
+static naRef f_apr_md5(naContext ctx, naRef me, int argc, naRef* args)
+{
+    apr_md5_ctx_t md5;
+    unsigned char result[APR_MD5_DIGESTSIZE];
+    naRef s = argc > 0 ? naStringValue(ctx, args[0]) : naNil();
+    if(naIsNil(s)) naRuntimeError(ctx, "bad/missing argument to apr_md5");
+    apr_md5_init(&md5);
+    apr_md5_update(&md5, naStr_data(s), naStr_len(s));
+    apr_md5_final(result, &md5);
+    return naStr_fromdata(naNewString(ctx), (char*)result, sizeof(result));
+}
+
 struct func { char* name; naCFunction func; };
 static struct func funcs[] = {
     { "print", f_print },
+    { "log_error", f_log_error },
     { "read", f_read },
     { "getcgi", f_getcgi },
     { "gethdr", f_gethdr },
@@ -248,6 +279,7 @@ static struct func funcs[] = {
     { "setstatus", f_setstatus },
     { "redirect", f_redirect },
     { "urldec", f_urldec },
+    { "apr_md5", f_apr_md5 },
 };
 static naRef make_syms(naContext ctx)
 {
