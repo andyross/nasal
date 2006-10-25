@@ -1,3 +1,8 @@
+# FIXME: the cache of stored modules is stored by module name, but it
+# really should be stored by filename.  This is a problem for web
+# apps, where you might have two apps on the same interpreter with a
+# module named "config"
+
 # This is the top-level "driver" file containing the module import
 # code for Nasal programs.  Call this file from your C code to get
 # back a hash table for use in binding new functions.  You can use it

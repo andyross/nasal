@@ -54,8 +54,6 @@ var Regex = {
 
     # Length of the specified group match
     group_len : func(n) { return me._matches[2*n+1] - me._matches[2*n]; },
-
-    sub_all : func(str, expr) { me.sub(str, expr, 1) },
 };
 
 # Substitutes the first match of the regex object in the string with
@@ -97,10 +95,8 @@ Regex.sub = func(str, expr, gflag=0) {
 # Synonym, so users don't have to write regex.Regex.new
 var new = Regex.new;
 
-# Some conveniences
+# Convenience wrapper
 var match   = func(re, s, opts="")      { Regex.new(re, opts).match(s) }
-var sub     = func(re, expr, s, opts="") { Regex.new(re, opts).sub(s, expr) }
-var sub_all = func(re, expr, s, opts="") { Regex.new(re, opts).sub(s, expr, 1) }
 
 # Generates a callable function object from an interpolation
 # string. Takes a function object as the lexical environment in which

@@ -196,7 +196,8 @@ Parser.feed = func(str) {
     me.unparsed = substr(src, next);
 }
 
-var _ents = { "amp":"&", "gt":">", "lt":"<", "apos":"'", "quot":'"' };
+# Note numeric "#39" instead of standard "apos" -- MSIE bug workaround
+var _ents = { "amp":"&", "gt":">", "lt":"<", "#39":"'", "quot":'"' };
 entity = func(e) {
     if(find("#x", e) == 0) {
 	return utf8.chstr(call(compile("0x"~substr(e, 2))));
@@ -247,8 +248,9 @@ TagParser.proc = func{}; # noop
 #
 Parser.decode = func(str) { me.entityRE.sub_all(str, "${entity(_1)}") }
 
+# MSIE doesn't do "&apos;" ...
 var _ents2 =
-{ "&":"&amp;", ">":"&gt;", "<":"&lt;", "'":"&apos;", '"':"&quot;" };
+{ "&":"&amp;", ">":"&gt;", "<":"&lt;", "'":"&#39;", '"':"&quot;" };
 
 var _entRE = regex.new('([&<>"\'])');
 var encode = func(str) { _entRE.sub(str, "${_ents2[_1]}", 1); }
