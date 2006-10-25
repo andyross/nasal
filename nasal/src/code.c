@@ -488,7 +488,7 @@ static naRef run(struct Context* ctx)
     struct Frame* f;
     struct naCode* cd;
     int op, arg;
-    naRef a, b, c;
+    naRef a, b;
 
     ctx->dieArg = naNil();
     ctx->error[0] = 0;

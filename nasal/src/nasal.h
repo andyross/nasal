@@ -23,7 +23,9 @@ naContext naSubContext(naContext super);
 
 // The naContext supports a user data pointer that can be used to
 // store data specific to an naCall invocation without exposing it to
-// Nasal as a ghost.
+// Nasal as a ghost.  FIXME: this API is semi-dangerous, there is no
+// provision for sharing it, nor for validating the source or type of
+// the pointer returned.
 void naSetUserData(naContext c, void* p);
 void* naGetUserData(naContext c);
 
