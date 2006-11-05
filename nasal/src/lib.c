@@ -364,6 +364,7 @@ static naRef f_sprintf(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+// FIXME: needs to honor subcontext list
 static naRef f_caller(naContext ctx, naRef me, int argc, naRef* args)
 {
     int fidx;

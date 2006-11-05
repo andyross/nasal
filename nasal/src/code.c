@@ -112,8 +112,7 @@ static naRef containerGet(struct Context* ctx, naRef box, naRef key)
     naRef result = naNil();
     if(!IS_SCALAR(key)) ERR(ctx, "container index not scalar");
     if(IS_HASH(box)) {
-        if(!naHash_get(box, key, &result))
-            ERR(ctx, "undefined value in container");
+        naHash_get(box, key, &result);
     } else if(IS_VEC(box)) {
         result = naVec_get(box, checkVec(ctx, box, key));
     } else if(IS_STR(box)) {
