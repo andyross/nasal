@@ -149,7 +149,7 @@ var canvas_expose = func(w) {
 
     return 0;
 }
-canvas.set("events",["button-press-mask","button-motion-mask"]);
+canvas.set("events",{"button-press-mask":1,"button-motion-mask":1});
 canvas.connect("expose-event",canvas_expose);
 canvas.connect("button-press-event",canvas_press_cb);
 canvas.connect("motion-notify-event",canvas_motion_cb);

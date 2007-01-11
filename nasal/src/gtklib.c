@@ -98,29 +98,34 @@ static gchar *get_stack_trace(naContext ctx)
     return buf;
 }
 
-static guint vec2flags(naContext ctx, naRef in, GType t) {
+static guint nasal2flags(naContext ctx, naRef in, GType t) {
     GFlagsClass *tc = g_type_class_ref(t);
-    int i,sz = naVec_size(in);
+    naRef keys = naNewVector(ctx);
+    int i;
     guint flags=0;
-    if(!naIsVector(in))
-        naRuntimeError(ctx,"flags not a vector of strings");
-    for(i=0;i<sz;i++) {
-        gchar *name = naStr_data(naStringValue(ctx,naVec_get(in,i)));
+
+    if(!naIsHash(in))
+        naRuntimeError(ctx,"flags not a hash");
+    naHash_keys(keys,in);
+    for(i=0;i<naVec_size(keys);i++) {
+        gchar *name = naStr_data(naStringValue(ctx,naVec_get(keys,i)));
         GFlagsValue *v = g_flags_get_value_by_nick(tc,name);
         if(!v) v = g_flags_get_value_by_name(tc,name);
-        if(v) flags |= v->value;
-        else naRuntimeError(ctx,"Flag not found: %s",name);
+        if(v) {
+            naRef n = naNumValue(naHash_cget(in,name));
+            if(!naIsNil(n) && n.num != 0) flags |= v->value;
+        } else naRuntimeError(ctx,"Flag not found: %s",name);
     }
     g_type_class_unref(tc);
     return flags;
 }
 
-static naRef flags2vec(naContext ctx, guint state, GType type) {
+static naRef flags2nasal(naContext ctx, guint state, GType type) {
     GFlagsClass *c = g_type_class_ref(type);
-    naRef ret = naNewVector(ctx);
+    naRef ret = naNewHash(ctx);
     while(state) {
         GFlagsValue *v = g_flags_get_first_value(c,state);
-        naVec_append(ret,NASTR(v->value_nick));
+        naAddSym(ctx,ret,(char*)v->value_nick,naNum(1));
         state -= v->value;
     }
     g_type_class_unref(c);
@@ -136,11 +141,20 @@ static naRef enum2nasal(naContext ctx, guint e, GType type) {
     return ret;
 }
 
-static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
 #define SET_NUM(a,b) naAddSym(ctx,h,(a),naNum(b))
 #define SET_STR(a,b) naAddSym(ctx,h,(a),NASTR(b))
-#define SET_FLAGS(a,b,t) naAddSym(ctx,h,(a),flags2vec(ctx,b,t))
+#define SET_FLAGS(a,b,t) naAddSym(ctx,h,(a),flags2nasal(ctx,b,t))
 
+static naRef wrap_gdk_rectangle(naContext ctx, GdkRectangle *r) {
+    naRef h = naNewHash(ctx);
+    SET_NUM("width",r->width);
+    SET_NUM("height",r->height);
+    SET_NUM("x",r->x);
+    SET_NUM("y",r->y);
+    return h;
+}
+
+static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
     naRef h = naNewHash(ctx);
     GEnumClass *tc = g_type_class_ref(GDK_TYPE_EVENT_TYPE);
     GEnumValue *v = g_enum_get_value(tc,ev->type);
@@ -152,12 +166,11 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
         case GDK_KEY_PRESS:
         case GDK_KEY_RELEASE:
             SET_NUM("time",ev->key.time);
-            SET_NUM("state",ev->key.state);
+            SET_FLAGS("state",ev->key.state,GDK_TYPE_MODIFIER_TYPE);
             SET_NUM("keyval",ev->key.keyval);
             SET_STR("keyval_name",gdk_keyval_name(ev->key.keyval));
             SET_NUM("hardware_keycode",ev->key.hardware_keycode);
             SET_NUM("group",ev->key.group);
-//            SET_NUM("is_modifier",ev->key.is_modifier);
         break;
         case GDK_BUTTON_PRESS:
         case GDK_2BUTTON_PRESS:
@@ -196,13 +209,21 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
             SET_NUM("focus",ev->crossing.focus);
             SET_FLAGS("state",ev->button.state,GDK_TYPE_MODIFIER_TYPE);
         break;
+        case GDK_CONFIGURE:
+            SET_NUM("x",ev->configure.x);
+            SET_NUM("y",ev->configure.y);
+            SET_NUM("width",ev->configure.width);
+            SET_NUM("height",ev->configure.height);
+        break;
     default:
         return naNil();
     }
     return h;
+}
+
 #undef SET_NUM
 #undef SET_STR
-}
+#undef SET_FLAGS
 
 static void n2g(naContext ctx, naRef in, GValue *out)
 {
@@ -230,7 +251,7 @@ static void n2g(naContext ctx, naRef in, GValue *out)
         g_type_class_unref(tc);
     } else
     if(G_VALUE_HOLDS_FLAGS(out)) {
-        g_value_set_flags(out,vec2flags(ctx,in,G_VALUE_TYPE(out)));
+        g_value_set_flags(out,nasal2flags(ctx,in,G_VALUE_TYPE(out)));
     } else
     if(G_VALUE_HOLDS_STRING(out)) {
         g_value_set_string(out,naStr_data(naStringValue(ctx,in)));
@@ -269,11 +290,13 @@ static naRef g2n(naContext ctx, const GValue *in)
         g_free(path);
         return ret;
     } else if(G_VALUE_HOLDS_FLAGS(in)) {
-        return flags2vec(ctx,g_value_get_flags(in),G_VALUE_TYPE(in));
+        return flags2nasal(ctx,g_value_get_flags(in),G_VALUE_TYPE(in));
     } else if(G_VALUE_HOLDS_ENUM(in)) {
         return enum2nasal(ctx,g_value_get_enum(in),G_VALUE_TYPE(in));
     } else if(G_VALUE_HOLDS(in,GDK_TYPE_EVENT)) {
         return wrap_gdk_event(ctx,g_value_get_boxed(in));
+    } else if(G_VALUE_HOLDS(in,GDK_TYPE_RECTANGLE)) {
+        return wrap_gdk_rectangle(ctx,g_value_get_boxed(in));
     } else {
         naRuntimeError(ctx,"Can't convert from type %s\n",G_VALUE_TYPE_NAME(in));
     }
@@ -751,19 +774,18 @@ static naRef f_tree_model_get(naContext ctx, naRef me, int argc, naRef* args)
     return retval;
 }
 
-
-static naRef f_column_add_cell(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_cell_layout_add_cell(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkTreeViewColumn *col = GTK_TREE_VIEW_COLUMN(OBJARG(0));
+    GtkCellLayout *col = GTK_CELL_LAYOUT(OBJARG(0));
     GtkCellRenderer *cell = GTK_CELL_RENDERER(OBJARG(1));
     gboolean expand = (gboolean)NUMARG(2);
     int i;
-    gtk_tree_view_column_pack_start(col,cell,expand);
-    gtk_tree_view_column_clear_attributes(col,cell);
+    gtk_cell_layout_pack_start(col,cell,expand);
+    gtk_cell_layout_clear_attributes(col,cell);
     for(i=3;i<argc-1;i+=2) {
         const gchar *attr = naStr_data(STRARG(i));
         gint c = (gint)NUMARG(i+1);
-        gtk_tree_view_column_add_attribute(col,cell,attr,c);
+        gtk_cell_layout_add_attribute(col,cell,attr,c);
     }
     return naNil();
 }
@@ -797,6 +819,16 @@ static naRef f_tree_selection_get_selected(naContext ctx, naRef me, int argc, na
     ret = NASTR(path);
     g_free(path);
     return ret;
+}
+
+static naRef f_tree_selection_select(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkTreeSelection *o = GTK_TREE_SELECTION(OBJARG(0));
+    gchar *path = naStr_data(STRARG(1));
+    GtkTreePath *tp = gtk_tree_path_new_from_string(path);
+    gtk_tree_selection_select_path(o,tp);
+    gtk_tree_path_free(tp);
+    return naNil();
 }
 
 static naRef f_type_children(naContext ctx, naRef me, int argc, naRef* args)
@@ -973,9 +1005,10 @@ static naCFuncItem funcs[] = {
     { "list_store_set", f_list_store_set },
     { "list_store_clear", f_list_store_clear },
     { "tree_view_get_selection", f_tree_view_get_selection },
-    { "tree_view_column_add_cell", f_column_add_cell },
+    { "cell_layout_add_cell", f_cell_layout_add_cell },
     { "tree_view_append_column", f_append_column },
     { "tree_selection_get_selected", f_tree_selection_get_selected },
+    { "tree_selection_select", f_tree_selection_select },
     { "tree_model_get", f_tree_model_get },
     { "text_view_insert", f_text_insert},
     { "text_view_scroll_to_cursor", f_text_scroll_to_cursor},

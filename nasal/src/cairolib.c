@@ -1,3 +1,6 @@
+/* Copyright 2006, Jonatan Liljedahl */
+/* Distributable under the GNU LGPL v.2, see COPYING for details */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,7 +9,10 @@
 
 #include "nasal.h"
 
+#define NASTR(b) naStr_fromdata(naNewString(ctx), (char*)(b), strlen(b))
+
 typedef struct { cairo_t *cr; } cairoGhost;
+typedef struct { cairo_surface_t *s; } surfaceGhost;
 
 static void cairoGhostDestroy(cairoGhost *g)
 {
@@ -14,7 +20,14 @@ static void cairoGhostDestroy(cairoGhost *g)
     free(g);
 }
 
+static void surfaceGhostDestroy(surfaceGhost *g)
+{
+    cairo_surface_destroy(g->s);
+    free(g);
+}
+
 static naGhostType cairoGhostType = { (void(*)(void*))cairoGhostDestroy };
+static naGhostType surfaceGhostType = { (void(*)(void*))surfaceGhostDestroy };
 
 naRef naNewCairoGhost(naContext ctx, cairo_t *cr) {
     cairoGhost *g = malloc(sizeof(cairoGhost));
@@ -22,11 +35,25 @@ naRef naNewCairoGhost(naContext ctx, cairo_t *cr) {
     return naNewGhost(ctx,&cairoGhostType,g);
 }
 
+naRef naNewSurfaceGhost(naContext ctx, cairo_surface_t *s) {
+    surfaceGhost *g = malloc(sizeof(surfaceGhost));
+    g->s = s;
+    cairo_surface_reference(s);
+    return naNewGhost(ctx,&surfaceGhostType,g);
+}
+
 static cairo_t *ghost2cairo(naRef r)
 {
     if(naGhost_type(r) != &cairoGhostType)
         return NULL;
     return ((cairoGhost*)naGhost_ptr(r))->cr;
+}
+
+static cairo_surface_t *ghost2surface(naRef r)
+{
+    if(naGhost_type(r) != &surfaceGhostType)
+        return NULL;
+    return ((surfaceGhost*)naGhost_ptr(r))->s;
 }
 
 static void check_argc(naContext c, int argc, int n, char *f) {
@@ -40,6 +67,15 @@ static cairo_t *arg_cairo(naContext c, int argc, naRef *a, int n, char *f)
     cr = ghost2cairo(a[n]);
     if(!cr) naRuntimeError(c,"Arg %d to %s() not a cairo context",n+1,f);
     return cr;
+}
+
+static cairo_surface_t *arg_surface(naContext c, int argc, naRef *a, int n, char *f)
+{
+    cairo_surface_t *s;
+    check_argc(c,argc,n,f);
+    s = ghost2surface(a[n]);
+    if(!s) naRuntimeError(c,"Arg %d to %s() not a cairo surface",n+1,f);
+    return s;
 }
 
 static naRef arg_str(naContext c, int argc, naRef *a,int n, char *f) {
@@ -91,6 +127,14 @@ static naRef f_##x(naContext ctx, naRef me, int argc, naRef* args) { \
     double c = arg_num(ctx,argc,args,3,fn); double d = arg_num(ctx,argc,args,4,fn); \
     cairo_##x(cr,a,b,c,d); return naNil(); }
 
+#define CAIRO_5ARG(x) \
+static naRef f_##x(naContext ctx, naRef me, int argc, naRef* args) { \
+    char *fn = "cairo."#x; cairo_t *cr = arg_cairo(ctx,argc,args,0,fn); \
+    double a = arg_num(ctx,argc,args,1,fn); double b = arg_num(ctx,argc,args,2,fn); \
+    double c = arg_num(ctx,argc,args,3,fn); double d = arg_num(ctx,argc,args,4,fn); \
+    double e = arg_num(ctx,argc,args,5,fn); \
+    cairo_##x(cr,a,b,c,d,e); return naNil(); }
+
 CAIRO_0ARG(stroke)
 CAIRO_0ARG(stroke_preserve)
 CAIRO_0ARG(fill)
@@ -101,26 +145,71 @@ CAIRO_0ARG(save)
 CAIRO_0ARG(restore)
 CAIRO_0ARG(new_path)
 CAIRO_0ARG(close_path)
+CAIRO_0ARG(clip)
+CAIRO_0ARG(paint)
 
 CAIRO_1ARG(set_line_width)
 CAIRO_1ARG(set_font_size)
+CAIRO_1ARG(set_line_cap)
+CAIRO_1ARG(set_line_join)
+CAIRO_1ARG(set_antialias)
+CAIRO_1ARG(set_operator)
 
 CAIRO_2ARG(move_to)
 CAIRO_2ARG(line_to)
 CAIRO_2ARG(rel_move_to)
 CAIRO_2ARG(rel_line_to)
 CAIRO_2ARG(scale)
+CAIRO_2ARG(translate)
 
 CAIRO_3ARG(set_source_rgb)
 
 CAIRO_4ARG(set_source_rgba)
 CAIRO_4ARG(rectangle)
 
+CAIRO_5ARG(arc)
+
 #undef CAIRO_0ARG
 #undef CAIRO_1ARG
 #undef CAIRO_2ARG
 #undef CAIRO_3ARG
 #undef CAIRO_4ARG
+#undef CAIRO_5ARG
+
+static naRef f_create(naContext ctx, naRef me, int argc, naRef* args)
+{
+    cairo_surface_t *s = arg_surface(ctx,argc,args,0,"cairo_create");
+    cairo_t *cr = cairo_create(s);
+    return naNewCairoGhost(ctx,cr);
+}
+
+static naRef f_get_target(naContext ctx, naRef me, int argc, naRef* args)
+{
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,"cairo_get_target");
+    return naNewSurfaceGhost(ctx,cairo_get_target(cr));
+}
+
+static naRef f_surface_create_similar(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_surface_create_similar";
+    cairo_surface_t *other = arg_surface(ctx,argc,args,0,fn);
+    cairo_content_t content = (cairo_content_t)arg_num(ctx,argc,args,1,fn);
+    int width = (int)arg_num(ctx,argc,args,2,fn);
+    int height = (int)arg_num(ctx,argc,args,3,fn);
+    cairo_surface_t *s = cairo_surface_create_similar(other,content,width,height);
+    return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_set_source_surface(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_set_source_surface";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    cairo_surface_t *s = arg_surface(ctx,argc,args,1,fn);
+    double x = arg_num(ctx,argc,args,2,fn);
+    double y = arg_num(ctx,argc,args,3,fn);
+    cairo_set_source_surface(cr,s,x,y);
+    return naNil();
+}
 
 static naRef f_show_text(naContext ctx, naRef me, int argc, naRef* args)
 {
@@ -129,6 +218,62 @@ static naRef f_show_text(naContext ctx, naRef me, int argc, naRef* args)
     const char *s = naStr_data(arg_str(ctx,argc,args,1,fn));
     cairo_show_text(cr,s);
     return naNil();
+}
+
+static naRef f_select_font_face(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_select_font_face";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    const char *family = naStr_data(arg_str(ctx,argc,args,1,fn));
+    cairo_font_slant_t slant = argc>2?arg_num(ctx,argc,args,2,fn):CAIRO_FONT_SLANT_NORMAL;
+    cairo_font_weight_t weight = argc>3?arg_num(ctx,argc,args,3,fn):CAIRO_FONT_WEIGHT_NORMAL;
+    cairo_select_font_face(cr,family,slant,weight);
+    return naNil();
+}
+
+#define SET_NUM(a,b) naAddSym(ctx,h,(a),naNum(b))
+static naRef f_text_extents(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef h = naNewHash(ctx);
+    char *fn = "cairo_text_extents";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    const char *s = naStr_data(arg_str(ctx,argc,args,1,fn));
+    cairo_text_extents_t te;
+    cairo_text_extents(cr,s,&te);
+    SET_NUM("x_bearing",te.x_bearing);
+    SET_NUM("y_bearing",te.y_bearing);
+    SET_NUM("x_advance",te.x_advance);
+    SET_NUM("y_advance",te.y_advance);
+    SET_NUM("width",te.width);
+    SET_NUM("height",te.height);
+    return h;
+}
+
+static naRef f_font_extents(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef h = naNewHash(ctx);
+    char *fn = "cairo_font_extents";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    cairo_font_extents_t te;
+    cairo_font_extents(cr,&te);
+    SET_NUM("ascent",te.ascent);
+    SET_NUM("descent",te.descent);
+    SET_NUM("max_x_advance",te.max_x_advance);
+    SET_NUM("max_y_advance",te.max_y_advance);
+    SET_NUM("height",te.height);
+    return h;
+}
+
+static naRef f_get_current_point(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef v = naNewVector(ctx);
+    char *fn = "cairo_get_current_point";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    double x,y;
+    cairo_get_current_point(cr,&x,&y);
+    naVec_append(v,naNum(x));
+    naVec_append(v,naNum(y));
+    return v;
 }
 
 static naRef f_set_dash(naContext ctx, naRef me, int argc, naRef* args)
@@ -145,33 +290,85 @@ static naRef f_set_dash(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
+#define F(x) { #x, f_##x }
 static naCFuncItem funcs[] = {
-    { "set_dash", f_set_dash },
-    { "rectangle", f_rectangle },
-    { "close_path", f_close_path },
-    { "new_path", f_new_path },
-    { "save", f_save },
-    { "restore", f_restore },
-    { "scale", f_scale },
-    { "set_font_size", f_set_font_size },
-    { "set_line_width", f_set_line_width },
-    { "set_source_rgba", f_set_source_rgba },
-    { "set_source_rgb", f_set_source_rgb },
-    { "show_page", f_show_page },
-    { "copy_page", f_copy_page },
-    { "stroke", f_stroke },
-    { "stroke_preserve", f_stroke_preserve },
-    { "fill", f_fill },
-    { "fill_preserve", f_fill_preserve },
-    { "move_to", f_move_to },
-    { "line_to", f_line_to },
-    { "rel_move_to", f_rel_move_to },
-    { "rel_line_to", f_rel_line_to },
-    { "show_text", f_show_text },
+    F(set_dash),
+    F(set_antialias),
+    F(rectangle),
+    F(arc),
+    F(close_path),
+    F(new_path),
+    F(save),
+    F(restore),
+    F(scale),
+    F(set_font_size),
+    F(set_line_width),
+    F(set_line_cap),
+    F(set_line_join),
+    F(set_source_rgba),
+    F(set_source_rgb),
+    F(show_page),
+    F(copy_page),
+    F(stroke),
+    F(stroke_preserve),
+    F(fill),
+    F(fill_preserve),
+    F(clip),
+    F(move_to),
+    F(line_to),
+    F(rel_move_to),
+    F(rel_line_to),
+    F(show_text),
+    F(translate),
+    F(text_extents),
+    F(font_extents),
+    F(select_font_face),
+    F(get_current_point),
+    F(paint),
+    F(create),
+    F(surface_create_similar),
+    F(set_source_surface),
+    F(get_target),
+    F(set_operator),
     { 0 }
 };
+#undef F
 
+#define E(x) naAddSym(ctx,ns,#x,naNum(CAIRO_##x))
 naRef naInit_cairo(naContext ctx) {
-    return naGenLib(ctx,funcs);
+    naRef ns = naGenLib(ctx,funcs);
+    E(FONT_SLANT_NORMAL);
+    E(FONT_SLANT_ITALIC);
+    E(FONT_SLANT_OBLIQUE);
+    E(FONT_WEIGHT_NORMAL);
+    E(FONT_WEIGHT_BOLD);
+    E(LINE_JOIN_MITER);
+    E(LINE_JOIN_ROUND);
+    E(LINE_JOIN_BEVEL);
+    E(LINE_CAP_BUTT);
+    E(LINE_CAP_ROUND);
+    E(LINE_CAP_SQUARE);
+    E(ANTIALIAS_DEFAULT);
+    E(ANTIALIAS_NONE);
+    E(ANTIALIAS_GRAY);
+    E(ANTIALIAS_SUBPIXEL);
+    E(CONTENT_COLOR);
+    E(CONTENT_ALPHA);
+    E(CONTENT_COLOR_ALPHA);
+    E(OPERATOR_CLEAR);
+    E(OPERATOR_SOURCE);
+    E(OPERATOR_OVER);
+    E(OPERATOR_IN);
+    E(OPERATOR_OUT);
+    E(OPERATOR_ATOP);
+    E(OPERATOR_DEST);
+    E(OPERATOR_DEST_OVER);
+    E(OPERATOR_DEST_IN);
+    E(OPERATOR_DEST_OUT);
+    E(OPERATOR_DEST_ATOP);
+    E(OPERATOR_XOR);
+    E(OPERATOR_ADD);
+    E(OPERATOR_SATURATE);
+    return ns;
 }
-
+#undef E

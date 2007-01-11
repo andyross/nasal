@@ -20,14 +20,19 @@ var class_methods = {
 		     ["scroll_to_cursor", "text_view_scroll_to_cursor"]],
     "GtkTreeView" : [["append_column", "tree_view_append_column"],
 		     ["get_selection", "tree_view_get_selection"]],
-    "GtkTreeSelection" : [["get_selected", "tree_selection_get_selected"]],
+    "GtkTreeSelection" : [["get_selected", "tree_selection_get_selected"],
+                          ["select", "tree_selection_select"]],
     "GtkMenuItem" : [["set_submenu", "menu_item_set_submenu"]],
     "GtkListStore" : [["append", "list_store_append"],
 		      ["remove", "list_store_remove"],
 		      ["set_row", "list_store_set"],
 		      ["get_row", "tree_model_get"],
 		      ["clear", "list_store_clear"]],
-    "GtkTreeViewColumn" : [["add_cell", "tree_view_column_add_cell"]],
+    "GtkTreeViewColumn" : [["add_cell", "cell_layout_add_cell"]],
+    "GtkComboBox" : [["add_cell", "cell_layout_add_cell"]],
+    "GtkComboBoxEntry" : [["add_cell", "cell_layout_add_cell"]],
+    "GtkCellView" : [["add_cell", "cell_layout_add_cell"]],
+    "GtkIconView" : [["add_cell", "cell_layout_add_cell"]],
 };
 
 # OOP IS-A predicate

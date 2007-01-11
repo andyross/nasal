@@ -149,7 +149,7 @@ var canvas_expose = func(w) {
 
     return 0;
 }
-gtk.set(canvas,"events",["button-press-mask","button-motion-mask"]);
+gtk.set(canvas,"events",{"button-press-mask":1,"button-motion-mask":1});
 gtk.connect(canvas,"expose-event",canvas_expose);
 gtk.connect(canvas,"button-press-event",canvas_press_cb);
 gtk.connect(canvas,"motion-notify-event",canvas_motion_cb);
@@ -167,11 +167,11 @@ list = gtk.new("GtkTreeView","model",store);
 
 # add the columns
 col = gtk.new("GtkTreeViewColumn","title","File","expand",1);
-gtk.tree_view_column_add_cell(col,gtk.new("GtkCellRendererText"),0,"text",0);
+gtk.cell_layout_add_cell(col,gtk.new("GtkCellRendererText"),0,"text",0);
 gtk.tree_view_append_column(list,col);
 
 col = gtk.new("GtkTreeViewColumn","title","Changed");
-gtk.tree_view_column_add_cell(col,gtk.new("GtkCellRendererToggle"),0,"active",1);
+gtk.cell_layout_add_cell(col,gtk.new("GtkCellRendererToggle"),0,"active",1);
 gtk.tree_view_append_column(list,col);
 
 # handle selections
