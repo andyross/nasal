@@ -78,7 +78,6 @@ void naVec_setsize(naRef vec, int sz)
     nv->alloced = sz;
     for(i=0; i<sz; i++)
         nv->array[i] = (v && i < v->size) ? v->array[i] : naNil();
-    naFree(v);
     naGC_swapfree((void**)&(PTR(vec).vec->rec), nv);
 }
 
