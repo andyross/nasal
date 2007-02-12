@@ -37,7 +37,7 @@ var class_methods = {
 
 # OOP IS-A predicate
 _isa = func(obj,class) {
-    if(!contains(obj, "parents")) return 0;
+    if(obj == nil or !contains(obj, "parents")) return 0;
     foreach(var c; obj.parents) {
         if(c == class)     return 1;
         elsif(_isa(obj, c)) return 1;
