@@ -299,7 +299,7 @@ static void genShortCircuit(struct Parser* p, struct Token* t)
 {
     int end;
     genExpr(p, LEFT(t));
-    end = emitJump(p, t->type == TOK_AND ? OP_JIFUNTRUE : OP_JIFTRUE);
+    end = emitJump(p, t->type == TOK_AND ? OP_JIFNOT : OP_JIFTRUE);
     emit(p, OP_POP);
     genExpr(p, RIGHT(t));
     fixJumpTarget(p, end);
@@ -310,7 +310,7 @@ static void genIf(struct Parser* p, struct Token* tif, struct Token* telse)
 {
     int jumpNext, jumpEnd;
     genExpr(p, tif->children); // the test
-    jumpNext = emitJump(p, OP_JIFNOT);
+    jumpNext = emitJump(p, OP_JIFNOTPOP);
     genExprList(p, tif->children->next->children); // the body
     jumpEnd = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpNext);
@@ -334,7 +334,7 @@ static void genQuestion(struct Parser* p, struct Token* t)
     if(!RIGHT(t) || RIGHT(t)->type != TOK_COLON)
         naParseError(p, "invalid ?: expression", t->line);
     genExpr(p, LEFT(t)); // the test
-    jumpNext = emitJump(p, OP_JIFNOT);
+    jumpNext = emitJump(p, OP_JIFNOTPOP);
     genExpr(p, LEFT(RIGHT(t))); // the "if true" expr
     jumpEnd = emitJump(p, OP_JMP);
     fixJumpTarget(p, jumpNext);
@@ -380,7 +380,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
     pushLoop(p, label);
     loopTop = p->cg->codesz;
     genExpr(p, test);
-    jumpEnd = emitJump(p, OP_JIFNOT);
+    jumpEnd = emitJump(p, OP_JIFNOTPOP);
     genLoop(p, body, update, label, loopTop, jumpEnd);
 }
 
@@ -482,7 +482,7 @@ static void genBreakContinue(struct Parser* p, struct Token* t)
     for(i=0; i<levels; i++)
         emit(p, (i<levels-1) ? OP_BREAK2 : OP_BREAK);
     if(t->type == TOK_BREAK)
-        emit(p, OP_PUSHEND); // breakIP is always a JIFNOT/JIFEND!
+        emit(p, OP_PUSHEND); // breakIP is always a JIFNOTPOP/JIFEND!
     emitImmediate(p, OP_JMP, t->type == TOK_BREAK ? bp : cp);
 }
 

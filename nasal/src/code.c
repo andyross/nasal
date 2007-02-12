@@ -621,7 +621,7 @@ static naRef run(struct Context* ctx)
                 DBG(printf("   [Jump to: %d]\n", f->ip);)
             }
             break;
-        case OP_JIFUNTRUE:
+        case OP_JIFNOT:
             arg = ARG();
             if(!boolify(ctx, STK(1))) {
                 f->ip = arg;

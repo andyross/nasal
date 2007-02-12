@@ -26,7 +26,7 @@ char* opStringDEBUG(int op)
     case OP_NEQ: return "NEQ";
     case OP_EACH: return "EACH";
     case OP_JMP: return "JMP";
-    case OP_JIFNOT: return "JIFNOT";
+    case OP_JIFNOTPOP: return "JIFNOTPOP";
     case OP_JIFEND: return "JIFEND";
     case OP_FCALL: return "FCALL";
     case OP_MCALL: return "MCALL";
@@ -54,6 +54,8 @@ char* opStringDEBUG(int op)
     case OP_SETSYM: return "SETSYM";
     case OP_DUP2: return "DUP2";
     case OP_JMPLOOP: return "JMPLOOP";
+    case OP_JIFTRUE: return "JIFTRUE";
+    case OP_JIFNOT: return "JIFNOT";
     }
     sprintf(buf, "<bad opcode: %d>\n", op);
     return buf;
@@ -232,23 +234,23 @@ void dumpByteCode(naRef codeObj) {
         op = byteCode[ip++];
         printf("%8d %-12s",ip-1,opStringDEBUG(op));
         switch(op) {
-            case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
-                c=byteCode[ip++];
-                a=PTR(codeObj).code->constants[c];
-                printf(" %-4d ",c);
-                if(IS_CODE(a)) {
-                    printf("(CODE)\n[\n");
-                    dumpByteCode(a);
-                    printf("]\n");
-                } else
-                    printRefDEBUG(a);
+        case OP_PUSHCONST: case OP_MEMBER: case OP_LOCAL:
+            c=byteCode[ip++];
+            a=PTR(codeObj).code->constants[c];
+            printf(" %-4d ",c);
+            if(IS_CODE(a)) {
+                printf("(CODE)\n[\n");
+                dumpByteCode(a);
+                printf("]\n");
+            } else
+                printRefDEBUG(a);
             break;
-            case OP_JIFNOT: case OP_JIFEND: case OP_JMP: case OP_JMPLOOP:
-            case OP_FCALL: case OP_MCALL:
-                printf(" %d\n",byteCode[ip++]);
+        case OP_JIFTRUE: case OP_JIFNOT: case OP_JIFNOTPOP: case OP_JIFEND:
+        case OP_JMP: case OP_JMPLOOP: case OP_FCALL: case OP_MCALL:
+            printf(" %d\n",byteCode[ip++]);
             break;
-            default:
-                printf("\n");
+        default:
+            printf("\n");
         }
     }
 }
