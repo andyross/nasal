@@ -326,16 +326,6 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
     return f;
 }
 
-static naRef evalAndOr(struct Context* ctx, int op, naRef ra, naRef rb)
-{
-    int a = boolify(ctx, ra);
-    int b = boolify(ctx, rb);
-    int result;
-    if(op == OP_AND) result = a && b ? 1 : 0;
-    else             result = a || b ? 1 : 0;
-    return naNum(result);
-}
-
 static naRef evalEquality(int op, naRef ra, naRef rb)
 {
     int result = naEqual(ra, rb);
@@ -533,10 +523,6 @@ static naRef run(struct Context* ctx)
             STK(2) = evalEquality(op, STK(2), STK(1));
             ctx->opTop--;
             break;
-        case OP_AND: case OP_OR:
-            STK(2) = evalAndOr(ctx, op, STK(2), STK(1));
-            ctx->opTop--;
-            break;
         case OP_CAT:
             STK(2) = evalCat(ctx, STK(2), STK(1));
             ctx->opTop -= 1;
@@ -628,7 +614,21 @@ static naRef run(struct Context* ctx)
                 DBG(printf("   [Jump to: %d]\n", f->ip);)
             }
             break;
-        case OP_JIFNOT:
+        case OP_JIFTRUE:
+            arg = ARG();
+            if(boolify(ctx, STK(1))) {
+                f->ip = arg;
+                DBG(printf("   [Jump to: %d]\n", f->ip);)
+            }
+            break;
+        case OP_JIFUNTRUE:
+            arg = ARG();
+            if(!boolify(ctx, STK(1))) {
+                f->ip = arg;
+                DBG(printf("   [Jump to: %d]\n", f->ip);)
+            }
+            break;
+        case OP_JIFNOTPOP:
             arg = ARG();
             if(!boolify(ctx, POP())) {
                 f->ip = arg;

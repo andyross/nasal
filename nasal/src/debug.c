@@ -11,8 +11,6 @@ char* opStringDEBUG(int op)
 {
     static char buf[256];
     switch(op) {
-    case OP_AND: return "AND";
-    case OP_OR: return "OR";
     case OP_NOT: return "NOT";
     case OP_MUL: return "MUL";
     case OP_PLUS: return "PLUS";

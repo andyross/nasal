@@ -297,15 +297,12 @@ static void fixJumpTarget(struct Parser* p, int spot)
 
 static void genShortCircuit(struct Parser* p, struct Token* t)
 {
-    int jumpNext, jumpEnd, isAnd = (t->type == TOK_AND);
+    int end;
     genExpr(p, LEFT(t));
-    if(isAnd) emit(p, OP_NOT);
-    jumpNext = emitJump(p, OP_JIFNOT);
-    emit(p, isAnd ? OP_PUSHNIL : OP_PUSHONE);
-    jumpEnd = emitJump(p, OP_JMP);
-    fixJumpTarget(p, jumpNext);
+    end = emitJump(p, t->type == TOK_AND ? OP_JIFUNTRUE : OP_JIFTRUE);
+    emit(p, OP_POP);
     genExpr(p, RIGHT(t));
-    fixJumpTarget(p, jumpEnd);
+    fixJumpTarget(p, end);
 }
 
 
