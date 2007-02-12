@@ -91,7 +91,7 @@ static gchar *get_stack_trace(naContext ctx)
         char *o = buf;
         char *s = g_strdup_printf("  called from: %s, line %d\n",
             naStr_data(naGetSourceFile(ctx, i)), naGetLine(ctx, i));
-        buf = g_strconcat(buf,s,0);
+        buf = g_strconcat(buf,s,NULL);
         g_free(o);
         g_free(s);
     }
@@ -151,6 +151,14 @@ static naRef wrap_gdk_rectangle(naContext ctx, GdkRectangle *r) {
     SET_NUM("height",r->height);
     SET_NUM("x",r->x);
     SET_NUM("y",r->y);
+    return h;
+}
+
+static naRef wrap_gdk_color(naContext ctx, GdkColor *c) {
+    naRef h = naNewHash(ctx);
+    SET_NUM("red",c->red/65535.0);
+    SET_NUM("green",c->green/65535.0);
+    SET_NUM("blue",c->blue/65535.0);
     return h;
 }
 
@@ -215,6 +223,15 @@ static naRef wrap_gdk_event(naContext ctx, GdkEvent *ev) {
             SET_NUM("width",ev->configure.width);
             SET_NUM("height",ev->configure.height);
         break;
+        case GDK_SCROLL:
+            SET_NUM("time",ev->scroll.time);
+            SET_NUM("x",ev->scroll.x);
+            SET_NUM("y",ev->scroll.y);
+            SET_NUM("x_root",ev->scroll.x_root);
+            SET_NUM("y_root",ev->scroll.y_root);
+            SET_FLAGS("state",ev->scroll.state,GDK_TYPE_MODIFIER_TYPE);
+            naAddSym(ctx,h,"direction",enum2nasal(ctx,ev->scroll.direction,GDK_TYPE_SCROLL_DIRECTION));
+        break;
     default:
         return naNil();
     }
@@ -259,6 +276,14 @@ static void n2g(naContext ctx, naRef in, GValue *out)
     if(G_VALUE_HOLDS_OBJECT(out)) {
         g_value_set_object(out,ghost2object(in));
     } else
+    if(G_VALUE_HOLDS(out,GDK_TYPE_COLOR)) {
+        GdkColor col;
+        col.pixel = 0;
+        col.red = 65535*naNumValue(naHash_cget(in,"red")).num;
+        col.green = 65535*naNumValue(naHash_cget(in,"green")).num;
+        col.blue = 65535*naNumValue(naHash_cget(in,"blue")).num;
+        g_value_set_boxed(out,&col);
+    } else
         naRuntimeError(ctx,"Can't convert to type %s\n",G_VALUE_TYPE_NAME(out));
 #undef CHECK_NUM
 }
@@ -297,6 +322,8 @@ static naRef g2n(naContext ctx, const GValue *in)
         return wrap_gdk_event(ctx,g_value_get_boxed(in));
     } else if(G_VALUE_HOLDS(in,GDK_TYPE_RECTANGLE)) {
         return wrap_gdk_rectangle(ctx,g_value_get_boxed(in));
+    } else if(G_VALUE_HOLDS(in,GDK_TYPE_COLOR)) {
+        return wrap_gdk_color(ctx,g_value_get_boxed(in));
     } else {
         naRuntimeError(ctx,"Can't convert from type %s\n",G_VALUE_TYPE_NAME(in));
     }
@@ -690,6 +717,14 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
         return g2n(ctx,&retval);
 }
 
+static naRef f_size_group_add_widget(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkSizeGroup *g = GTK_SIZE_GROUP(OBJARG(0));
+    GtkWidget *w = GTK_WIDGET(OBJARG(1));
+    gtk_size_group_add_widget(g,w);
+    return naNil();
+}    
+
 static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
 {
     int i;
@@ -828,6 +863,13 @@ static naRef f_tree_selection_select(naContext ctx, naRef me, int argc, naRef* a
     GtkTreePath *tp = gtk_tree_path_new_from_string(path);
     gtk_tree_selection_select_path(o,tp);
     gtk_tree_path_free(tp);
+    return naNil();
+}
+
+static naRef f_tree_selection_unselect_all(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkTreeSelection *o = GTK_TREE_SELECTION(OBJARG(0));
+    gtk_tree_selection_unselect_all(o);
     return naNil();
 }
 
@@ -983,6 +1025,28 @@ naRef f_toggle_action_set_active(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
+naRef f_file_chooser_get_filename(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkFileChooser *f = OBJARG(0);
+    gchar *fn = gtk_file_chooser_get_filename(f);
+    if(fn==NULL) return naNil();
+    return NASTR(fn);
+}
+naRef f_file_chooser_set_filename(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkFileChooser *f = OBJARG(0);
+    gchar *fn = naStr_data(STRARG(1));
+    gtk_file_chooser_set_filename(f,fn);
+    return naNil();
+}
+naRef f_file_chooser_set_current_name(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkFileChooser *f = OBJARG(0);
+    gchar *fn = naStr_data(STRARG(1));
+    gtk_file_chooser_set_current_name(f,fn);
+    return naNil();
+}
+
 static naCFuncItem funcs[] = {
 // Needed to make UIManager & menus work (yuck!):
     { "accel_map_parse", f_accel_map_parse },
@@ -1009,6 +1073,7 @@ static naCFuncItem funcs[] = {
     { "tree_view_append_column", f_append_column },
     { "tree_selection_get_selected", f_tree_selection_get_selected },
     { "tree_selection_select", f_tree_selection_select },
+    { "tree_selection_unselect_all", f_tree_selection_unselect_all },
     { "tree_model_get", f_tree_model_get },
     { "text_view_insert", f_text_insert},
     { "text_view_scroll_to_cursor", f_text_scroll_to_cursor},
@@ -1016,6 +1081,10 @@ static naCFuncItem funcs[] = {
     { "widget_queue_draw", f_queue_draw },
     { "widget_show_all", f_show_all },
     { "rc_parse_string", f_rc_parse_string },
+    { "size_group_add_widget", f_size_group_add_widget },
+    { "file_chooser_get_filename", f_file_chooser_get_filename },
+    { "file_chooser_set_filename", f_file_chooser_set_filename },
+    { "file_chooser_set_current_name", f_file_chooser_set_current_name },
 //core stuff
     { "get_signals", f_get_signals },
     { "parent_type", f_parent_type },
