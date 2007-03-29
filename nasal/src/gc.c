@@ -270,7 +270,6 @@ static void reap(struct naPool* p)
 {
     struct Block* b;
     int elem, freesz, total = poolsize(p);
-    p->nfree = 0;
     freesz = total < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : total;
     freesz = (3 * freesz / 2) + (globals->nThreads * OBJ_CACHE_SZ);
     if(p->freesz < freesz) {
@@ -279,6 +278,9 @@ static void reap(struct naPool* p)
         p->free = p->free0 = naAlloc(sizeof(void*) * p->freesz);
     }
 
+    p->nfree = 0;
+    p->free = p->free0;
+
     for(b = p->blocks; b; b = b->next)
         for(elem=0; elem < b->size; elem++) {
             struct naObj* o = (struct naObj*)(b->block + elem * p->elemsz);
@@ -286,6 +288,8 @@ static void reap(struct naPool* p)
                 freeelem(p, o);
             o->mark = 0;
         }
+
+    p->freetop = p->nfree;
 
     // allocs of this type until the next collection
     globals->allocCount += total/2;
@@ -299,7 +303,6 @@ static void reap(struct naPool* p)
         if(need > 0)
             newBlock(p, need);
     }
-    p->freetop = p->nfree;
 }
 
 // Does the swap, returning the old value
