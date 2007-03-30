@@ -55,11 +55,12 @@ var _edays = func(year, mon, day) {
 
 var to_epoch = func(year, mon, day, hh, mm, ss, tz=nil) {
     var e = 60 * (60 * (24 * _edays(year, mon-1, day-1) + hh) + mm) + ss;
-    return _tz2gmt(e, tz);
+    return _tz2gmt(e, tz)[0];
 }
 
 var from_epoch = func(epoch, tz=nil) {
-    var lepoch = _tz2local(epoch, tz);
+    var tzrec = _tz2local(epoch, tz);
+    var lepoch = tzrec[0];
     var day = _yd1969 + lepoch / 86400;
     var wday = mod(int(day)+1, 7);
     var year = int(day / 365.2425) - 2;
@@ -75,7 +76,8 @@ var from_epoch = func(epoch, tz=nil) {
     var hour = int(sec / 3600);  sec -= 3600 * hour;
     var min = int(sec / 60);     sec -= 60 * min;
     return { year:year, mon:mon+1, day:int(day)+1, wday:wday,
-             hour:hour, min:min, sec:sec, tzoff: lepoch-epoch };
+             hour:hour, min:min, sec:sec, tzoff: lepoch-epoch,
+             abbr:tzrec[1].abbr };
 }
 
 var _parsetz = func(buf) {
@@ -131,22 +133,23 @@ var zones = {};
 var zone_path = "/usr/share/zoneinfo";
 
 var timezone = func(tz=nil) {
-    if(contains(zones, tz)) return zones[tz];
+    if(tz != nil and contains(zones, tz)) return zones[tz];
     if(tz == nil) tz = "/etc/localtime"; # FIXME: check $TZ
     else tz = zone_path ~ "/" ~ tz;
     return (zones[tz] = _parsetz(io.readfile(tz)));
 }
 
-# Binary search a time zone definition
+# Binary search a time zone definition, returns a tuple of [offset,
+# record]
 var _tzsearch = func(e, tz, togmt) {
     if(tz == nil) tz = timezone();
     var off = 0;
     if(e >= tz.times[-1]) {
 	off = tz.types[tz.ttypes[-1]].gmtoff;
-	return togmt ? e-off : e+off;
+	return [togmt ? e-off : e+off, tz.types[tz.ttypes[-1]]];
     } elsif(e < tz.times[0]) {
 	off = tz.type0.gmtoff;
-	return togmt ? e-off : e+off;
+	return [togmt ? e-off : e+off, tz.type0];
     }
     var lo = 0; var hi = size(tz.times) - 1;
     while(hi - lo > 1) {
@@ -157,7 +160,7 @@ var _tzsearch = func(e, tz, togmt) {
 	else                   lo = mid;
     }
     off = tz.types[tz.ttypes[lo]].gmtoff;
-    return togmt ? e-off : e+off;
+    return [togmt ? e-off : e+off, tz.types[tz.ttypes[lo]]];
 }
 
 var _tz2local = func(e, tz) { _tzsearch(e, tz, 0); }
