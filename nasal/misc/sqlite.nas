@@ -2,7 +2,7 @@ var db = sqlite.open("testtesttest.sqlite");
 
 # Reset. Ignore errors by using call().
 call(func { sqlite.exec(db, "drop table foo");
-	    sqlite.exec(db, "drop table bar"); });
+	    sqlite.exec(db, "drop table bar"); }, [], []);
 
 var stmt = sqlite.prepare(db, "create table foo (id integer, name text)");
 sqlite.exec(db, stmt);
