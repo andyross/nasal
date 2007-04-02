@@ -76,10 +76,10 @@ static void* gobjarg(naContext ctx, int n, int ac, naRef *av, const char* fn)
 
 // Even simpler usage based on convention: these are to be used *only* in
 // functions name f_<name>, with parameters named ctx, argc, and args.
-#define STRARG(n) strarg(ctx, (n), argc, args, (__func__+2))
-#define FUNCARG(n) funcarg(ctx, (n), argc, args, (__func__+2))
-#define NUMARG(n) numarg(ctx, (n), argc, args, (__func__+2))
-#define OBJARG(n) gobjarg(ctx, (n), argc, args, (__func__+2))
+#define STRARG(n) strarg(ctx, (n), argc, args, (__FUNCTION__+2))
+#define FUNCARG(n) funcarg(ctx, (n), argc, args, (__FUNCTION__+2))
+#define NUMARG(n) numarg(ctx, (n), argc, args, (__FUNCTION__+2))
+#define OBJARG(n) gobjarg(ctx, (n), argc, args, (__FUNCTION__+2))
 
 static gchar *get_stack_trace(naContext ctx)
 {
