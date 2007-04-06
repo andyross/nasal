@@ -76,6 +76,17 @@
 <dd>Compares two strings, returning -1 if a is less than b, 0 if they
     are identical, and 1 if a is greater than b.
 
+<dt>sort(vector, function)
+<dd>Creates a new vector containing the elements in the input vector
+    sorted in ascending order according to the rule given
+    by <code>function</code>, which takes two arguments (elements of
+    the input vector) and should return less than zero, zero, or
+    greater than zero if the first argument is, respectively, less
+    than, equal to, or greater than the second argument.  Despite
+    being implemented with ANSI C <code>qsort()</code>, the sort is
+    stable; "equal" elements in the output vector will appear in the
+    same relative order as they do in the input.
+
 <dt>substr(string, start, length=nil)
 <dd>Computes a substring.  The first argument specifes a string, the
     second is an integer index of the start of a substring, the

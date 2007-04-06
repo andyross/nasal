@@ -88,7 +88,7 @@ var _parsetz = func(buf) {
 	return val - neg;
     }
 
-    if(substr(buf, 0, 4) != "TZif") die();
+    if(substr(buf, 0, 4) != "TZif") die("bad timezone");
     var tz = {};
     var off = 20; # Skip magic and 16 byte "future use" area
     var ttisgmtcnt = word(); var ttisstdcnt = word(); var leapcnt = word();
