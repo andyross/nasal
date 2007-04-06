@@ -4,6 +4,13 @@ import("_gtk");
 # will become a callable Nasal method on the class.  The function is
 # the name of the underlying _gtk function: it will have the "me"
 # reference passed as its first argument.
+var interfaces = {
+    "FileChooser" : [["get_filename", "file_chooser_get_filename"],
+                     ["set_filename", "file_chooser_set_filename"],
+                     ["set_current_folder", "file_chooser_set_current_folder"],
+                     ["set_current_name", "file_chooser_set_current_name"]],
+    "CellLayout" : [["add_cell", "cell_layout_add_cell"]],
+};
 var class_methods = {
     "GObject" : [["get", "get"],
 		 ["set", "set"],
@@ -17,27 +24,35 @@ var class_methods = {
 		   ["cairo_create", "widget_cairo_create"],
 		   ["queue_draw", "widget_queue_draw"]],
     "GtkTextView" : [["insert", "text_view_insert"],
+                     ["insert_with_tag", "text_view_insert_with_tag"],
 		     ["scroll_to_cursor", "text_view_scroll_to_cursor"]],
     "GtkTreeView" : [["append_column", "tree_view_append_column"],
 		     ["get_selection", "tree_view_get_selection"]],
     "GtkTreeSelection" : [["get_selected", "tree_selection_get_selected"],
-                          ["select", "tree_selection_select"]],
+                          ["select", "tree_selection_select"],
+                          ["unselect_all", "tree_selection_unselect_all"]],
     "GtkMenuItem" : [["set_submenu", "menu_item_set_submenu"]],
     "GtkListStore" : [["append", "list_store_append"],
 		      ["remove", "list_store_remove"],
 		      ["set_row", "list_store_set"],
 		      ["get_row", "tree_model_get"],
 		      ["clear", "list_store_clear"]],
-    "GtkTreeViewColumn" : [["add_cell", "cell_layout_add_cell"]],
-    "GtkComboBox" : [["add_cell", "cell_layout_add_cell"]],
-    "GtkComboBoxEntry" : [["add_cell", "cell_layout_add_cell"]],
-    "GtkCellView" : [["add_cell", "cell_layout_add_cell"]],
-    "GtkIconView" : [["add_cell", "cell_layout_add_cell"]],
+    "GtkTreeViewColumn" : interfaces.CellLayout,
+    "GtkComboBox" : interfaces.CellLayout,
+    "GtkComboBoxEntry" : interfaces.CellLayout,
+    "GtkCellView" : interfaces.CellLayout,
+    "GtkIconView" : interfaces.CellLayout,
+    "GtkSizeGroup" : [["add_widget", "size_group_add_widget"]],
+    "GtkFileChooserWidget" : interfaces.FileChooser,
+    "GtkFileChooserButton" : interfaces.FileChooser,
+    "GtkFileChooserDialog" : interfaces.FileChooser,
+    "GtkDialog" : [["add_buttons", "dialog_add_buttons"]],
+    "GtkTooltips" : [["set_tip", "tooltips_set_tip"]],
 };
 
 # OOP IS-A predicate
 _isa = func(obj,class) {
-    if(obj == nil or !contains(obj, "parents")) return 0;
+    if(obj==nil or !contains(obj, "parents")) return 0;
     foreach(var c; obj.parents) {
         if(c == class)     return 1;
         elsif(_isa(obj, c)) return 1;

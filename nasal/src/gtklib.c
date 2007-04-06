@@ -709,9 +709,13 @@ static naRef f_emit(naContext ctx, naRef me, int argc, naRef* args)
         n2g(ctx,args[i],parm);
     }
 
+    if(sigq.return_type!=G_TYPE_NONE)
+        g_value_init(&retval,sigq.return_type);
+
     g_signal_emitv(parms,sig_id,0,&retval);
     g_free(parms);
-    if(G_VALUE_TYPE(&retval)==0)
+
+    if(sigq.return_type==G_TYPE_NONE)
         return naNil();
     else
         return g2n(ctx,&retval);
@@ -1046,6 +1050,36 @@ naRef f_file_chooser_set_current_name(naContext ctx, naRef me, int argc, naRef* 
     gtk_file_chooser_set_current_name(f,fn);
     return naNil();
 }
+naRef f_file_chooser_set_current_folder(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkFileChooser *f = OBJARG(0);
+    gchar *fn = naStr_data(STRARG(1));
+    gtk_file_chooser_set_current_folder(f,fn);
+    return naNil();
+}
+
+naRef f_dialog_add_buttons(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkDialog *w = OBJARG(0);
+    int i=1;
+    while(i<argc) {
+        gchar *text = naStr_data(STRARG(i));
+        gint response = NUMARG(i+1);
+        i+=2;
+        gtk_dialog_add_button(w,text,response);
+    }
+    return naNil();
+}
+
+naRef f_tooltips_set_tip(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkTooltips *tips = OBJARG(0);
+    GtkWidget *w = OBJARG(1);
+    gchar *text = naStr_data(STRARG(2));
+    gchar *private = argc>3?naStr_data(STRARG(3)):NULL;
+    gtk_tooltips_set_tip(tips,w,text,private);
+    return naNil();
+}
 
 static naCFuncItem funcs[] = {
 // Needed to make UIManager & menus work (yuck!):
@@ -1085,6 +1119,9 @@ static naCFuncItem funcs[] = {
     { "file_chooser_get_filename", f_file_chooser_get_filename },
     { "file_chooser_set_filename", f_file_chooser_set_filename },
     { "file_chooser_set_current_name", f_file_chooser_set_current_name },
+    { "file_chooser_set_current_folder", f_file_chooser_set_current_folder },
+    { "dialog_add_buttons", f_dialog_add_buttons },
+    { "tooltips_set_tip", f_tooltips_set_tip },
 //core stuff
     { "get_signals", f_get_signals },
     { "parent_type", f_parent_type },
