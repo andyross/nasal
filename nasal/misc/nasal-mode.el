@@ -3,9 +3,6 @@
 ;; A major mode for writing Nasal code.
 ;; Copyright (C) 2003,2005,2006 Andrew Ross
 ;;
-;; Based very closely on awk-mode.el as shipped with GNU Emacs 21.2
-;; Copyright (C) 1988,94,96,2000  Free Software Foundation, Inc.
-;;
 ;; It should be sufficient to drop this into your Emacs site-lisp
 ;; directory (/usr/share/emacs/site-lisp on most linux distributions)
 ;; and add a line:

@@ -3,7 +3,7 @@
 " Maintainer:	Melchior FRANZ <mfranz # aon : at>
 " URL:		http://members.aon.at/mfranz/nasal.vim
 " Last Change:	2005 Apr 25
-" $Id: nasal.vim,v 1.4 2006-07-07 17:34:05 andy Exp $
+" $Id: nasal.vim,v 1.5 2007-04-06 16:51:52 andy Exp $
 
 " ________________________________CUSTOMIZATION______________________________
 "
@@ -56,7 +56,7 @@ syn match   nasalFoo			"\~"
 syn match   nasalFunction		display "\<contains\>"
 syn keyword nasalFunction		size keys append pop setsize subvec delete int num streq substr
 syn keyword nasalFunction		chr typeof compile call die sprintf caller closure find cmp
-syn keyword nasalFunction		split rand bind
+syn keyword nasalFunction		split rand bind sort
 
 " math lib
 syn match   nasalFunction		"\<math\.\(sin\|cos\|exp\|ln\|sqrt\|atan2\)\>"
@@ -79,6 +79,7 @@ if !exists("nasal_no_fgfs")
 
 	syn keyword nasalPropsFunction		getType getName getIndex getValue setValue setIntValue
 	syn keyword nasalPropsFunction		setBoolValue setDoubleValue getParent getChild getChildren
+	syn keyword nasalPropsFunction		getAttribute setAttribute
 	syn keyword nasalPropsFunction		removeChild removeChildren getNode
 	syn keyword nasalPropsFunction		getPath getBoolValue setValues
 	syn match   nasalPropsFunction		"\<props\.\(globals\|Node\)\>\.\="
