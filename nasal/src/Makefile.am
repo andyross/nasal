@@ -22,11 +22,11 @@ if HAVE_GTK
 gtk = gtklib.c cairolib.c
 endif
 
-libnasal_la_SOURCES = bitslib.c code.c codegen.c debug.c gc.c hash.c	\
-                      iolib.c lex.c lib.c mathlib.c misc.c parse.c	\
-                      string.c thread-posix.c thread-win32.c		\
-                      threadlib.c unixlib.c utf8lib.c vector.c code.h	\
-                      data.h iolib.h nasal.h parse.h $(pcre) $(sqlite)	\
+libnasal_la_SOURCES = bitslib.c code.c codegen.c gc.c hash.c iolib.c	\
+                      lex.c lib.c mathlib.c misc.c parse.c string.c	\
+                      thread-posix.c thread-win32.c threadlib.c		\
+                      unixlib.c utf8lib.c vector.c code.h data.h	\
+                      iolib.h nasal.h parse.h $(pcre) $(sqlite)		\
                       $(readline) $(gtk)
 
 libnasal_la_LDFLAGS = -version-info @LIBTOOL_VERSION_INFO@

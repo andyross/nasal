@@ -472,7 +472,7 @@ static void nasal_closure_finalize(gpointer notify_data, GClosure *closure)
     naHash_delete(closures,((NasalClosure *)closure)->tag);
 }
 
-NasalClosure *new_nasal_closure(naContext ctx, naRef callback, naRef data)
+static NasalClosure *new_nasal_closure(naContext ctx, naRef callback, naRef data)
 {
     GClosure *closure;
     NasalClosure *naclosure;
@@ -942,7 +942,7 @@ static naRef f_rc_parse_string(naContext ctx, naRef me, int argc, naRef* args)
 // Parses LISP-like strings of the form:
 //   (gtk_accel_path "<Actions>/Whatever/Something" "<Shift><Control>q")
 //   ...
-naRef f_accel_map_parse(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_accel_map_parse(naContext ctx, naRef me, int argc, naRef* args)
 {
     naRef s = STRARG(0);
     GScanner* gs = g_scanner_new(0);
@@ -952,26 +952,26 @@ naRef f_accel_map_parse(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
-naRef f_window_add_accel_group(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_window_add_accel_group(naContext ctx, naRef me, int argc, naRef* args)
 {
     gtk_window_add_accel_group(OBJARG(0), OBJARG(1));
     return naNil();
 }
 
-naRef f_action_set_accel_path(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_action_set_accel_path(naContext ctx, naRef me, int argc, naRef* args)
 {
     gtk_action_set_accel_path(OBJARG(0), naStr_data(STRARG(1)));
     return naNil();
 }
 
-naRef f_action_group_add_action(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_action_group_add_action(naContext ctx, naRef me, int argc, naRef* args)
 {
     gtk_action_group_add_action(OBJARG(0), OBJARG(1));
     return naNil();
 }
 
 // Adds all action arguments as a radio group
-naRef f_action_group_add_radios(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_action_group_add_radios(naContext ctx, naRef me, int argc, naRef* args)
 {
     int i;
     GSList* list = 0;
@@ -983,20 +983,20 @@ naRef f_action_group_add_radios(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
-naRef f_ui_manager_insert_action_group(naContext ctx, naRef me,
-                                       int argc, naRef* args)
+static naRef f_ui_manager_insert_action_group(naContext ctx, naRef me,
+                                              int argc, naRef* args)
 {
     gtk_ui_manager_insert_action_group(OBJARG(0), OBJARG(1), (int)NUMARG(2));
     return naNil();
 }
 
-naRef f_ui_manager_get_accel_group(naContext ctx, naRef me,
-                                   int argc, naRef* args)
+static naRef f_ui_manager_get_accel_group(naContext ctx, naRef me,
+                                          int argc, naRef* args)
 {
     return object2ghost(ctx, (void*)gtk_ui_manager_get_accel_group(OBJARG(0)));
 }
 
-naRef f_ui_manager_add_ui(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_ui_manager_add_ui(naContext ctx, naRef me, int argc, naRef* args)
 {
     GError* err = 0;
     naRef s = STRARG(1);
@@ -1006,51 +1006,54 @@ naRef f_ui_manager_add_ui(naContext ctx, naRef me, int argc, naRef* args)
     return naNum(id);
 }
 
-naRef f_ui_manager_remove_ui(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_ui_manager_remove_ui(naContext ctx, naRef me, int argc, naRef* args)
 {
     gtk_ui_manager_remove_ui(OBJARG(0), (guint)NUMARG(1));
     return naNil();
 }
 
-naRef f_ui_manager_get_widget(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_ui_manager_get_widget(naContext ctx, naRef me, int argc, naRef* args)
 {
     const char* s = naStr_data(STRARG(1));
     return object2ghost(ctx, (void*)gtk_ui_manager_get_widget(OBJARG(0), s));
 }
 
-naRef f_toggle_action_get_active(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_toggle_action_get_active(naContext ctx, naRef me, int argc, naRef* args)
 {
     return naNum(gtk_toggle_action_get_active(OBJARG(0)));
 }
 
-naRef f_toggle_action_set_active(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_toggle_action_set_active(naContext ctx, naRef me, int argc, naRef* args)
 {
     gtk_toggle_action_set_active(OBJARG(0), NUMARG(1) != 0);
     return naNil();
 }
 
-naRef f_file_chooser_get_filename(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_file_chooser_get_filename(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkFileChooser *f = OBJARG(0);
     gchar *fn = gtk_file_chooser_get_filename(f);
     if(fn==NULL) return naNil();
     return NASTR(fn);
 }
-naRef f_file_chooser_set_filename(naContext ctx, naRef me, int argc, naRef* args)
+
+static naRef f_file_chooser_set_filename(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkFileChooser *f = OBJARG(0);
     gchar *fn = naStr_data(STRARG(1));
     gtk_file_chooser_set_filename(f,fn);
     return naNil();
 }
-naRef f_file_chooser_set_current_name(naContext ctx, naRef me, int argc, naRef* args)
+
+static naRef f_file_chooser_set_current_name(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkFileChooser *f = OBJARG(0);
     gchar *fn = naStr_data(STRARG(1));
     gtk_file_chooser_set_current_name(f,fn);
     return naNil();
 }
-naRef f_file_chooser_set_current_folder(naContext ctx, naRef me, int argc, naRef* args)
+
+static naRef f_file_chooser_set_current_folder(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkFileChooser *f = OBJARG(0);
     gchar *fn = naStr_data(STRARG(1));
@@ -1058,7 +1061,7 @@ naRef f_file_chooser_set_current_folder(naContext ctx, naRef me, int argc, naRef
     return naNil();
 }
 
-naRef f_dialog_add_buttons(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_dialog_add_buttons(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkDialog *w = OBJARG(0);
     int i=1;
@@ -1071,7 +1074,7 @@ naRef f_dialog_add_buttons(naContext ctx, naRef me, int argc, naRef* args)
     return naNil();
 }
 
-naRef f_tooltips_set_tip(naContext ctx, naRef me, int argc, naRef* args)
+static naRef f_tooltips_set_tip(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkTooltips *tips = OBJARG(0);
     GtkWidget *w = OBJARG(1);

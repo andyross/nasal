@@ -34,7 +34,7 @@ static void check_argc(naContext c, int argc, int n, char *f) {
     if(argc!=n) naRuntimeError(c,"%s() takes %d args, not %d",f,n,argc);
 }
 
-char *completion_wrapper(const char *text, int state)
+static char *completion_wrapper(const char *text, int state)
 {
     naContext ctx;
     naRef result, args[2];
