@@ -647,7 +647,10 @@ static naRef run(struct Context* ctx)
             a = STK(1);
             ctx->dieArg = naNil();
             if(ctx->callChild) naFreeContext(ctx->callChild);
-            if(--ctx->fTop <= 0) return a;
+            if(--ctx->fTop <= 0) {
+                if(ctx->callParent) ctx->callParent->callChild = 0;
+                return a;
+            }
             ctx->opTop = f->bp + 1; // restore the correct opstack frame!
             STK(1) = a;
             FIXFRAME();
@@ -806,6 +809,8 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 naRef naContinue(naContext ctx)
 {
     naRef result;
+    if(ctx->callChild)
+        return naContinue(ctx->callChild);
     if(!ctx->callParent) naModLock();
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
