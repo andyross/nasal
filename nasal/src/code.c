@@ -825,6 +825,12 @@ naRef naContinue(naContext ctx)
     ctx->opTop = ctx->opFrame;
     PUSH(ctx->callChild ? naContinue(ctx->callChild) : naNil());
 
+    // Getting here means the child completed successfully.  But
+    // because its original C stack was longjmp'd out of existence,
+    // there is no one left to free the context, so we have to do it.
+    // This is fragile, but unfortunately required.
+    if(ctx->callChild) naFreeContext(ctx->callChild);
+
     result = run(ctx);
     if(!ctx->callParent) naModUnlock();
     return result;
