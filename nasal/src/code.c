@@ -813,6 +813,7 @@ naRef naContinue(naContext ctx)
 
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
+        else naRethrowError(ctx);
         return naNil();
     }
 
