@@ -806,6 +806,8 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 naRef naContinue(naContext ctx)
 {
     naRef result;
+    ctx->dieArg = naNil();
+    ctx->error[0] = 0;
     if(ctx->callChild)
         return naContinue(ctx->callChild);
     if(!ctx->callParent) naModLock();
