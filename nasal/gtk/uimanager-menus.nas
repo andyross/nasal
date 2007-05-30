@@ -114,8 +114,9 @@ var menu = gtk.ui_manager_get_widget(uim, "/MenuBar");
 
 # Create the window, and be sure to add the accel group that the
 # UIManager creates.
-var win = gtk.new("GtkWindow");
+var win = gtk.new("GtkWindow", "title", "UIManager Example");
 gtk.window_add_accel_group(win, gtk.ui_manager_get_accel_group(uim));
+gtk.connect(win, "destroy", gtk.main_quit);
 
 var vbox = gtk.new("GtkVBox");
 gtk.emit(win, "add", vbox);

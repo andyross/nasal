@@ -63,9 +63,7 @@ Tag.namespace = func { me._ns };
 
 # Retrieves the specified attribute, or nil.
 Tag.attr = func(name, ns="") {
-    if(contains(me._att, ns) and contains(me._att[ns], name))
-	return me._att[ns][name];
-    return nil;
+    (me._att[ns] != nil) ? me._att[ns][name] : nil;
 };
 
 # Returns all attributes of a tag as a list of [name, ns] pairs
@@ -187,7 +185,7 @@ Parser.feed = func(str) {
 	} elsif(m(me.cdataRE)) {
 	    me.text ~= me.cdataRE.group(1);
 	} elsif(m(me.idtdRE)) {
-	    die("Internal DTDs not supported");
+	    die("Internal DTDs are not supported");
 	} elsif(m(me.doctypeRE)) {
 	    # Another noop, as we don't validate
 	} else
@@ -260,13 +258,6 @@ if(0) {
 import("io");
 import("bits");
 
-var readfile = func(file) {
-    var sz = io.stat(file)[7];
-    var buf = bits.buf(sz);
-    io.read(io.open(file), buf, sz);
-    return buf;
-}
-
 h = {};
 h.open = func(tag, attrs) {
     print("\n<", tag);
@@ -285,7 +276,7 @@ h.text = func(text) { print("TEXT: ", text); }
 var p = Parser.new(h);
 foreach(f; arg) {
     var SZ = 256;
-    var buf = readfile(f);
+    var buf = io.readfile(f);
     print(encode(buf), "\n\n\n");
     p.feed(buf);
 #    for(var i=0; size(buf)-i >= SZ; i+=SZ)

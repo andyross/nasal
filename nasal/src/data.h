@@ -9,7 +9,7 @@
 // bitmask that sets the top 16 bits.  As a double, this is a
 // signalling NaN that cannot itself be produced by normal numerics
 // code.  The pointer value can be reconstructed if (and only if) we
-// are guaranteed that all memory that can be poitned to by a naRef
+// are guaranteed that all memory that can be pointed to by a naRef
 // (i.e. all memory returned by naAlloc) lives in the bottom 48 bits
 // of memory.  Linux on x86_64, Win64, Solaris and Irix all have such
 // policies with address spaces:

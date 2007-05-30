@@ -30,8 +30,8 @@ static naGhostType gObjectGhostType = { objectGhostDestroy, "GObject" };
 
 static naRef timers, closures;
 
-// Takes a reference to an existing object
-static naRef object2ghost(naContext ctx, GObject *o)
+// Takes a reference to an existing GObject
+static naRef object2ghost(naContext ctx, void *o)
 {
     return o ? naNewGhost(ctx,&gObjectGhostType,g_object_ref_sink(o)) : naNil();
 }
@@ -108,13 +108,12 @@ static guint nasal2flags(naContext ctx, naRef in, GType t) {
         naRuntimeError(ctx,"flags not a hash");
     naHash_keys(keys,in);
     for(i=0;i<naVec_size(keys);i++) {
-        gchar *name = naStr_data(naStringValue(ctx,naVec_get(keys,i)));
+        naRef fl = naStringValue(ctx,naVec_get(keys,i));
+        gchar *name = naStr_data(fl);
         GFlagsValue *v = g_flags_get_value_by_nick(tc,name);
         if(!v) v = g_flags_get_value_by_name(tc,name);
-        if(v) {
-            naRef n = naNumValue(naHash_cget(in,name));
-            if(!naIsNil(n) && n.num != 0) flags |= v->value;
-        } else naRuntimeError(ctx,"Flag not found: %s",name);
+        if(!v) naRuntimeError(ctx,"Flag not found: %s",name);
+        if(naTrue(fl)) flags |= v->value;
     }
     g_type_class_unref(tc);
     return flags;
@@ -134,9 +133,8 @@ static naRef flags2nasal(naContext ctx, guint state, GType type) {
 
 static naRef enum2nasal(naContext ctx, guint e, GType type) {
     GEnumClass *c = g_type_class_ref(type);
-    naRef ret;
     GEnumValue *v = g_enum_get_value(c,e);
-    ret = NASTR(v->value_nick);
+    naRef ret = NASTR(v->value_nick);
     g_type_class_unref(c);
     return ret;
 }
@@ -305,8 +303,7 @@ static naRef g2n(naContext ctx, const GValue *in)
     CHECK_NUM(FLOAT,float)
     CHECK_NUM(DOUBLE,double)
     if(G_VALUE_HOLDS_STRING(in)) {
-        const gchar *str = g_value_get_string(in);
-        return NASTR(str);
+        return NASTR(g_value_get_string(in));
     } else if(G_VALUE_HOLDS_OBJECT(in)) {
         return object2ghost(ctx,g_value_get_object(in));
     } else if(G_VALUE_HOLDS(in,GTK_TYPE_TREE_PATH)) {
@@ -474,26 +471,21 @@ static void nasal_closure_finalize(gpointer notify_data, GClosure *closure)
 
 static NasalClosure *new_nasal_closure(naContext ctx, naRef callback, naRef data)
 {
-    GClosure *closure;
-    NasalClosure *naclosure;
-    closure = g_closure_new_simple(sizeof(NasalClosure), NULL);
-    naclosure = (NasalClosure*)closure;
-    naclosure->callback = callback;
-    naclosure->data = data;
-    g_closure_add_finalize_notifier(closure, NULL, nasal_closure_finalize);
-    g_closure_set_marshal(closure,(GClosureMarshal)nasal_marshal);
-    return naclosure;
+    NasalClosure* nc = (NasalClosure*)g_closure_new_simple(sizeof(*nc), 0);
+    nc->callback = callback;
+    nc->data = data;
+    g_closure_add_finalize_notifier((void*)nc, 0, nasal_closure_finalize);
+    g_closure_set_marshal((void*)nc,(GClosureMarshal)nasal_marshal);
+    return nc;
 }
 
 static naRef f_connect(naContext ctx, naRef me, int argc, naRef* args)
 {
     GObject *w = OBJARG(0);
     gchar *s = naStr_data(STRARG(1));
-    naRef func = FUNCARG(2);
-    naRef data = argc>3?args[3]:naNil();
+    naRef func=FUNCARG(2), data=argc>3?args[3]:naNil(), v=naNewVector(ctx);
     NasalClosure *closure = new_nasal_closure(ctx,func,data);
     gulong tag = g_signal_connect_closure(w,s,(GClosure*)closure,FALSE);
-    naRef v = naNewVector(ctx);
     closure->tag = naNum(tag);
     naVec_append(v,func);
     naVec_append(v,data);
@@ -541,7 +533,7 @@ static naRef f_set(naContext ctx, naRef me, int argc, naRef* args)
         n2g(ctx,args[i+1],&gval);
         g_object_set_property(obj,prop,&gval);
     }
-    return naNil();
+    return args[0]; /* Return the object again */
 }
 
 static naRef f_get(naContext ctx, naRef me, int argc, naRef* args)
@@ -576,7 +568,7 @@ static naRef f_child_set(naContext ctx, naRef me, int argc, naRef* args)
         gtk_container_child_set_property(GTK_CONTAINER(obj),GTK_WIDGET(child),
                                          prop,&gval);
     }
-    return naNil();
+    return args[1]; /* Return the child */
 }
 
 static naRef f_child_get(naContext ctx, naRef me, int argc, naRef* args)
@@ -596,11 +588,9 @@ static naRef f_child_get(naContext ctx, naRef me, int argc, naRef* args)
     return nval;
 }
 
-// This used to to be wrapped under a static variable to allow it to
-// be called multiple times, but Andy couldn't understand why.
 static naRef f_init(naContext ctx, naRef me, int argc, naRef* args)
 {
-    gtk_init(NULL,NULL);
+    gtk_init(0,0);
     init_all_types();
     return naNil();
 }
@@ -733,13 +723,9 @@ static naRef f_list_store_new(naContext ctx, naRef me, int argc, naRef* args)
 {
     int i;
     GType *types = g_alloca(sizeof(GType)*argc);
-    GtkListStore *w;
-
     for(i=0;i<argc;i++)
         types[i] = g_type_from_name(naStr_data(STRARG(i)));
-
-    w = gtk_list_store_newv(argc,types);
-    return object2ghost(ctx,G_OBJECT(w));
+    return object2ghost(ctx, gtk_list_store_newv(argc,types));
 }
 
 
@@ -815,17 +801,14 @@ static naRef f_tree_model_get(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_cell_layout_add_cell(naContext ctx, naRef me, int argc, naRef* args)
 {
+    int i;
     GtkCellLayout *col = GTK_CELL_LAYOUT(OBJARG(0));
     GtkCellRenderer *cell = GTK_CELL_RENDERER(OBJARG(1));
-    gboolean expand = (gboolean)NUMARG(2);
-    int i;
-    gtk_cell_layout_pack_start(col,cell,expand);
-    gtk_cell_layout_clear_attributes(col,cell);
-    for(i=3;i<argc-1;i+=2) {
-        const gchar *attr = naStr_data(STRARG(i));
-        gint c = (gint)NUMARG(i+1);
-        gtk_cell_layout_add_attribute(col,cell,attr,c);
-    }
+    gtk_cell_layout_pack_start(col, cell, (gboolean)NUMARG(2));
+    gtk_cell_layout_clear_attributes(col, cell);
+    for(i=3; i<argc-1; i+=2)
+        gtk_cell_layout_add_attribute(col, cell, naStr_data(STRARG(i)),
+                                      NUMARG(i+1));
     return naNil();
 }
 
@@ -839,8 +822,7 @@ static naRef f_append_column(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_tree_view_get_selection(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkTreeView *w = GTK_TREE_VIEW(OBJARG(0));
-    return object2ghost(ctx,G_OBJECT(gtk_tree_view_get_selection(w)));
+    return object2ghost(ctx,gtk_tree_view_get_selection(OBJARG(0)));
 }
 
 static naRef f_tree_selection_get_selected(naContext ctx, naRef me, int argc, naRef* args)
@@ -881,7 +863,7 @@ static naRef f_type_children(naContext ctx, naRef me, int argc, naRef* args)
 {
     gchar *name = naStr_data(STRARG(0));
     GType t = g_type_from_name(name);
-    GType *childs = g_type_children(t,NULL), *p = childs;
+    GType *childs = g_type_children(t,0), *p = childs;
     naRef v = naNewVector(ctx);
     for(p = childs; *p; p++)
         naVec_append(v,NASTR(g_type_name(*p)));
@@ -1031,56 +1013,56 @@ static naRef f_toggle_action_set_active(naContext ctx, naRef me, int argc, naRef
 
 static naRef f_file_chooser_get_filename(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkFileChooser *f = OBJARG(0);
-    gchar *fn = gtk_file_chooser_get_filename(f);
-    if(fn==NULL) return naNil();
-    return NASTR(fn);
+    gchar *fn = gtk_file_chooser_get_filename(OBJARG(0));
+    return fn ? NASTR(fn) : naNil();
 }
 
 static naRef f_file_chooser_set_filename(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkFileChooser *f = OBJARG(0);
-    gchar *fn = naStr_data(STRARG(1));
-    gtk_file_chooser_set_filename(f,fn);
+    gtk_file_chooser_set_filename(OBJARG(0), naStr_data(STRARG(1)));
     return naNil();
 }
 
 static naRef f_file_chooser_set_current_name(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkFileChooser *f = OBJARG(0);
-    gchar *fn = naStr_data(STRARG(1));
-    gtk_file_chooser_set_current_name(f,fn);
+    gtk_file_chooser_set_current_name(OBJARG(0), naStr_data(STRARG(1)));
     return naNil();
 }
 
 static naRef f_file_chooser_set_current_folder(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkFileChooser *f = OBJARG(0);
-    gchar *fn = naStr_data(STRARG(1));
-    gtk_file_chooser_set_current_folder(f,fn);
+    gtk_file_chooser_set_current_folder(OBJARG(0), naStr_data(STRARG(1)));
     return naNil();
 }
 
 static naRef f_dialog_add_buttons(naContext ctx, naRef me, int argc, naRef* args)
 {
+    int i;
     GtkDialog *w = OBJARG(0);
-    int i=1;
-    while(i<argc) {
-        gchar *text = naStr_data(STRARG(i));
-        gint response = NUMARG(i+1);
-        i+=2;
-        gtk_dialog_add_button(w,text,response);
-    }
+    for(i=1; i<argc; i+=2)
+        gtk_dialog_add_button(w, naStr_data(STRARG(i)), NUMARG(i+1));
     return naNil();
+}
+
+static naRef f_dialog_action_area(naContext ctx, naRef me, int argc, naRef* args)
+{
+    return object2ghost(ctx, GTK_DIALOG(OBJARG(0))->action_area);
+}
+
+static naRef f_dialog_vbox(naContext ctx, naRef me, int argc, naRef* args)
+{
+    return object2ghost(ctx, GTK_DIALOG(OBJARG(0))->vbox);
+}
+
+static naRef f_dialog_run(naContext ctx, naRef me, int argc, naRef* args)
+{
+    return naNum(gtk_dialog_run(OBJARG(0)));
 }
 
 static naRef f_tooltips_set_tip(naContext ctx, naRef me, int argc, naRef* args)
 {
-    GtkTooltips *tips = OBJARG(0);
-    GtkWidget *w = OBJARG(1);
-    gchar *text = naStr_data(STRARG(2));
-    gchar *private = argc>3?naStr_data(STRARG(3)):NULL;
-    gtk_tooltips_set_tip(tips,w,text,private);
+    gchar *private = argc > 3 ? naStr_data(STRARG(3)) : 0;
+    gtk_tooltips_set_tip(OBJARG(0),OBJARG(1),naStr_data(STRARG(2)),private);
     return naNil();
 }
 
@@ -1124,6 +1106,9 @@ static naCFuncItem funcs[] = {
     { "file_chooser_set_current_name", f_file_chooser_set_current_name },
     { "file_chooser_set_current_folder", f_file_chooser_set_current_folder },
     { "dialog_add_buttons", f_dialog_add_buttons },
+    { "dialog_action_area", f_dialog_action_area },
+    { "dialog_vbox", f_dialog_vbox },
+    { "dialog_run", f_dialog_run },
     { "tooltips_set_tip", f_tooltips_set_tip },
 //core stuff
     { "get_signals", f_get_signals },

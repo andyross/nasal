@@ -24,7 +24,6 @@ var class_methods = {
 		   ["cairo_create", "widget_cairo_create"],
 		   ["queue_draw", "widget_queue_draw"]],
     "GtkTextView" : [["insert", "text_view_insert"],
-                     ["insert_with_tag", "text_view_insert_with_tag"],
 		     ["scroll_to_cursor", "text_view_scroll_to_cursor"]],
     "GtkTreeView" : [["append_column", "tree_view_append_column"],
 		     ["get_selection", "tree_view_get_selection"]],
@@ -46,7 +45,9 @@ var class_methods = {
     "GtkFileChooserWidget" : interfaces.FileChooser,
     "GtkFileChooserButton" : interfaces.FileChooser,
     "GtkFileChooserDialog" : interfaces.FileChooser,
-    "GtkDialog" : [["add_buttons", "dialog_add_buttons"]],
+    "GtkDialog" : [["action_area", "dialog_action_area"],
+		   ["vbox", "dialog_vbox"],
+		   ["add_buttons", "dialog_add_buttons"]],
     "GtkTooltips" : [["set_tip", "tooltips_set_tip"]],
 };
 
@@ -54,7 +55,7 @@ var class_methods = {
 _isa = func(obj,class) {
     if(obj==nil or !contains(obj, "parents")) return 0;
     foreach(var c; obj.parents) {
-        if(c == class)     return 1;
+        if(c == class)      return 1;
         elsif(_isa(obj, c)) return 1;
     }
     return 0;
