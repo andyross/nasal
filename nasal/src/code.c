@@ -814,6 +814,7 @@ naRef naContinue(naContext ctx)
         return naNil();
     }
     ctx->opTop = ctx->opFrame;
+    ctx->fStack[ctx->fTop-1].ip--; // BACK UP to restart the instruction
     PUSH(naNil());
     result = run(ctx);
     if(!ctx->callParent) naModUnlock();
