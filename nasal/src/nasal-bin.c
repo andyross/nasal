@@ -127,11 +127,19 @@ int main(int argc, char** argv)
     for(i=0; i<argc-2; i++)
         args[i] = NASTR(argv[i+2]);
 
-    // Run it.  Do something with the result if you like.
+    // Run it.
     result = naCall(ctx, code, argc-2, args, naNil(), naNil());
-
     free(args);
 
+#if 0
+    // Test for naContinue() feature.  Keep trying until it reports
+    // success.
+    while(naGetError(ctx)) {
+        printf("Err: \"%s\", calling naContinue()...\n", naGetError(ctx));
+        naContinue(ctx);
+    }
+#endif
+    
     checkError(ctx);
     return 0;
 }

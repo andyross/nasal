@@ -806,17 +806,24 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
 naRef naContinue(naContext ctx)
 {
     naRef result;
+    if(!ctx->callParent) naModLock();
+
     ctx->dieArg = naNil();
     ctx->error[0] = 0;
-    if(ctx->callChild)
-        return naContinue(ctx->callChild);
-    if(!ctx->callParent) naModLock();
+
     if(setjmp(ctx->jumpHandle)) {
         if(!ctx->callParent) naModUnlock(ctx);
         return naNil();
     }
+
+    // Wipe off the old function arguments, and push the expected
+    // result (either the result of our subcontext, or a synthesized
+    // nil if the thrown error was from an extension function or
+    // in-script die() call) before re-running the code from the
+    // instruction following the error.
     ctx->opTop = ctx->opFrame;
-    PUSH(naNil());
+    PUSH(ctx->callChild ? naContinue(ctx->callChild) : naNil());
+
     result = run(ctx);
     if(!ctx->callParent) naModUnlock();
     return result;
