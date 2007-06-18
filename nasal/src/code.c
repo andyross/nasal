@@ -429,7 +429,7 @@ static const char* getMember_r(naRef obj, naRef field, naRef* out, int count)
     if(!naHash_get(obj, globals->parentsRef, &p)) return 0;
     if(!IS_VEC(p)) return "object \"parents\" field not vector";
     pv = PTR(p).vec->rec;
-    for(i=0; i<pv->size; i++) {
+    for(i=0; pv && i<pv->size; i++) {
         const char* err = getMember_r(pv->array[i], field, out, count);
         if(err) return err; /* either an error or success */
     }
