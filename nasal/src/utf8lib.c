@@ -74,7 +74,7 @@ static naRef f_chstr(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_size(naContext c, naRef me, int argc, naRef* args)
 {
     unsigned char* s;
-    int sz=0, n, len;
+    int sz=0, n=0, len;
     if(argc < 1 || !naIsString(args[0]))
         naRuntimeError(c, "bad/missing argument to utf8.strc");
     s = (void*)naStr_data(args[0]);
