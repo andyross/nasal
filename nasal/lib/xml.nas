@@ -7,18 +7,26 @@ import("utf8");
 # exceptions:
 #
 # + The parser is non-validating, so DOCTYPE is ignored.
-# + Internal DTD declarations are not supported (the grammar is rather
-#   stupidly recursive and would add significant complexity for such a
-#   minor and rarely used feature) and will cause a parse error.
+# + Internal DTD definitions are not supported (the grammar is
+#   infuriatingly recursive and would add significant complexity for
+#   such a minor and rarely used feature) and will cause a parse
+#   error.
 # + The only encoding supported is UTF8 (and ASCII, which is a proper
 #   subset).  Actually, any encoding that exposes the markup
 #   characters (<>'"=) unambiguously will parse successfully, but
 #   non-ascii numeric entity references (&#...;) will be emitted only
 #   in UTF8.
-
-# The Tag class implements a DOM-like parse tree.  Simply call
-# xml.parse() with your string and inspect the returned Tag with these
-# methods:
+#
+# Public functions:
+#  parse(string)      Parses the XML string and returns a Tag object
+#  decode(string)     Interprets XML entities and returns the decoded string
+#  encode(string)     Substutes XML entities as needed and returns the
+#                     modified string.
+#  newparser(handler) Creates a new Parser object (see below) with the
+#                     specified handler.
+#
+# The "Tag" class implements a DOM-like tree returned from
+# xml.parse():
 #
 # name():            returns the name (w/o namespace prefix) of the tag
 # namespace():       the fully qualified namespace URI of the tag
@@ -27,7 +35,9 @@ import("utf8");
 #                    Note that the namespace strings are the fully
 #                    qualified URI strings, and NOT the abbreviations
 #                    used in the code.  The "raw" name of the tag
-#                    appears in the list with a namespace of "".
+#                    (e.g. "myns:tagname") appears in the list with a
+#                    namespace of "" (the empty string, which itself
+#                    is never a legal Namspace URI).
 # parent():          the Tag's parent node, or nil
 # child(index):      the specified child, or nil.  Even children (0, 2,
 #                    etc...) are always text strings.  Odd indices refer
@@ -36,7 +46,7 @@ import("utf8");
 # tags(name, ns?):   list of all tags with the specified name
 # text():            the first text node, without leading/trailing whitespace
 
-# The xml.Parser interface is a lower-level callback-based parser
+# The Parser interface is a lower-level callback-based parser
 # (similar to expat, for example).  It does not do namespace
 # processing, and merely exposes the tag and attribute names
 # directly. Set it up with a handler object implementing the following
@@ -51,103 +61,62 @@ import("utf8");
 # input.  Call done() at the end to check that parsing has completed
 # successfully and that all the input data has been handled.
 
-parse = func(str) {
+########################################################################
+# Exported functions
+
+var encode = func(str) { _entsubRE.clone().sub(str, "${_ents2[_1]}", 1); }
+
+var decode = func(s) {
+    var entchr = func(e) {
+	if(find("#x", e) == 0) {
+	    return utf8.chstr(call(compile("0x"~substr(e, 2))));
+	} elsif(find("#", e) == 0) {
+	    return utf8.chstr(call(compile(substr(e, 1))));
+	} elsif(contains(_ents, e))
+	    return _ents[e];
+	return "";
+    }
+    _entityRE.clone().sub(s, "${entchr(_1)}", 1);
+}
+
+var parse = func(str) {
     var tp = TagParser.new();
     tp.feed(str);
     return tp.top();
 }
 
-Tag = {};
-
-# The tag name (no namespace prefix)
-Tag.name = func { me._name };
-
-# The fully qualified (!) namespace for a Tag
-Tag.namespace = func { me._ns };
-
-# Retrieves the specified attribute, or nil.
-Tag.attr = func(name, ns="") {
-    (me._att[ns] != nil) ? me._att[ns][name] : nil;
-};
-
-# Returns all attributes of a tag as a list of [name, ns] pairs
-Tag.attrs = func {
-    var result = [];
-    foreach(ns; keys(me._att))
-	foreach(name; keys(me._att[ns]))
-	    append(result, [name, ns]);
-    return result;
-};
-
-# Returns a Tag object parent, or nil
-Tag.parent = func { me._parent };
-
-# Returns the child with the specified index.  Even indices (0, 2,
-# ...) always return string objects representing (possibly
-# zero-length) text.  Odd indices (1, 3...) are always Tag objects.
-Tag.child = func(idx) {
-    return idx >= 0 and idx < size(me._children) ? me._children[idx] : nil;
-};
-
-Tag.tag = func(name, ns=nil) {
-    for(var i=1; (var t = me.child(i)) != nil; i += 2)
-	if(t.name() == name)
-	    return t;
-};
-
-Tag.tags = func(name, ns=nil) {
-    var result = [];
-    for(var i=1; (var t = me.child(i)) != nil; i += 2)
-	if(t.name() == name)
-    	    append(result, t);
-    return result;
-}
-
-# Trims whitespace from the beggining and end of the first (!) text
-# child (i.e. tag.child(0)) and returns it, or the empty string.
-Tag.text = func {
-    if(!size(me._children)) return "";
-    var _wsRE = regex.new('\s*(.*)\s*');
-    _wsRE.match(me._children[0]);
-    return _wsRE.group(1);
-};
+########################################################################
 
 Parser = {};
 
-Parser.new = func(handler=nil) {
+newparser = func(handler=nil) {
     var p = { parents : [Parser] };
     p.reset(handler);
-
-    # All the regexes in one place.  Feel the line noise!
-    p.textRE = regex.new('^([^<]+)');
-    p.commentRE = regex.new('^<!--(?:[^-]|(?:-[^-])|(?:--[^>]))*-->');
-    p.procRE = regex.new('^<\?([^\s]+)\s+((?:[^?]|\?[^>])*)\?>');
-    p.cdataRE = regex.new('^<!\[CDATA\[((?:[^\]]|][^\]]|]][^>])*)]]>');
-    p.idtdRE = regex.new('^<!DOCTYPE[^>]*\[');
-    p.doctypeRE = regex.new('^<!DOCTYPE\s[^[>]*>');
-    p.openRE = regex.new('^<([^!?/][^>/\s]*)\s*');
-    p.closeRE = regex.new('^</([^>/\s]+)>');
-    p.sqRE = regex.new("^\s*([^\s=]+)\s*=\s*'([^']*)'\s*");
-    p.dqRE = regex.new('^\s*([^\s=]+)\s*=\s*"([^"]*)"\s*');
-    p.endstartRE = regex.new('^\s*>');
-    p.endcloseRE = regex.new('^\s*/>');
-    p.entityRE = regex.new('&((?:#x?[a-fA-F0-9]+)|(?:[^&;]+));');
-    p.newlineRE = regex.new('\r\n|\r([^\n])');
+    p.textRE = _textRE.clone();
+    p.commentRE = _commentRE.clone();
+    p.procRE = _procRE.clone();
+    p.cdataRE = _cdataRE.clone();
+    p.idtdRE = _idtdRE.clone();
+    p.doctypeRE = _doctypeRE.clone();
+    p.openRE = _openRE.clone();
+    p.closeRE = _closeRE.clone();
+    p.sqRE = _sqRE.clone();
+    p.dqRE = _dqRE.clone();
+    p.endstartRE = _endstartRE.clone();
+    p.endcloseRE = _endcloseRE.clone();
+    p.newlineRE = _newlineRE.clone();
     return p;
 };
 
-Parser.reset = func(handler=nil) {
-    if(handler != nil)
-	me.handler = handler;
+Parser.reset = func(handler) {
+    me.handler = handler;
     me.unparsed = "";
     me.txt = "";
     me.attrs = nil;
     me.stack = [];
 }
 
-Parser.done = func {
-    size(me.unparsed) == 0 and size(me.stack) == 0 and size(me.txt) == 0;
-}
+Parser.done = func { !size(me.unparsed) and !size(me.stack) and !size(me.txt); }
 
 Parser._closeTag = func(tag) {
     if(size(me.stack) == 0)
@@ -170,9 +139,9 @@ Parser.feed = func(str) {
     while(next < usz) {
 	if(me.attrs != nil) {
 	    if(m(me.sqRE)) {
-		me.attrs[me.sqRE.group(1)] = me.decode(me.sqRE.group(2));
+		me.attrs[me.sqRE.group(1)] = decode(me.sqRE.group(2));
 	    } elsif(m(me.dqRE)) {
-		me.attrs[me.dqRE.group(1)] = me.decode(me.dqRE.group(2));
+		me.attrs[me.dqRE.group(1)] = decode(me.dqRE.group(2));
 	    } elsif(m(me.endstartRE)) {
 		me.handler.open(me.stack[-1], me.attrs);
 		me.attrs = nil;
@@ -182,7 +151,7 @@ Parser.feed = func(str) {
 		me._closeTag(me.stack[-1]);
 	    } else break;
 	} elsif(m(me.textRE)) {
-	    me.txt ~= me.decode(me.textRE.group(1));
+	    me.txt ~= decode(me.textRE.group(1));
 	} elsif(m(me.openRE)) {
 	    # Push out any text we have accumulated and reset the attrs
 	    me.handler.text(me.txt);
@@ -209,19 +178,54 @@ Parser.feed = func(str) {
     me.unparsed = substr(src, next);
 }
 
-# Note numeric "#39" instead of standard "apos" -- MSIE bug workaround
-var _ents = { "amp":"&", "gt":">", "lt":"<", "#39":"'", "quot":'"' };
-entity = func(e) {
-    if(find("#x", e) == 0) {
-	return utf8.chstr(call(compile("0x"~substr(e, 2))));
-    } elsif(find("#", e) == 0) {
-	return utf8.chstr(call(compile(substr(e, 1))));
-    } elsif(contains(_ents, e))
-	return _ents[e];
-    return "";
+########################################################################
+
+Tag = {};
+
+Tag.name = func { me._name };
+
+Tag.namespace = func { me._ns };
+
+Tag.attr = func(name, ns="") {
+    (me._att[ns] != nil) ? me._att[ns][name] : nil;
+};
+
+Tag.attrs = func {
+    var result = [];
+    foreach(ns; keys(me._att))
+	foreach(name; keys(me._att[ns]))
+	    append(result, [name, ns]);
+    return result;
+};
+
+Tag.parent = func { me._parent };
+
+Tag.child = func(idx) {
+    return idx >= 0 and idx < size(me._children) ? me._children[idx] : nil;
+};
+
+Tag.tag = func(name, ns=nil) {
+    for(var i=1; (var t = me.child(i)) != nil; i += 2)
+	if(t.name() == name)
+	    return t;
+};
+
+Tag.tags = func(name, ns=nil) {
+    var result = [];
+    for(var i=1; (var t = me.child(i)) != nil; i += 2)
+	if(t.name() == name)
+    	    append(result, t);
+    return result;
 }
 
-# TagParser does the work of using a Parser to build a Tag tree.
+Tag.text = func {
+    if(!size(me._children)) return "";
+    (var wsRE = _wsRE.clone()).match(me._children[0]);
+    return wsRE.group(1);
+};
+
+########################################################################
+
 var TagParser = { parents : [Parser] };
 
 var _newtag = func {
@@ -229,7 +233,7 @@ var _newtag = func {
 }
 
 TagParser.new = func {
-    var tp = Parser.new();
+    var tp = newparser();
     tp.parents = [TagParser];
     tp.reset(tp);
     tp._curr = tp._top = _newtag();
@@ -256,20 +260,32 @@ TagParser.close = func(tag) { me._curr = me._curr._parent; }
 TagParser.text = func(text) { append(me._curr._children, text); }
 TagParser.proc = func{}; # noop
 
-#
-# FIXME: decode/encode should be cleaned up and exported outside the
-# Parser class.
-#
-Parser.decode = func(str) { me.entityRE.sub(str, "${entity(_1)}", 1) }
+# All the regexes in one place.  Feel the line noise!  These get
+# cloned as needed; they aren't used directly for threadsafety
+# reasons.
+var _textRE = regex.new('^([^<]+)');
+var _commentRE = regex.new('^<!--(?:[^-]|(?:-[^-])|(?:--[^>]))*-->');
+var _procRE = regex.new('^<\?([^\s]+)\s+((?:[^?]|\?[^>])*)\?>');
+var _cdataRE = regex.new('^<!\[CDATA\[((?:[^\]]|][^\]]|]][^>])*)]]>');
+var _idtdRE = regex.new('^<!DOCTYPE[^>]*\[');
+var _doctypeRE = regex.new('^<!DOCTYPE\s[^[>]*>');
+var _openRE = regex.new('^<([^!?/][^>/\s]*)\s*');
+var _closeRE = regex.new('^</([^>/\s]+)>');
+var _sqRE = regex.new("^\s*([^\s=]+)\s*=\s*'([^']*)'\s*");
+var _dqRE = regex.new('^\s*([^\s=]+)\s*=\s*"([^"]*)"\s*');
+var _endstartRE = regex.new('^\s*>');
+var _endcloseRE = regex.new('^\s*/>');
+var _newlineRE = regex.new('\r\n|\r([^\n])');
+var _wsRE = regex.new('\s*(.*)\s*');
+var _entityRE = regex.new('&((?:#x?[a-fA-F0-9]+)|(?:[^&;]+));');
+var _entsubRE = regex.new('([&<>"\'])');
 
-# MSIE doesn't do "&apos;" ...
-var _ents2 =
-{ "&":"&amp;", ">":"&gt;", "<":"&lt;", "'":"&#39;", '"':"&quot;" };
-
-var _entRE = regex.new('([&<>"\'])');
-var encode = func(str) { _entRE.sub(str, "${_ents2[_1]}", 1); }
+# Note numeric "#39" instead of standard "apos" -- MSIE bug workaround
+var _ents = { "amp":"&", "gt":">", "lt":"<", "#39":"'", "quot":'"' };
+var _ents2 = { "&":"&amp;",">":"&gt;","<":"&lt;","'":"&#39;",'"':"&quot;" };
 
 ########################################################################
+# Test code:
 
 if(0) {
 import("debug");

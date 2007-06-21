@@ -1,10 +1,18 @@
+# Create a new regular expression.  The options string is the same as in
+# regex.comp():
+#  i - case-insensitive match,
+#  m - multiline behavior: ^ and $ can match next to a newline
+#  s - single line behavior: . matches newlines
+#  x - extended syntax allowing whitespace and comments
+var new = func(exp, opts="") {
+    return { _re:comp(exp, opts), _matches:nil, _next:0, parents:[Regex] }
+}
+
 # A utilty class encapsulating a single regular expression
 var Regex = {
-    # Create a new regular expression
-    new : func(pattern, opts="") {
-	return { _re : comp(pattern, opts), _matches : nil, _next : 0,
-		 parents : [Regex]  }
-    },
+    # Returns a new Regex object with the same underlying expression.
+    # Avoids duplicate regex.comp() calls.
+    clone : func { { _re:me._re, _matches:nil, _next:0, parents:[Regex] } },
 
     # Clear previous match information
     reset : func { me._str = nil; me._matches = nil; me._next = 0; },
@@ -39,7 +47,8 @@ var Regex = {
 
     # Return the specified matching group.  Group zero is the entire
     # matching substring, groups one and higher correspond to
-    # parenthesized submatches.
+    # parenthesized submatches in the order in which their opening
+    # braces appear in the expression.
     group : func(n) {
 	var start = me._matches[2*n];
 	var afterend = me._matches[2*n+1];
@@ -59,11 +68,15 @@ var Regex = {
 # Substitutes the first match of the regex object in the string with
 # the evaluated expression.  As with perl, the expression can contain
 # $1-$9 and $variable references.  Arbitrary nasal code can be
-# included inside {} delimeters.  The group matches are available as
+# included inside ${...} delimeters.  The group matches are available as
 # both $1-$9 (which are non-standard Nasal symbols), and as _1-_9, for
 # use in subexpressions, for example to decode %xx URL hex strings:
+#
 #     r = regex.new('%([0-9a-fA-F]{2})');
 #     r.sub(line, "${ chr(compile("0x" ~ _1)()) }");
+#
+# The "gflag" argument enables iteration over all matches, just as for
+# a s/.../.../g expression in sed or perl.
 Regex.sub = func(str, expr, gflag=0) {
     var start = 0;
     var result = "";
@@ -92,11 +105,8 @@ Regex.sub = func(str, expr, gflag=0) {
     return result ~ suffix;
 }
 
-# Synonym, so users don't have to write regex.Regex.new
-var new = Regex.new;
-
-# Convenience wrapper
-var match   = func(re, s, opts="")      { Regex.new(re, opts).match(s) }
+# Convenience wrapper for when you don't want to bother calling new().
+var match = func(re, s, opts="")      { Regex.new(re, opts).match(s) }
 
 # Generates a callable function object from an interpolation
 # string. Takes a function object as the lexical environment in which
