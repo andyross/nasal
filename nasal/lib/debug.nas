@@ -16,6 +16,10 @@ var dump = func(o, ttl=16) {
         forindex(i; ks)
             result ~= (i==0?"":", ") ~ ks[i] ~ " : " ~ dump(o[ks[i]], ttl-1);
         return result ~ " }";
-    } else return sprintf("<%s>", ot)
+    } elsif(ot == "ghost") {
+        return sprintf("<%s>", ghosttype(o));
+    } else {
+        return sprintf("<%s>", ot);
+    }
 }
 

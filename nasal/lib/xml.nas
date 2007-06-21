@@ -50,7 +50,7 @@ import("utf8");
 parse = func(str) {
     var tp = TagParser.new();
     tp.feed(str);
-    return tp.tag();
+    return tp.top();
 }
 
 Tag = {};
@@ -69,8 +69,8 @@ Tag.attr = func(name, ns="") {
 # Returns all attributes of a tag as a list of [name, ns] pairs
 Tag.attrs = func {
     var result = [];
-    foreach(ns; keys(me._atts))
-	foreach(name; keys(me._atts[ns]))
+    foreach(ns; keys(me._att))
+	foreach(name; keys(me._att[ns]))
 	    append(result, [name, ns]);
     return result;
 };
@@ -85,8 +85,8 @@ Tag.child = func(idx) {
     return idx >= 0 and idx < size(me._children) ? me._children[idx] : nil;
 };
 
-# Finds and returns the first (!) child of the specified name, or nil.
-Tag.tag = func(name, ns=nil){};
+Tag.tag = func(name, ns=nil) { die("Tag.tag() unimplemented"); };
+Tag.tags = func(name, ns=nil) { die("Tag.tags() unimplemented"); };
 
 # Trims whitespace from the beggining and end of the first (!) text
 # child (i.e. tag.child(0)) and returns it, or the empty string.
@@ -99,7 +99,7 @@ Tag.text = func {
 
 Parser = {};
 
-Parser.new = func(handler) {
+Parser.new = func(handler=nil) {
     var p = { parents : [Parser] };
     p.reset(handler);
 
@@ -110,7 +110,7 @@ Parser.new = func(handler) {
     p.cdataRE = regex.new('^<!\[CDATA\[((?:[^\]]|][^\]]|]][^>])*)]]>');
     p.idtdRE = regex.new('^<!DOCTYPE[^>]*\[');
     p.doctypeRE = regex.new('^<!DOCTYPE\s[^[>]*>');
-    p.openRE = regex.new('^<([^!?][^>/\s]*)\s*');
+    p.openRE = regex.new('^<([^!?/][^>/\s]*)\s*');
     p.closeRE = regex.new('^</([^>/\s]+)>');
     p.sqRE = regex.new("^\s*([^\s=]+)\s*=\s*'([^']*)'\s*");
     p.dqRE = regex.new('^\s*([^\s=]+)\s*=\s*"([^"]*)"\s*');
@@ -125,13 +125,13 @@ Parser.reset = func(handler=nil) {
     if(handler != nil)
 	me.handler = handler;
     me.unparsed = "";
-    me.text = "";
+    me.txt = "";
     me.attrs = nil;
     me.stack = [];
 }
 
 Parser.done = func {
-    size(me.unparsed) == 0 and size(me.stack) == 0 and size(me.text) == 0;
+    size(me.unparsed) == 0 and size(me.stack) == 0 and size(me.txt) == 0;
 }
 
 Parser._closeTag = func(tag) {
@@ -144,7 +144,7 @@ Parser._closeTag = func(tag) {
 }
 
 Parser.feed = func(str) {
-    var src = me.unparsed ~ me.newlineRE.sub_all(str, "\n$1");
+    var src = me.unparsed ~ me.newlineRE.sub(str, "\n$1", 1);
     var src = me.unparsed ~ str;
     var usz = size(src);
     var next = 0;
@@ -167,23 +167,23 @@ Parser.feed = func(str) {
 		me._closeTag(me.stack[-1]);
 	    } else break;
 	} elsif(m(me.textRE)) {
-	    me.text ~= me.decode(me.textRE.group(1));
+	    me.txt ~= me.decode(me.textRE.group(1));
 	} elsif(m(me.openRE)) {
 	    # Push out any text we have accumulated and reset the attrs
-	    me.handler.text(me.text);
-	    me.text = "";
+	    me.handler.text(me.txt);
+	    me.txt = "";
 	    me.attrs = {};
 	    append(me.stack, me.openRE.group(1));
 	} elsif(m(me.closeRE)) {
-	    me.handler.text(me.text);
-	    me.text = "";
+	    me.handler.text(me.txt);
+	    me.txt = "";
 	    me._closeTag(me.closeRE.group(1));
 	} elsif(m(me.commentRE)) {
 	    # Noop, just eat it
 	} elsif(m(me.procRE)) {
 	    me.handler.proc(me.procRE.group(1), me.procRE.group(2));
 	} elsif(m(me.cdataRE)) {
-	    me.text ~= me.cdataRE.group(1);
+	    me.txt ~= me.cdataRE.group(1);
 	} elsif(m(me.idtdRE)) {
 	    die("Internal DTDs are not supported");
 	} elsif(m(me.doctypeRE)) {
@@ -210,22 +210,21 @@ entity = func(e) {
 var TagParser = { parents : [Parser] };
 
 var _newtag = func {
-    { parents : [Tag], _name : nil, _att : {}, _parent : nil, _children : [] };
+    { parents : [Tag], _name : "", _att : {}, _parent : nil, _children : [] };
 }
 
 TagParser.new = func {
     var tp = Parser.new();
     tp.parents = [TagParser];
     tp.reset(tp);
-    tp._curr = tp._top = _newtag;
+    tp._curr = tp._top = _newtag();
     tp._result = nil;
     return tp;
 }
 
-TagParser.tag = func {
+TagParser.top = func {
     if(!me.done()) return nil;
-    if(me._result == nil) me._result = me.fixup(me._top.child(1));
-    return me._result;
+    return me._top.child(1);
 };
 
 TagParser.open = func(tag, attrs) {
@@ -237,14 +236,14 @@ TagParser.open = func(tag, attrs) {
     me._curr = t;
 }
 TagParser.close = func(tag) { me._curr = me._curr._parent; }
-TagParser.text = func(text) { append(me._curr.children, text); }
+TagParser.text = func(text) { append(me._curr._children, text); }
 TagParser.proc = func{}; # noop
 
 #
 # FIXME: decode/encode should be cleaned up and exported outside the
 # Parser class.
 #
-Parser.decode = func(str) { me.entityRE.sub_all(str, "${entity(_1)}") }
+Parser.decode = func(str) { me.entityRE.sub(str, "${entity(_1)}", 1) }
 
 # MSIE doesn't do "&apos;" ...
 var _ents2 =
@@ -254,33 +253,39 @@ var _entRE = regex.new('([&<>"\'])');
 var encode = func(str) { _entRE.sub(str, "${_ents2[_1]}", 1); }
 
 ########################################################################
-if(0) {
-import("io");
+
+#if(0) {
+import("debug");
 import("bits");
 
-h = {};
-h.open = func(tag, attrs) {
-    print("\n<", tag);
-    foreach(a; keys(attrs))
-	print(sprintf(" %s='%s'", a, attrs[a]));
-    print(">\n");
+var fmttag = func(tag) {
+    var s = "<" ~ tag.name();
+    foreach(var att; tag.attrs()) {
+	if(att[1] != "") continue; # Only "raw" no-namespace names
+	s ~= sprintf(" %s=\"%s\"", att[0], tag.attr(att[0]));
+    }
+    return s ~ ">";
 }
-h.close = func(tag) {
-    print("</", tag, ">\n");
-}
-h.proc = func(type, arg) {
-    print(sprintf("PROC: '%s' '%s'\n", type, arg));
-}
-h.text = func(text) { print("TEXT: ", text); }
 
-var p = Parser.new(h);
-foreach(f; arg) {
-    var SZ = 256;
-    var buf = io.readfile(f);
-    print(encode(buf), "\n\n\n");
-    p.feed(buf);
-#    for(var i=0; size(buf)-i >= SZ; i+=SZ)
-#	p.feed(substr(buf, i, SZ));
-#    p.feed(substr(buf, i));
+var dumptag = func(tag, lvl=0) {
+    var pref = bits.buf(lvl);
+    for(var i=0; i<lvl; i+=1) pref[i] = ` `;
+    print(pref, fmttag(tag));
+    if(tag.child(1) == nil) {
+	print(tag.child(0), "</", tag.name(), ">\n");
+    } else {
+	print("\n");
+	if(tag.child(0) != "")
+	    print(pref, " ", tag.child(0), "\n");
+	for(i=1; tag.child(i) != nil; i += 2) {
+	    dumptag(tag.child(i), lvl+1);
+	    if(tag.child(i+1) == nil) die("Need trailing string!");
+	    if(tag.child(i+1) != "")
+		print(pref, tag.child(i+1), "\n");
+	}
+	print(pref, "</", tag.name(), ">\n");
+    }
 }
-}
+
+dumptag(parse('<a b=\'1\' c="2"><d></d><e>Eeee!</e></a>'));
+#}
