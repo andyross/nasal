@@ -23,7 +23,11 @@ import("utf8");
 # name():            returns the name (w/o namespace prefix) of the tag
 # namespace():       the fully qualified namespace URI of the tag
 # attr(name, ns?):   the specified attribute, or nil
-# attrs():           all attributes in a list of [name, namespace] pairs
+# attrs():           all attributes in a list of [name, namespace] pairs.
+#                    Note that the namespace strings are the fully
+#                    qualified URI strings, and NOT the abbreviations
+#                    used in the code.  The "raw" name of the tag
+#                    appears in the list with a namespace of "".
 # parent():          the Tag's parent node, or nil
 # child(index):      the specified child, or nil.  Even children (0, 2,
 #                    etc...) are always text strings.  Odd indices refer
@@ -85,15 +89,26 @@ Tag.child = func(idx) {
     return idx >= 0 and idx < size(me._children) ? me._children[idx] : nil;
 };
 
-Tag.tag = func(name, ns=nil) { die("Tag.tag() unimplemented"); };
-Tag.tags = func(name, ns=nil) { die("Tag.tags() unimplemented"); };
+Tag.tag = func(name, ns=nil) {
+    for(var i=1; (var t = me.child(i)) != nil; i += 2)
+	if(t.name() == name)
+	    return t;
+};
+
+Tag.tags = func(name, ns=nil) {
+    var result = [];
+    for(var i=1; (var t = me.child(i)) != nil; i += 2)
+	if(t.name() == name)
+    	    append(result, t);
+    return result;
+}
 
 # Trims whitespace from the beggining and end of the first (!) text
 # child (i.e. tag.child(0)) and returns it, or the empty string.
 Tag.text = func {
     if(!size(me._children)) return "";
-    if(me._wsRE == nil) me._wsRE = regex.new('\s*(.*)\s*');
-    me._wsRE.match(me._children[0]);
+    var _wsRE = regex.new('\s*(.*)\s*');
+    _wsRE.match(me._children[0]);
     return _wsRE.group(1);
 };
 
@@ -224,6 +239,8 @@ TagParser.new = func {
 
 TagParser.top = func {
     if(!me.done()) return nil;
+    if(me._top.child(1) == nil or me._top.child(3) != nil)
+	die("XML parse error");
     return me._top.child(1);
 };
 
@@ -254,7 +271,7 @@ var encode = func(str) { _entRE.sub(str, "${_ents2[_1]}", 1); }
 
 ########################################################################
 
-#if(0) {
+if(0) {
 import("debug");
 import("bits");
 
@@ -287,5 +304,9 @@ var dumptag = func(tag, lvl=0) {
     }
 }
 
-dumptag(parse('<a b=\'1\' c="2"><d></d><e>Eeee!</e></a>'));
-#}
+t = parse('<a b=\'1\' c="2"><d></d><e>Eeee!</e></a>');
+
+dumptag(t);
+print(t.tag("e").text(), "\n");
+
+}
