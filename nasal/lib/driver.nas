@@ -1,8 +1,3 @@
-# FIXME: the cache of stored modules is stored by module name, but it
-# really should be stored by filename.  This is a problem for web
-# apps, where you might have two apps on the same interpreter with a
-# module named "config"
-
 # This is the top-level "driver" file containing the module import
 # code for Nasal programs.  Call this file from your C code to get
 # back a hash table for use in binding new functions.  You can use it
@@ -76,22 +71,24 @@
 # cygwin, of course), but needn't be with some portability work to
 # getcwd() and the directory separator.
 
-# Construct a valid path string for the directory containing this file
+# Converts a file path, which may be relative, into a fully qualified
+# directory name of the enclosing directory.  Example:
+# dirname("/usr/bin/nasal") == "/usr/bin"
 var dirname = func(path) {
-    var lastslash = 0;
-    for(var i=0; i<size(path); i+=1)
-	if(path[i] == `/`)
-	    lastslash = i;
-    path = substr(path, 0, lastslash);
-    if(!lastslash or path[0] != `/`)
-	path = unix.getcwd() ~ "/" ~ path;
+    var lastslash = -1;
+    for(var i=size(path)-1; i>=0; i-=1) {
+	if(path[i] != `/`) continue;
+	lastslash = i;
+	break;
+    }
+    if(lastslash > 0) path = substr(path, 0, lastslash);
+    if(!size(path) or path[0] != `/`) path = unix.getcwd() ~ "/" ~ path;
     return path;
 }
 
-var clone_hash = func(h) {
+var hashdup = func(h) {
     var result = {};
-    foreach(k; keys(h))
-	result[k] = h[k];
+    foreach(k; keys(h))	result[k] = h[k];
     return result;
 }
 
@@ -103,17 +100,17 @@ var readfile = func(file) {
     return buf;
 }
 
-var new_nasal_env = func { clone_hash(core_env) }
+# Generates and returns a "bare" Nasal environment, with only the
+# symbols available at startup.
+var new_nasal_env = func { hashdup(core_env) }
 
-# Reads and runs a file in a cloned version of the standard library
-var run_file = func(file, syms=nil, args=nil) {
-    var err = [];
-    var compfn = func { compile(readfile(file), file); };
-    var code = call(compfn, nil, nil, nil, err);
-    if(size(err))
-	die(sprintf("%s in %s", err[0], file));
+# Read and runs a file in a new_nasal_env() environment, handling
+# errors and generating a stack trace.
+var run_file = func(file, syms, args=nil) {
+    var code = call(func { compile(readfile(file), file) }, nil, var err=[]);
+    if(size(err)) die(sprintf("%s in %s", err[0], file));
     code = bind(code, new_nasal_env(), nil);
-    call(code, args, nil, syms, err);
+    call(code, args, nil, syms, err = []);
     if(size(err) and err[0] != "exit") {
 	io.write(io.stderr, sprintf("Runtime error: %s\n", err[0]));
 	for(var i=1; i<size(err); i+=2)
@@ -123,76 +120,73 @@ var run_file = func(file, syms=nil, args=nil) {
     }
 }
 
-# Locates a module file, runs and loads it
-var load_mod = func(mod, prefdir) {
-    var file = nil;
-    var check = prefdir ~ "/" ~ mod ~ ".nas";
-    if(io.stat(check) != nil) {
-	file = check;
-    } else {
-	foreach(dir; module_path) {
-	    check = dir ~ "/" ~ mod ~ ".nas";
-	    if(io.stat(check) != nil) {
-		file = check;
-		break;
-	    }
-	}
-    }
-    var iscore = contains(core_modules, mod);
-    if(file == nil and !iscore) die("cannot find module: " ~ mod);
-    var syms = iscore ? core_modules[mod] : {};
-    if(file != nil) run_file(file, syms);
+# Table of loaded modules indexed by file name
+var loaded_modules = {};
 
-    # Build a table of symbols to export, either the contents of the
-    # EXPORT list or the shallow, non-internal, non-special symbols.
-    var modexp = {};
-    if(contains(syms, "EXPORT") and typeof(syms["EXPORT"]) == "vector") {
-	foreach(s; syms["EXPORT"])
-	    if(contains(syms, s))
-    	        modexp[s] = syms[s];
-    } else {
-	foreach(k; keys(syms)) {
-	    if(typeof(k) != "scalar" or size(k) == 0) continue;
-	    if(k[0] == `_` or k == "arg" or k == "EXPORT") continue;
-	    if(typeof(syms[k]) == "hash") continue;
-	    if(typeof(syms[k]) == "vector") continue;
-	    modexp[k] = syms[k];
+var find_mod = func(name, localdir) {
+    var paths = [localdir] ~ module_dirs;
+    forindex(i; paths) paths[i] = sprintf("%s/%s.nas", paths[i], name);
+    foreach(path; paths) {
+	if(loaded_modules[path] != nil) return loaded_modules[path];
+    }
+    foreach(path; paths) {
+	if(io.stat(path) != nil) {
+	    var mod = core_modules[name] == nil ? {} : core_modules[name];
+	    run_file(path, mod);
+	    loaded_modules[path] = mod;
+	    return mod;
 	}
     }
-    loaded_modules[mod] = modexp;
+    return core_modules[name]; # Last chance: unaugmented core or nil
 }
 
-# This is the function exposed to users.
-var import = func(mod, imports...) {
-    if(!contains(loaded_modules, mod)) {
-	var callerfile = caller()[2];
-	load_mod(mod, dirname(callerfile));
-    }
-    var caller_locals = caller()[0];
-    var module = clone_hash(loaded_modules[mod]);
-    caller_locals[mod] = module;
-    if(size(imports) == 1 and imports[0] == "*") {
-	foreach(sym; keys(module)) caller_locals[sym] = module[sym];
+# Duplicates a module symbol table, filtering for exported symbols only
+var clone_exports = func(mod) {
+    var result = {};
+    if(typeof(mod["EXPORT"]) == "vector") {
+	foreach(sym; mod["EXPORT"])
+	    result[sym] = mod[sym];
     } else {
-	foreach(sym; imports) {
-	    if(contains(module, sym)) caller_locals[sym] = module[sym];
-	    else die(sprintf("No symbol '%s' in module '%s'", sym, mod));
+	foreach(sym; keys(mod)) {
+	    if(sym == "EXPORT" or sym == "arg") continue;
+	    var t = typeof(mod[sym]);
+	    if(t == "hash" or t == "vector") continue;
+	    sym ~= ""; # Because in principle symbols could be numbers
+	    if(size(sym) and sym[0] == `_`) continue;
+	    result[sym] = mod[sym];
 	}
     }
+    return result;
+}
+
+var import = func(modname, imports...) {
+    var mod = find_mod(modname, dirname(caller()[2]));
+    if(mod == nil) die(sprintf("Cannot find module '%s'", modname));
+    mod = clone_exports(mod);
+    var caller_locals = caller()[0];
+    caller_locals[modname] = mod;
+    if(size(imports)) {
+	if(imports[0] == "*") { imports = keys(mod); }
+	foreach(sym; imports) {
+	    if(!contains(mod, sym))
+		die(sprintf("No symbol '%s' in module '%s'", sym, mod));
+	    caller_locals[sym] = mod[sym];
+	}
+    }
+    return mod;
 }
 
 # The default module loading path
 # FIXME: read a NASAL_LIB_PATH environment variable or whatnot
-var module_path = [dirname(caller(0)[2]), "."];
+var module_dirs = [dirname(caller(0)[2]), "."];
 
 # Tables of "core" (built-in) functions and modules available, and a
 # table of "loaded" modules that have been imported at least once.
 var core_env = {};
 var core_modules = {};
-var loaded_modules = {};
 
-# Assuming our "outer scope" is indeed the naStdLib() hash, grab the
-# symbols therein.
+# Assume our "outer scope" is the hash returned from naStdLib() and
+# grab the symbols therein to make our "core" environment tables.
 var outer_scope = closure(caller(0)[1]);
 foreach(x; keys(outer_scope)) {
     var t = typeof(outer_scope[x]);
