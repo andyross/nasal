@@ -49,6 +49,11 @@ var class_methods = {
 		   ["vbox", "dialog_vbox"],
 		   ["add_buttons", "dialog_add_buttons"]],
     "GtkTooltips" : [["set_tip", "tooltips_set_tip"]],
+    "GtkActionGroup" : [["add_action", "action_group_add_action"]],
+    "GtkAction" : [["set_accel_path","action_set_accel_path"]],
+    "GtkUIManager" : [["insert_action_group","ui_manager_insert_action_group"],
+                      ["add_ui","ui_manager_add_ui"],
+                      ["get_widget","ui_manager_get_widget"]],
 };
 
 # OOP IS-A predicate
