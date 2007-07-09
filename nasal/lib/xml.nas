@@ -287,7 +287,7 @@ var _ents2 = { "&":"&amp;",">":"&gt;","<":"&lt;","'":"&#39;",'"':"&quot;" };
 ########################################################################
 # Test code:
 
-if(0) {
+#if(0) {
 import("debug");
 import("bits");
 
@@ -295,7 +295,7 @@ var fmttag = func(tag) {
     var s = "<" ~ tag.name();
     foreach(var att; tag.attrs()) {
 	if(att[1] != "") continue; # Only "raw" no-namespace names
-	s ~= sprintf(" %s=\"%s\"", att[0], tag.attr(att[0]));
+	s ~= sprintf(" %s=\"%s\"", att[0], encode(tag.attr(att[0])));
     }
     return s ~ ">";
 }
@@ -314,15 +314,15 @@ var dumptag = func(tag, lvl=0) {
 	    dumptag(tag.child(i), lvl+1);
 	    if(tag.child(i+1) == nil) die("Need trailing string!");
 	    if(tag.child(i+1) != "")
-		print(pref, tag.child(i+1), "\n");
+		print(pref, encode(tag.child(i+1)), "\n");
 	}
 	print(pref, "</", tag.name(), ">\n");
     }
 }
 
-t = parse('<a b=\'1\' c="2"><d></d><e>Eeee!</e></a>');
+t = parse('<a b=\'&quot;1&quot;\' c="2"><d></d><e>&lt;Eeee!&gt;<f/></e></a>');
 
 dumptag(t);
 print(t.tag("e").text(), "\n");
 
-}
+#}

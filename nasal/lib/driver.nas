@@ -81,7 +81,8 @@ var dirname = func(path) {
 	lastslash = i;
 	break;
     }
-    if(lastslash > 0) path = substr(path, 0, lastslash);
+    if(lastslash < 0) path = "";
+    elsif(lastslash > 0) path = substr(path, 0, lastslash);
     if(!size(path) or path[0] != `/`) path = unix.getcwd() ~ "/" ~ path;
     return path;
 }
