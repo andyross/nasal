@@ -6,6 +6,9 @@
 #include <string.h>
 
 #include <cairo/cairo.h>
+#include <cairo/cairo-ps.h>
+#include <cairo/cairo-pdf.h>
+#include <cairo/cairo-svg.h>
 
 #include "nasal.h"
 
@@ -38,7 +41,6 @@ naRef naNewCairoGhost(naContext ctx, cairo_t *cr) {
 naRef naNewSurfaceGhost(naContext ctx, cairo_surface_t *s) {
     surfaceGhost *g = malloc(sizeof(surfaceGhost));
     g->s = s;
-    cairo_surface_reference(s);
     return naNewGhost(ctx,&surfaceGhostType,g);
 }
 
@@ -135,6 +137,7 @@ static naRef f_##x(naContext ctx, naRef me, int argc, naRef* args) { \
     double e = arg_num(ctx,argc,args,5,fn); \
     cairo_##x(cr,a,b,c,d,e); return naNil(); }
 
+
 CAIRO_0ARG(stroke)
 CAIRO_0ARG(stroke_preserve)
 CAIRO_0ARG(fill)
@@ -147,6 +150,7 @@ CAIRO_0ARG(new_path)
 CAIRO_0ARG(close_path)
 CAIRO_0ARG(clip)
 CAIRO_0ARG(paint)
+CAIRO_0ARG(new_sub_path)
 
 CAIRO_1ARG(set_line_width)
 CAIRO_1ARG(set_font_size)
@@ -154,6 +158,7 @@ CAIRO_1ARG(set_line_cap)
 CAIRO_1ARG(set_line_join)
 CAIRO_1ARG(set_antialias)
 CAIRO_1ARG(set_operator)
+CAIRO_1ARG(rotate)
 
 CAIRO_2ARG(move_to)
 CAIRO_2ARG(line_to)
@@ -186,7 +191,9 @@ static naRef f_create(naContext ctx, naRef me, int argc, naRef* args)
 static naRef f_get_target(naContext ctx, naRef me, int argc, naRef* args)
 {
     cairo_t *cr = arg_cairo(ctx,argc,args,0,"cairo_get_target");
-    return naNewSurfaceGhost(ctx,cairo_get_target(cr));
+    cairo_surface_t *s = cairo_get_target(cr);
+    cairo_surface_reference(s);
+    return naNewSurfaceGhost(ctx,s);
 }
 
 static naRef f_surface_create_similar(naContext ctx, naRef me, int argc, naRef* args)
@@ -198,6 +205,79 @@ static naRef f_surface_create_similar(naContext ctx, naRef me, int argc, naRef* 
     int height = (int)arg_num(ctx,argc,args,3,fn);
     cairo_surface_t *s = cairo_surface_create_similar(other,content,width,height);
     return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_ps_surface_create(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_ps_surface_create";
+    const char *file = naStr_data(arg_str(ctx,argc,args,0,fn));
+    double width = arg_num(ctx,argc,args,1,fn);
+    double height = arg_num(ctx,argc,args,2,fn);
+    cairo_surface_t *s = cairo_ps_surface_create(file,width,height);
+    return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_pdf_surface_create(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_pdf_surface_create";
+    const char *file = naStr_data(arg_str(ctx,argc,args,0,fn));
+    double width = arg_num(ctx,argc,args,1,fn);
+    double height = arg_num(ctx,argc,args,2,fn);
+    cairo_surface_t *s = cairo_pdf_surface_create(file,width,height);
+    return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_svg_surface_create(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_svg_surface_create";
+    const char *file = naStr_data(arg_str(ctx,argc,args,0,fn));
+    double width = arg_num(ctx,argc,args,1,fn);
+    double height = arg_num(ctx,argc,args,2,fn);
+    cairo_surface_t *s = cairo_svg_surface_create(file,width,height);
+    return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_image_surface_create(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_image_surface_create";
+    cairo_format_t format = (cairo_format_t)arg_num(ctx,argc,args,0,fn);
+    int width = (int)arg_num(ctx,argc,args,1,fn);
+    int height = (int)arg_num(ctx,argc,args,2,fn);
+    cairo_surface_t *s = cairo_image_surface_create(format,width,height);
+    return naNewSurfaceGhost(ctx,s);
+}
+
+static naRef f_surface_finish(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_surface_finish";
+    cairo_surface_t *s = arg_surface(ctx,argc,args,0,fn);
+    cairo_surface_finish(s);
+    return naNil();
+}
+
+static naRef f_surface_flush(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_surface_flush";
+    cairo_surface_t *s = arg_surface(ctx,argc,args,0,fn);
+    cairo_surface_flush(s);
+    return naNil();
+}
+
+static naRef f_surface_get_type(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_surface_get_type";
+    cairo_surface_t *s = arg_surface(ctx,argc,args,0,fn);
+    return naNum(cairo_surface_get_type(s));
+}
+
+static naRef f_surface_set_fallback_resolution(naContext ctx, naRef me, int argc, naRef* args)
+{
+    char *fn = "cairo_surface_set_fallback_resolution";
+    cairo_surface_t *s = arg_surface(ctx,argc,args,0,fn);
+    double xdpi = arg_num(ctx,argc,args,1,fn);
+    double ydpi = arg_num(ctx,argc,args,2,fn);
+    cairo_surface_set_fallback_resolution(s,xdpi,ydpi);
+    return naNil();
 }
 
 static naRef f_set_source_surface(naContext ctx, naRef me, int argc, naRef* args)
@@ -276,6 +356,20 @@ static naRef f_get_current_point(naContext ctx, naRef me, int argc, naRef* args)
     return v;
 }
 
+static naRef f_stroke_extents(naContext ctx, naRef me, int argc, naRef* args)
+{
+    naRef v = naNewVector(ctx);
+    char *fn = "cairo_stroke_extents";
+    cairo_t *cr = arg_cairo(ctx,argc,args,0,fn);
+    double x1,y1,x2,y2;
+    cairo_stroke_extents(cr,&x1,&y1,&x2,&y2);
+    naVec_append(v,naNum(x1));
+    naVec_append(v,naNum(y1));
+    naVec_append(v,naNum(x2));
+    naVec_append(v,naNum(y2));
+    return v;
+}
+
 static naRef f_set_dash(naContext ctx, naRef me, int argc, naRef* args)
 {
     char *fn = "cairo_set_dash";
@@ -301,6 +395,7 @@ static naCFuncItem funcs[] = {
     F(save),
     F(restore),
     F(scale),
+    F(rotate),
     F(set_font_size),
     F(set_line_width),
     F(set_line_cap),
@@ -327,9 +422,19 @@ static naCFuncItem funcs[] = {
     F(paint),
     F(create),
     F(surface_create_similar),
+    F(surface_set_fallback_resolution),
+    F(surface_get_type),
+    F(ps_surface_create),
+    F(pdf_surface_create),
+    F(svg_surface_create),
+    F(image_surface_create),
     F(set_source_surface),
     F(get_target),
     F(set_operator),
+    F(surface_finish),
+    F(surface_flush),
+    F(new_sub_path),
+    F(stroke_extents),
     { 0 }
 };
 #undef F
@@ -369,6 +474,10 @@ naRef naInit_cairo(naContext ctx) {
     E(OPERATOR_XOR);
     E(OPERATOR_ADD);
     E(OPERATOR_SATURATE);
+    E(FORMAT_ARGB32);
+    E(FORMAT_RGB24);
+    E(FORMAT_A8);
+    E(FORMAT_A1);
     return ns;
 }
 #undef E
