@@ -171,6 +171,16 @@ print(c.getcount(), "\n"); # prints 1
 print(c.getcount(), "\n"); # prints 2
 print(c.getcount(), "\n"); # prints 3
 
+# Note that member *get* operations recurse into the parents array.
+# But *set* operations always go to the local object.  You can't
+# corrupt a parent class via OOP operations on its instances (but you
+# *can* get to it via hand-inspection of the parents arrays).
+c2 = Class1.new();
+c2.getcount() = func { 12345 }; # custom "derived" function!
+
+print(c2.getcount(), "\n"); # prints 12345
+print(c1.getcount(), "\n"); # prints 4, Class1.getcount is unchanged
+
 #
 # This creates an identical class using alternative syntax.
 #
@@ -228,7 +238,7 @@ print(ascii_lc("ABCDEFG"), "\n"); # prints "abcdefg"
 next_to_last = list1[-2];
 
 #
-# Rememberthat strings look syntactically like vectors of bytes, so
+# Remember that strings look syntactically like vectors of bytes; so
 # conversely, the "~" concatenation operator works equally well to
 # concatenate vectors:
 #
