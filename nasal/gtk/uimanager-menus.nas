@@ -63,7 +63,7 @@ gtk.action_group_add_action(actiongroup, a);
 a = gtk.new("GtkAction", "name", "Quit", "label", "_Quit",
 	    "stock-id", "gtk-quit", "tooltip", "Quit document");
 gtk.action_set_accel_path(a, "<Actions>/File/Quit");
-gtk.connect(a, "activate", func { print("Quit!\n") });
+gtk.connect(a, "activate", func { print("Quit!\n"); gtk.main_quit(); });
 gtk.action_group_add_action(actiongroup, a);
  
 a = gtk.new("GtkAction", "name", "PrefMenu", "label", "_Preferences");
@@ -122,9 +122,20 @@ var vbox = gtk.new("GtkVBox");
 gtk.emit(win, "add", vbox);
 gtk.emit(vbox, "add", menu);
 
+# Create an event box to wrap our content...
+var evtbox = gtk.new("GtkEventBox", "border-width", 6);
+gtk.emit(vbox, "add", evtbox);
+
+# ...so that we can attach a tip popup to it
+var tips = gtk.new("GtkTooltips");
+gtk.tooltips_set_tip(tips, evtbox, "Select stuff from the menu.  There's no content in the application window!");
+
+var frame = gtk.new("GtkFrame", "label", "Menus");
+gtk.emit(evtbox, "add", frame);
+
 var label = gtk.new("GtkLabel", "wrap", 1,
 		    "label", "This is a demo of the Gtk+ UIManager class which manages menus and toolbars via an XML specification");
-gtk.emit(vbox, "add", label);
+gtk.emit(frame, "add", label);
 
 gtk.widget_show_all(win);
 gtk.main();
