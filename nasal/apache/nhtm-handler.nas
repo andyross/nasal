@@ -38,20 +38,15 @@
 # the page body function as its result.  All the scoping works out,
 # and the caller gets a single function to do what is needed.
 #
-# Buglet: parse errors get reported on essentially arbitrary linen
+# Buglet: parse errors get reported on essentially arbitrary line
 # numbers.  One way to fix this might involve splitting out the init
 # and body code into separate compile steps and counting line numbers
 # in the literal text to re-insert them in the appropriate code.
 #
+import("io");
+
 var handlers = {}; # file name -> handler functions
 var times = {};    # file name -> modification timestamp
-
-var readfile = func(file) {
-    var sz = io.stat(file)[7];
-    var buf = bits.buf(sz);
-    io.read(io.open(file), buf, sz);
-    return buf;
-}
 
 var include = func(filename) {
     # Fix up relative paths to the caller's directory
@@ -118,7 +113,7 @@ var find_handler = func(file) {
     if(contains(handlers, file) and timestamp == times[file])
 	return handlers[file];
     
-    var handler = gen_template(readfile(file), file);
+    var handler = gen_template(io.readfile(file), file);
 
     handlers[file] = handler;
     times[file] = timestamp;

@@ -1,3 +1,5 @@
+import("io");
+
 # This is the handler for .nas files -- i.e. raw code that should be
 # execute as if it were a top-level handler (i.e. it should return a
 # function to be used as the request handler).  This indirection is
@@ -7,13 +9,6 @@
 
 var handlers = {}; # file name -> handler functions
 var times = {};    # file name -> modification timestamp
-
-var readfile = func(file) {
-    var sz = io.stat(file)[7];
-    var buf = bits.buf(sz);
-    io.read(io.open(file), buf, sz);
-    return buf;
-}
 
 #
 # This is the per-request handler:
@@ -34,7 +29,7 @@ return func {
 	return handlers[file]();
     
     # Nope, compile it
-    var code = compile(readfile(file), file);
+    var code = compile(io.readfile(file), file);
     code = bind(code, new_nasal_env(), nil);
     var handler = code();
     if(typeof(handler) != "func")
