@@ -7,7 +7,7 @@
 #include "iolib.h"
 
 static void ghostDestroy(void* g);
-naGhostType naIOGhostType = { ghostDestroy };
+naGhostType naIOGhostType = { ghostDestroy, "iofile" };
 
 static struct naIOGhost* ioghost(naRef r)
 {

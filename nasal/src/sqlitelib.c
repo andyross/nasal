@@ -8,8 +8,8 @@ struct DBGhost { sqlite3* db; };
 struct StmtGhost { sqlite3_stmt* stmt; };
 static void dbDestroy(struct DBGhost* g);
 static void stmtDestroy(struct StmtGhost* g);
-static naGhostType DBType = { (void(*)(void*))dbDestroy };
-static naGhostType StmtType = { (void(*)(void*))stmtDestroy };
+static naGhostType DBType = { (void(*)(void*))dbDestroy, "sqlite_db" };
+static naGhostType StmtType = { (void(*)(void*))stmtDestroy, "sqlite_statement" };
 #define DBG(r) ((naGhost_type(r) == &DBType) ? (struct DBGhost*)naGhost_ptr(r) : 0)
 #define STMTG(r) ((naGhost_type(r) == &StmtType) ? (struct StmtGhost*)naGhost_ptr(r) : 0)
 

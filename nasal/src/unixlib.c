@@ -82,7 +82,7 @@ static void dirGhostDestroy(void* g)
     naFree(g);
 }
 
-static naGhostType DirGhostType = { dirGhostDestroy };
+static naGhostType DirGhostType = { dirGhostDestroy, "dir" };
 
 static naRef f_opendir(naContext ctx, naRef me, int argc, naRef* args)
 {

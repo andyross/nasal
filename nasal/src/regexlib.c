@@ -3,7 +3,7 @@
 #include "data.h"
 
 static void regexDestroy(void* r);
-naGhostType naRegexGhostType = { regexDestroy };
+naGhostType naRegexGhostType = { regexDestroy, "regex" };
 
 struct Regex {
     pcre* re;
