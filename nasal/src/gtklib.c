@@ -825,6 +825,18 @@ static naRef f_tree_view_get_selection(naContext ctx, naRef me, int argc, naRef*
     return object2ghost(ctx,gtk_tree_view_get_selection(OBJARG(0)));
 }
 
+static naRef f_tree_view_set_cursor(naContext ctx, naRef me, int argc, naRef* args)
+{
+    GtkTreeView *o = GTK_TREE_VIEW(OBJARG(0));
+    gchar *path = naStr_data(STRARG(1));
+    GtkTreePath *tp = gtk_tree_path_new_from_string(path);
+    GtkTreeViewColumn *col = GTK_TREE_VIEW_COLUMN(OBJARG(2));
+    gboolean edit = NUMARG(3);
+    gtk_tree_view_set_cursor(o,tp,col,edit);
+    gtk_tree_path_free(tp);
+    return naNil();
+}
+    
 static naRef f_tree_selection_get_selected(naContext ctx, naRef me, int argc, naRef* args)
 {
     GtkTreeSelection *o = GTK_TREE_SELECTION(OBJARG(0));
@@ -1088,6 +1100,7 @@ static naCFuncItem funcs[] = {
     { "list_store_set", f_list_store_set },
     { "list_store_clear", f_list_store_clear },
     { "tree_view_get_selection", f_tree_view_get_selection },
+    { "tree_view_set_cursor", f_tree_view_set_cursor },
     { "cell_layout_add_cell", f_cell_layout_add_cell },
     { "tree_view_append_column", f_append_column },
     { "tree_selection_get_selected", f_tree_selection_get_selected },
