@@ -33,7 +33,7 @@ typedef union {
 
 #if defined(NASAL_NAN64)
 
-/* On suppoted 64 bit platforms (those where all memory returned from
+/* On supported 64 bit platforms (those where all memory returned from
  * naAlloc() is guaranteed to lie between 0 and 2^48-1) we union the
  * double with the pointer, and use fancy tricks (see data.h) to make
  * sure all pointers are stored as NaNs. */
