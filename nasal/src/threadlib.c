@@ -55,8 +55,11 @@ static naRef f_newlock(naContext c, naRef me, int argc, naRef* args)
 
 static naRef f_lock(naContext c, naRef me, int argc, naRef* args)
 {
-    if(argc > 0 && naGhost_type(args[0]) == &LockType)
+    if(argc > 0 && naGhost_type(args[0]) == &LockType) {
+        naModUnlock();
         naLock(naGhost_ptr(args[0]));
+        naModLock();
+    }
     return naNil();
 }
 
@@ -74,8 +77,11 @@ static naRef f_newsem(naContext c, naRef me, int argc, naRef* args)
 
 static naRef f_semdown(naContext c, naRef me, int argc, naRef* args)
 {
-    if(argc > 0 && naGhost_type(args[0]) == &SemType)
+    if(argc > 0 && naGhost_type(args[0]) == &SemType) {
+        naModUnlock();
         naSemDown(naGhost_ptr(args[0]));
+        naModLock();
+    }
     return naNil();
 }
 
