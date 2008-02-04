@@ -1,3 +1,4 @@
+#include <string.h>
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -43,7 +44,12 @@ static naRef f_newthread(naContext c, naRef me, int argc, naRef* args)
 #ifdef _WIN32
     CreateThread(0, 0, threadtop, td, 0, 0);
 #else
-    { pthread_t t; pthread_create(&t, 0, threadtop, td); }
+    {
+        pthread_t t; int err;
+        if((err = pthread_create(&t, 0, threadtop, td)))
+            naRuntimeError(c, "newthread failed: %s", strerror(err));
+        pthread_detach(t);
+    }
 #endif
     return naNil();
 }
