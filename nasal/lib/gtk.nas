@@ -58,12 +58,11 @@ var class_methods = {
 };
 
 # OOP IS-A predicate
-_isa = func(obj,class) {
-    if(obj==nil or !contains(obj, "parents")) return 0;
-    foreach(var c; obj.parents) {
-        if(c == class)      return 1;
-        elsif(_isa(obj, c)) return 1;
-    }
+var _isa = func(obj, class) {
+    if(typeof(obj) == "hash" and obj["parents"] != nil)
+	foreach(c; obj.parents)
+  	    if(c == class or _isa(c, class))
+	        return 1;
     return 0;
 }
 
@@ -122,6 +121,7 @@ var _symize = func(s) {
 var _genMethod = func(fn) { return func { call(fn, [me] ~ arg) } }
 var _genSignal = func(sig) { return func { call(emit, [me, sig] ~ arg) } }
 var _initClass = func(type) {
+    if(_classes[type] != nil) return _classes[type];
     var class = {};
     if((var parent = parent_type(type)) != nil)
 	class.parents = [_initClass(parent)];
@@ -145,6 +145,10 @@ foreach(sym; keys(_gtk)) {
     _ns[sym] = _wrapfn(_gtk[sym]);
 }
 
+# Initialize this so it can be referenced in the wrapped functions
+# during initialization even before the OOP heirarchy is built.
+var GObjectClass = nil;
+
 # GtkListStore has a special constructor.  Ugh.
 var ListStore_new = list_store_new;
 
@@ -159,4 +163,5 @@ var _genConstructors = func(t) {
     foreach(var ch; _gtk.type_children(t))
         _genConstructors(ch);
 }
-var GObjectClass = _genConstructors("GObject");
+_genConstructors("GObject");
+GObjectClass = _getClass("GObject");
