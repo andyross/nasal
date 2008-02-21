@@ -88,6 +88,11 @@ void naModUnlock()
 {
     LOCK();
     globals->nThreads--;
+    // We might be the "last" thread needed for collection.  Since
+    // we're releasing our modlock to do something else for a while,
+    // wake someone else up to do it.
+    if(globals->waitCount == globals->nThreads)
+        naSemUp(globals->sem, 1);
     UNLOCK();
 }
 
