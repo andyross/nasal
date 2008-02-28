@@ -621,7 +621,7 @@ static naRef f_show_all(naContext ctx, naRef me, int argc, naRef* args)
 static gboolean _timer_wrapper(long id)
 {
     naRef v, result, data;
-    naModLock()
+    naModLock();
     naHash_get(timers,naNum(id),&v);
     data = naVec_get(v,1);
     result = naNumValue(do_call(0, naVec_get(v, 0), 1, &data));
