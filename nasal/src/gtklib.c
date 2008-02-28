@@ -437,9 +437,7 @@ static naRef do_call(naContext ctx0, naRef code, int argc, naRef* args)
 {
     naRef result;
     naContext ctx = ctx0 ? ctx0 : naNewContext();
-    naModUnlock();
     result = naCall(ctx, code, argc, args, naNil(), naNil());
-    naModLock();
     if(naGetError(ctx)) {
         gchar *trace = get_stack_trace(ctx);
         g_printerr("Nasal Error: %s", trace);
