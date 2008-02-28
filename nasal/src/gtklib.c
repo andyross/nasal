@@ -597,7 +597,9 @@ static naRef f_init(naContext ctx, naRef me, int argc, naRef* args)
 
 static naRef f_main(naContext ctx, naRef me, int argc, naRef* args)
 {
+    naModUnlock();
     gtk_main();
+    naModLock();
     return naNil();
 }
 
