@@ -433,11 +433,14 @@ typedef struct {
     naRef tag;
 } NasalClosure;
 
+// Should be called *with* a mod lock
 static naRef do_call(naContext ctx0, naRef code, int argc, naRef* args)
 {
     naRef result;
     naContext ctx = ctx0 ? ctx0 : naNewContext();
+    naModUnlock();
     result = naCall(ctx, code, argc, args, naNil(), naNil());
+    naModLock();
     if(naGetError(ctx)) {
         gchar *trace = get_stack_trace(ctx);
         g_printerr("Nasal Error: %s", trace);
@@ -453,6 +456,7 @@ static void nasal_marshal(NasalClosure *closure, GValue *retval, guint n_parms,
     int i;
     naContext ctx = naNewContext();
     naRef result, *args = g_alloca(sizeof(naRef) * (n_parms+1));
+    naModLock();
     for(i=0;i<n_parms;i++)
         args[i] = g2n(ctx,&parms[i]);
     args[i]=closure->data;
@@ -460,6 +464,7 @@ static void nasal_marshal(NasalClosure *closure, GValue *retval, guint n_parms,
     if(retval && G_VALUE_TYPE(retval))
         n2g(ctx,result,retval);
     naFreeContext(ctx);
+    naModUnlock();
 }
 
 static void nasal_closure_finalize(gpointer notify_data, GClosure *closure)
@@ -616,10 +621,12 @@ static naRef f_show_all(naContext ctx, naRef me, int argc, naRef* args)
 static gboolean _timer_wrapper(long id)
 {
     naRef v, result, data;
+    naModLock()
     naHash_get(timers,naNum(id),&v);
     data = naVec_get(v,1);
-    result = do_call(0, naVec_get(v, 0), 1, &data);
-    return (gboolean)naNumValue(result).num;
+    result = naNumValue(do_call(0, naVec_get(v, 0), 1, &data));
+    naModUnlock();
+    return naIsNil(result) ? 0 : (gboolean)result.num;
 }
 
 static void _destroy_timer(long id) { naHash_delete(timers,naNum(id)); }
