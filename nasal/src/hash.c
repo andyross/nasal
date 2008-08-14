@@ -10,7 +10,7 @@
 #define INSERT(hh, hkey, hval, hcol) do {                       \
         unsigned int cc = (hcol), iidx=(hh)->size++;            \
         if(iidx < (1<<(hh)->lgalloced)) {                       \
-            struct HashNode* hnn = &(hh)->nodes[iidx];  \
+            struct HashNode* hnn = &(hh)->nodes[iidx];          \
             hnn->key = (hkey); hnn->val = (hval);               \
             hnn->next = (hh)->table[cc];                        \
             (hh)->table[cc] = hnn;                              \
@@ -32,8 +32,9 @@ static unsigned int hashcode(naRef r)
         // This is Daniel Bernstein's djb2 hash function that I found
         // on the web somewhere.  It appears to work pretty well.
         unsigned int i, hash = 5831;
-        for(i=0; i<PTR(r).str->len; i++)
-            hash = (hash * 33) ^ PTR(r).str->data[i];
+        unsigned char *data = (void*)naStr_data(r);
+        for(i=0; i<naStr_len(r); i++)
+            hash = (hash * 33) ^ data[i];
         PTR(r).str->hashcode = hash;
         return hash;
     }
@@ -112,11 +113,12 @@ static struct HashNode* find(struct naHash* hash, naRef key)
 // Make a temporary string on the stack
 static void tmpStr(naRef* out, struct naStr* str, const char* key)
 {
-    str->len = 0;
+    str->emblen = 0;
+    str->data.ref.len = 0;
     str->type = T_STR;
-    str->data = (unsigned char*)key;
+    str->data.ref.ptr = (unsigned char*)key;
     str->hashcode = 0;
-    while(key[str->len]) str->len++;
+    while(key[str->data.ref.len]) str->data.ref.len++;
     *out = naNil();
     SETPTR(*out, str);
 }

@@ -160,6 +160,15 @@ static naRef f_environ(naContext ctx, naRef me, int argc, naRef* args)
     return result;
 }
 
+static naRef f_sleep(naContext ctx, naRef me, int argc, naRef* args)
+{
+    double secs = argc > 0 ? naNumValue(args[0]).num : 0;
+    naModUnlock();
+    usleep((useconds_t)(secs * 1e6));
+    naModLock();
+    return naNil();
+}
+
 static naCFuncItem funcs[] = {
     { "pipe", f_pipe },
     { "fork", f_fork },
@@ -173,6 +182,7 @@ static naCFuncItem funcs[] = {
     { "chdir", f_chdir },
     { "getcwd", f_getcwd },
     { "environ", f_environ },
+    { "sleep", f_sleep },
     { 0 }
 };
 

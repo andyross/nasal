@@ -6,7 +6,7 @@
 // Static precedence table, from low (loose binding, do first) to high
 // (tight binding, do last).
 #define MAX_PREC_TOKS 6
-struct precedence {
+static const struct precedence {
     int toks[MAX_PREC_TOKS];
     int rule;
 } PRECEDENCE[] = {
@@ -46,25 +46,9 @@ static void oops(struct Parser* p, struct Token* t)
 
 void naParseInit(struct Parser* p)
 {
-    p->buf = 0;
-    p->len = 0;
-    p->lines = 0;
-    p->nLines = 0;
-    p->chunks = 0;
-    p->chunkSizes = 0;
-    p->nChunks = 0;
-    p->leftInChunk = 0;
-    p->cg = 0;
-
+    memset(p, 0, sizeof(*p));
     p->tree.type = TOK_TOP;
     p->tree.line = 1;
-    p->tree.str = 0;
-    p->tree.strlen = 0;
-    p->tree.num = 0;
-    p->tree.next = 0;
-    p->tree.prev = 0;
-    p->tree.children = 0;
-    p->tree.lastChild = 0;
 }
 
 void naParseDestroy(struct Parser* p)
@@ -113,7 +97,7 @@ void* naParseAlloc(struct Parser* p, int bytes)
 
     result = (char *)p->chunks[0] + p->chunkSizes[0] - p->leftInChunk;
     p->leftInChunk -= bytes;
-    return (void*)result;
+    return result;
 }
 
 // Remove the child from the list where it exists, and insert it at
@@ -196,13 +180,9 @@ static void braceMatch(struct Parser* p, struct Token* start)
 static struct Token* emptyToken(struct Parser* p)
 {
     struct Token* t = naParseAlloc(p, sizeof(struct Token));
+    memset(t, 0, sizeof(*t));
     t->type = TOK_EMPTY;
     t->line = -1;
-    t->strlen = 0;
-    t->num = 0;
-    t->str = 0;
-    t->next = t->prev = t->children = t->lastChild = 0;
-    t->parent = 0;
     return t;
 }
 
@@ -246,11 +226,11 @@ static void embrace(struct Parser* p, struct Token* t)
         t->parent = b;
 }
 
-#define NEXT(t) (t ? t->next : 0)
-#define TYPE(t) (t ? t->type : -1)
 
 static void fixBracelessBlocks(struct Parser* p, struct Token* t)
 {
+#define NEXT(t) (t ? t->next : 0)
+#define TYPE(t) (t ? t->type : -1)
     // Find the end, and march *backward*
     while(t && t->next) t = t->next;
     for(/**/; t; t=t->prev) {
@@ -287,14 +267,13 @@ static void fixBlockStructure(struct Parser* p, struct Token* start)
     while(t) {
         switch(t->type) {
         case TOK_FUNC:
-            // Slurp an optional paren block containing an arglist, then
-            // fall through to parse the curlies...
+            // Slurp an optional paren block containing an arglist
             if(t->next && t->next->type == TOK_LPAR) {
                 c = t->next;
                 addNewChild(t, c);
                 fixBlockStructure(p, c);
             }
-        case TOK_ELSE: // and TOK_FUNC!
+        case TOK_ELSE: // and TOK_FUNC! Note fall through!
             // These guys precede a single curly block
             if(!t->next || t->next->type != TOK_LCURL) oops(p, t);
             c = t->next;
@@ -581,6 +560,8 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
     // Protect from garbage collection
     naTempSave(c, srcFile);
 
+    naParseInit(&p);
+
     // Catch parser errors here.
     *errLine = 0;
     if(setjmp(p.jumpHandle)) {
@@ -589,7 +570,6 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
         return naNil();
     }
 
-    naParseInit(&p);
     p.context = c;
     p.srcFile = srcFile;
     p.firstLine = firstLine;

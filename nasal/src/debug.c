@@ -77,8 +77,8 @@ void printRefDEBUG(naRef r)
         printf("<nil>\n");
     } else if(IS_STR(r)) {
         printf("\"");
-        for(i=0; i<PTR(r).str->len; i++)
-            printf("%c", PTR(r).str->data[i]);
+        for(i=0; i<naStr_len(r); i++)
+            printf("%c", naStr_data(r)[i]);
         printf("\"\n");
     } else if(IS_VEC(r)) {
         printf("<vec>\n");

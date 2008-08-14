@@ -111,15 +111,14 @@ static naRef containerGet(struct Context* ctx, naRef box, naRef key)
 {
     naRef result = naNil();
     if(!IS_SCALAR(key)) ERR(ctx, "container index not scalar");
-    if(IS_HASH(box)) {
+    if(IS_HASH(box))
         naHash_get(box, key, &result);
-    } else if(IS_VEC(box)) {
+    else if(IS_VEC(box))
         result = naVec_get(box, checkVec(ctx, box, key));
-    } else if(IS_STR(box)) {
+    else if(IS_STR(box))
         result = naNum((unsigned char)naStr_data(box)[checkStr(ctx, box, key)]);
-    } else {
+    else
         ERR(ctx, "extract from non-container");
-    }
     return result;
 }
 
@@ -424,7 +423,7 @@ static const char* getMember_r(naRef obj, naRef field, naRef* out, int count)
     naRef p;
     struct VecRec* pv;
     if(--count < 0) return "too many parents";
-    if(!IS_HASH(obj)) return 0;
+    if(!IS_HASH(obj)) return "non-objects have no members";
     if(naHash_get(obj, field, out)) return "";
     if(!naHash_get(obj, globals->parentsRef, &p)) return 0;
     if(!IS_VEC(p)) return "object \"parents\" field not vector";
@@ -489,19 +488,10 @@ static naRef run(struct Context* ctx)
         DBG(printf("Stack Depth: %d\n", ctx->opTop));
         DBG(printOpDEBUG(f->ip-1, op));
         switch(op) {
-        case OP_POP:
-            ctx->opTop--;
-            break;
-        case OP_DUP:
-            PUSH(ctx->opStack[ctx->opTop-1]);
-            break;
-        case OP_DUP2:
-            PUSH(ctx->opStack[ctx->opTop-2]);
-            PUSH(ctx->opStack[ctx->opTop-2]);
-            break;
-        case OP_XCHG:
-            a = STK(1); STK(1) = STK(2); STK(2) = a;
-            break;
+        case OP_POP:  ctx->opTop--; break;
+        case OP_DUP:  PUSH(STK(1)); break;
+        case OP_DUP2: PUSH(STK(2)); PUSH(STK(2)); break;
+        case OP_XCHG: a = STK(1); STK(1) = STK(2); STK(2) = a; break;
 
 #define BINOP(expr) do { \
     double l = IS_NUM(STK(2)) ? STK(2).num : numify(ctx, STK(2)); \
@@ -525,7 +515,7 @@ static naRef run(struct Context* ctx)
             break;
         case OP_CAT:
             STK(2) = evalCat(ctx, STK(2), STK(1));
-            ctx->opTop -= 1;
+            ctx->opTop--;
             break;
         case OP_NEG:
             STK(1) = naNum(-numify(ctx, STK(1)));
@@ -730,7 +720,7 @@ naRef naGetSourceFile(struct Context* ctx, int frame)
 char* naGetError(struct Context* ctx)
 {
     if(IS_STR(ctx->dieArg))
-        return (char*)PTR(ctx->dieArg).str->data;
+        return naStr_data(ctx->dieArg);
     return ctx->error[0] ? ctx->error : 0;
 }
 
@@ -792,11 +782,12 @@ naRef naCall(naContext ctx, naRef func, int argc, naRef* args,
     ctx->opTop = ctx->markTop = 0;
     ctx->fTop = 1;
     ctx->fStack[0].func = func;
+
     ctx->fStack[0].locals = locals;
     ctx->fStack[0].ip = 0;
     ctx->fStack[0].bp = ctx->opTop;
 
-    if(args) setupArgs(ctx, ctx->fStack, args, argc);
+    setupArgs(ctx, ctx->fStack, args, argc);
 
     result = run(ctx);
     if(!ctx->callParent) naModUnlock(ctx);

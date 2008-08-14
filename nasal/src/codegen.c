@@ -68,6 +68,10 @@ static int internConstant(struct Parser* p, naRef c)
     return newConstant(p, c);
 }
 
+/* FIXME: this API is fundamentally a resource leak, because symbols
+ * can't be deregistered.  The "proper" way to do this would be to
+ * keep a reference count for each symbol, and decrement it when a
+ * code object referencing it is deleted. */
 naRef naInternSymbol(naRef sym)
 {
     naRef result;
@@ -190,6 +194,8 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
             naParseError(p, "too many named function arguments", t->line);
         c->argSyms[c->nArgs++] = findConstantIndex(p, t);
     } else if(t->type == TOK_COMMA) {
+        if(!LEFT(t) || !RIGHT(t))
+            naParseError(p, "empty function argument", t->line);
         genArgList(p, c, LEFT(t));
         genArgList(p, c, RIGHT(t));
     } else
@@ -234,7 +240,7 @@ static int genList(struct Parser* p, struct Token* t, int doAppend)
 
 static void genHashElem(struct Parser* p, struct Token* t)
 {
-    if(t->type == TOK_EMPTY)
+    if(!t || t->type == TOK_EMPTY)
         return;
     if(t->type != TOK_COLON)
         naParseError(p, "bad hash/object initializer", t->line);
@@ -247,10 +253,10 @@ static void genHashElem(struct Parser* p, struct Token* t)
 
 static void genHash(struct Parser* p, struct Token* t)
 {
-    if(t->type == TOK_COMMA) {
+    if(t && t->type == TOK_COMMA) {
         genHashElem(p, LEFT(t));
         genHash(p, RIGHT(t));
-    } else if(t->type != TOK_EMPTY) {
+    } else if(t && t->type != TOK_EMPTY) {
         genHashElem(p, t);
     }
 }
@@ -271,7 +277,7 @@ static void genFuncall(struct Parser* p, struct Token* t)
     emitImmediate(p, op, nargs);
 }
 
-static void pushLoop(struct Parser* p, struct Token* label)
+static int startLoop(struct Parser* p, struct Token* label)
 {
     int i = p->cg->loopTop;
     p->cg->loops[i].breakIP = 0xffffff;
@@ -279,6 +285,7 @@ static void pushLoop(struct Parser* p, struct Token* label)
     p->cg->loops[i].label = label;
     p->cg->loopTop++;
     emit(p, OP_MARK);
+    return p->cg->codesz;
 }
 
 static void popLoop(struct Parser* p)
@@ -387,8 +394,7 @@ static void genForWhile(struct Parser* p, struct Token* init,
 {
     int loopTop, jumpEnd;
     if(init) { genExpr(p, init); emit(p, OP_POP); }
-    pushLoop(p, label);
-    loopTop = p->cg->codesz;
+    loopTop = startLoop(p, label);
     genExpr(p, test);
     jumpEnd = emitJump(p, OP_JIFNOTPOP);
     genLoop(p, body, update, label, loopTop, jumpEnd);
@@ -452,8 +458,7 @@ static void genForEach(struct Parser* p, struct Token* t)
 
     genExpr(p, vec);
     emit(p, OP_PUSHZERO);
-    pushLoop(p, label);
-    loopTop = p->cg->codesz;
+    loopTop = startLoop(p, label);
     emit(p, t->type == TOK_FOREACH ? OP_EACH : OP_INDEX);
     jumpEnd = emitJump(p, OP_JIFEND);
     assignOp = genLValue(p, elem, &dummy);

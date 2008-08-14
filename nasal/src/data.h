@@ -93,11 +93,18 @@ struct naObj {
     GC_HEADER;
 };
 
+#define MAX_STR_EMBLEN 15
 struct naStr {
     GC_HEADER;
-    int len;
-    unsigned char* data;
+    char emblen; /* [0-15], or -1 to indicate "not embedded" */
     unsigned int hashcode;
+    union {
+        unsigned char buf[16];
+        struct {
+            int len;
+            unsigned char* ptr;
+        } ref;
+    } data;
 };
 
 struct VecRec {

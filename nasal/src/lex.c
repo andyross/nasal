@@ -1,7 +1,7 @@
 #include "parse.h"
 
 // Static table of recognized lexemes in the language
-struct Lexeme {
+static const struct Lexeme {
     char* str;
     int   tok;
 } LEXEMES[] = {
@@ -182,6 +182,7 @@ static void sqEscape(char* buf, int len, int index, struct Parser* p,
 }
 
 // Ditto, but more complicated for double quotes.
+/* FIXME: need to handle \b (8), \f (12), and \uXXXX for JSON compliance */
 static void dqEscape(char* buf, int len, int index, struct Parser* p,
                      char* cOut, int* eatenOut)
 {

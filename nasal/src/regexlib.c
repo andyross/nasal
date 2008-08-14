@@ -3,7 +3,7 @@
 #include "data.h"
 
 static void regexDestroy(void* r);
-naGhostType naRegexGhostType = { regexDestroy, "regex" };
+static const naGhostType naRegexGhostType = { regexDestroy, "regex" };
 
 struct Regex {
     pcre* re;
@@ -34,15 +34,15 @@ static naRef f_comp(naContext c, naRef me, int argc, naRef* args)
     naRef optr = argc > 1 ? args[1] : naNil();
     if(!IS_STR(pat) || (!IS_NIL(optr) && !IS_STR(optr)))
         naRuntimeError(c, "bad arg to regex.comp");
-    if(IS_STR(optr)) opts = parseOpts(c, (char*)PTR(optr).str->data);
+    if(IS_STR(optr)) opts = parseOpts(c, naStr_data(optr));
     regex = naAlloc(sizeof(struct Regex));
-    regex->re = pcre_compile((char*)PTR(pat).str->data, opts, &errptr, &erroff, 0);
+    regex->re = pcre_compile(naStr_data(pat), opts, &errptr, &erroff, 0);
     if(regex->re == 0) {
         naFree(regex);
         naRuntimeError(c, "bad regex"); // FIXME: expose errptr/erroff
     }
     regex->extra = pcre_study(regex->re, 0, &errptr);
-    return naNewGhost(c, &naRegexGhostType, regex);
+    return naNewGhost(c, (void*)&naRegexGhostType, regex);
 }
 
 static naRef f_exec(naContext c, naRef me, int argc, naRef* args)
@@ -54,8 +54,8 @@ static naRef f_exec(naContext c, naRef me, int argc, naRef* args)
     if(!r || naGhost_type(args[0]) != &naRegexGhostType || !IS_NUM(start))
         naRuntimeError(c, "bad argument to regex.study");
     i0 = (int)start.num;
-    n = pcre_exec(r->re, r->extra, (char*)PTR(str).str->data+i0,
-                  PTR(str).str->len-i0, 0, 0, ovector, 30);
+    n = pcre_exec(r->re, r->extra, naStr_data(str)+i0,
+                  naStr_len(str)-i0, 0, 0, ovector, 30);
     result = naNewVector(c);
     if(n > 0) {
         naVec_setsize(result, n*2);

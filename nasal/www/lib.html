@@ -113,6 +113,12 @@
   the result should have a full double-precision number's worth of
   randomness even on systems with a 15 bit rand().
 
+<dt>id(thing)
+<dd>Returns a unique string identifying the object.  Two id strings
+are equal if and only if the two references point to the same object
+in memory.  Numbers don't have id's and will cause a runtime error if
+passed to id().
+
 </dl><h3>Internals and Functional Programming</h3><dl>
 
 <dt>typeof(thing)
@@ -200,7 +206,9 @@
 <dt>bits.fld(string, startbit, length)
 <dd>Interpreting the string str as bits, returns the bitfield of the
     specified length starting at startbit.  Interprets the result as
-    an unsigned integer.
+    an unsigned integer.  The bit order is bytewise big endian: The
+    0th bit is the high bit of the first byte.  The last bit is the
+    low bit of the last byte in the string.
 
 <dt>bits.sfld(string, startbit, length)
 <dd>As bits.fld(), but interprets the result as a 2's complement
@@ -357,6 +365,10 @@ primitives to script code.
 <dt>unix.environ()
 <dd>Returns the current unix environment as an array of strings of the
     form "VAR=value".
+
+<dt>unix.sleep(secs)
+<dd>Sleeps for the specified time period and returns.  Supports
+fractional seconds in the timeout.
 
 </dl><h3>Regex (PCRE) Library</h3><dl>
 
