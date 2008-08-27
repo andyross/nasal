@@ -142,7 +142,7 @@ static naRef f_open(naContext c, naRef me, int argc, naRef* args)
 // frees buffer before tossing an error
 static int getcguard(naContext ctx, FILE* f, void* buf)
 {
-    char c;
+    int c;
     naModUnlock(); c = fgetc(f); naModLock();
     if(ferror(f)) {
         naFree(buf);

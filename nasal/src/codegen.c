@@ -288,13 +288,6 @@ static int startLoop(struct Parser* p, struct Token* label)
     return p->cg->codesz;
 }
 
-static void popLoop(struct Parser* p)
-{
-    p->cg->loopTop--;
-    if(p->cg->loopTop < 0) naParseError(p, "BUG: loop stack underflow", -1);
-    emit(p, OP_UNMARK);
-}
-
 // Emit a jump operation, and return the location of the address in
 // the bytecode for future fixup in fixJumpTarget
 static int emitJump(struct Parser* p, int op)
@@ -384,7 +377,8 @@ static void genLoop(struct Parser* p, struct Token* body,
     if(update) { genExpr(p, update); emit(p, OP_POP); }
     emitImmediate(p, OP_JMPLOOP, loopTop);
     fixJumpTarget(p, jumpEnd);
-    popLoop(p);
+    p->cg->loopTop--;
+    emit(p, OP_UNMARK);
     emit(p, OP_PUSHNIL); // Leave something on the stack
 }
 
