@@ -138,8 +138,9 @@ static int isBlockEnd(int t)
  * (for/foreach/while) expressions.  Add one after a func if it
  * immediately follows an assignment, and add one after an
  * if/elsif/else if it is the first token in an expression list */
-static int needsSemi(struct Token* t)
+static int needsSemi(struct Token* t, struct Token* next)
 {
+    if(!next || next->type == TOK_SEMI || isBlockEnd(next->type)) return 0;
     if(t->type == TOK_IF)   return !t->prev || t->prev->type == TOK_SEMI;
     if(t->type == TOK_FUNC) return t->prev && t->prev->type == TOK_ASSIGN;
     if(isLoopoid(t->type))  return 1;
@@ -167,7 +168,7 @@ static void parseBlock(struct Parser* p, struct Token *top,
         t = parseToken(p, list);
         if(t->type == end) return; /* drop end token on the floor */
         addChild(top, t);
-        if(needsSemi(t))
+        if(needsSemi(t, *list))
             addChild(top, newToken(p, TOK_SEMI));
     }
     /* Context dependency: end of block is a parse error UNLESS we're
@@ -419,6 +420,7 @@ naRef naParseCode(struct Context* c, naRef srcFile, int firstLine,
     if(setjmp(p.jumpHandle)) {
         strncpy(c->error, p.err, sizeof(c->error));
         *errLine = p.errLine;
+        naParseDestroy(&p);
         return naNil();
     }
 
