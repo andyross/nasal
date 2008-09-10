@@ -260,23 +260,23 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
             nargs, c->nArgs);
     for(i=0; i<c->nArgs; i++)
         naHash_newsym(PTR(f->locals).hash,
-                      &c->constants[c->argSyms[i]], &args[i]);
+                      &c->constants[ARGSYMS(c)[i]], &args[i]);
     args += c->nArgs;
     nargs -= c->nArgs;
     for(i=0; i<c->nOptArgs; i++, nargs--) {
-        naRef val = nargs > 0 ? args[i] : c->constants[c->optArgVals[i]];
+        naRef val = nargs > 0 ? args[i] : c->constants[OPTARGVALS(c)[i]];
         if(IS_CODE(val))
             val = bindFunction(ctx, &ctx->fStack[ctx->fTop-2], val);
-        naHash_newsym(PTR(f->locals).hash, &c->constants[c->optArgSyms[i]], 
+        naHash_newsym(PTR(f->locals).hash, &c->constants[OPTARGSYMS(c)[i]], 
                       &val);
     }
     args += c->nOptArgs;
     if(c->needArgVector || nargs > 0) {
-        naRef argsv = naNewVector(ctx);
-        naVec_setsize(argsv, nargs > 0 ? nargs : 0);
+        naRef argv = naNewVector(ctx);
+        naVec_setsize(argv, nargs > 0 ? nargs : 0);
         for(i=0; i<nargs; i++)
-            PTR(argsv).vec->rec->array[i] = *args++;
-        naHash_newsym(PTR(f->locals).hash, &c->restArgSym, &argsv);
+            PTR(argv).vec->rec->array[i] = *args++;
+        naHash_newsym(PTR(f->locals).hash, &c->constants[c->restArgSym], &argv);
     }
 }
 
@@ -465,7 +465,7 @@ static void evalEach(struct Context* ctx, int useIndex)
     PUSH(useIndex ? naNum(idx) : naVec_get(vec, idx));
 }
 
-#define ARG() cd->byteCode[f->ip++]
+#define ARG() BYTECODE(cd)[f->ip++]
 #define CONSTARG() cd->constants[ARG()]
 #define POP() ctx->opStack[--ctx->opTop]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
@@ -484,7 +484,7 @@ static naRef run(struct Context* ctx)
     FIXFRAME();
 
     while(1) {
-        op = cd->byteCode[f->ip++];
+        op = BYTECODE(cd)[f->ip++];
         DBG(printf("Stack Depth: %d\n", ctx->opTop));
         DBG(printOpDEBUG(f->ip-1, op));
         switch(op) {
@@ -589,11 +589,11 @@ static naRef run(struct Context* ctx)
         case OP_JMPLOOP:
             // Identical to JMP, except for locking
             naCheckBottleneck();
-            f->ip = cd->byteCode[f->ip];
+            f->ip = BYTECODE(cd)[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
         case OP_JMP:
-            f->ip = cd->byteCode[f->ip];
+            f->ip = BYTECODE(cd)[f->ip];
             DBG(printf("   [Jump to: %d]\n", f->ip);)
             break;
         case OP_JIFEND:
@@ -700,8 +700,8 @@ int naGetLine(struct Context* ctx, int frame)
     f = &ctx->fStack[frame];
     if(IS_FUNC(f->func) && IS_CODE(PTR(f->func).func->code)) {
         struct naCode* c = PTR(PTR(f->func).func->code).code;
-        unsigned short* p = c->lineIps + c->nLines - 2;
-        while(p >= c->lineIps && p[0] > f->ip)
+        unsigned short* p = LINEIPS(c) + c->nLines - 2;
+        while(p >= LINEIPS(c) && p[0] > f->ip)
             p -= 2;
         return p[1];
     }
@@ -735,9 +735,11 @@ naRef naBindFunction(naContext ctx, naRef code, naRef closure)
 naRef naBindToContext(naContext ctx, naRef code)
 {
     naRef func = naNewFunc(ctx, code);
-    struct Frame* f = &ctx->fStack[ctx->fTop-1];
-    PTR(func).func->namespace = f->locals;
-    PTR(func).func->next = f->func;
+    if(ctx->fTop) {
+        struct Frame* f = &ctx->fStack[ctx->fTop-1];
+        PTR(func).func->namespace = f->locals;
+        PTR(func).func->next = f->func;
+    }
     return func;
 }
 

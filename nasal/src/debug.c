@@ -229,7 +229,7 @@ void dumpTokenList(struct Token* t, int prefix)
 
 // Prints bytecode listing
 void dumpByteCode(naRef codeObj) {
-    unsigned short *byteCode = PTR(codeObj).code->byteCode;
+    unsigned short *byteCode = BYTECODE(PTR(codeObj).code);
     int ip = 0, op, c;
     naRef a;
     while(ip < PTR(codeObj).code->codesz) {

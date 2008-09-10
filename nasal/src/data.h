@@ -139,21 +139,25 @@ struct naHash {
 
 struct naCode {
     GC_HEADER;
-    unsigned char nArgs;
-    unsigned char nOptArgs;
-    unsigned char needArgVector;
+    unsigned int nArgs : 5;
+    unsigned int nOptArgs : 5;
+    unsigned int needArgVector : 1;
     unsigned short nConstants;
-    unsigned short nLines;
     unsigned short codesz;
-    unsigned short* byteCode;
-    naRef* constants;
-    int* argSyms; // indices into constants
-    int* optArgSyms;
-    int* optArgVals;
-    unsigned short* lineIps; // pairs of {ip, line}
+    unsigned short restArgSym; // The "..." vector name, defaults to "arg"
+    unsigned short nLines;
     naRef srcFile;
-    naRef restArgSym; // The "..." vector name, defaults to "arg"
+    naRef* constants;
 };
+
+/* naCode objects store their variable length arrays in a single block
+ * starting with their constants table.  Compute indexes at runtime
+ * for space efficiency: */
+#define BYTECODE(c) ((unsigned short*)((c)->constants+(c)->nConstants))
+#define ARGSYMS(c) (BYTECODE(c)+(c)->codesz)
+#define OPTARGSYMS(c) (ARGSYMS(c)+(c)->nArgs)
+#define OPTARGVALS(c) (OPTARGSYMS(c)+(c)->nOptArgs)
+#define LINEIPS(c) (OPTARGVALS(c)+(c)->nOptArgs)
 
 struct naFunc {
     GC_HEADER;

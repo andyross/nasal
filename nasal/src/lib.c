@@ -214,6 +214,10 @@ static naRef f_compile(naContext c, naRef me, int argc, naRef* args)
 // that it can be reset if we get a die()/naRethrowError() situation
 // later.  Right now, the IP on the stack trace is the line of the
 // die() call, when it should be this one...
+//
+// FIXME: don't use naCall at all here, we don't need it.  Fix up the
+// context stack to tail call the function directly.  There's no need
+// for f_call() to live on the C stack at all.
 static naRef f_call(naContext c, naRef me, int argc, naRef* args)
 {
     naContext subc;

@@ -1,3 +1,4 @@
+#include <string.h>
 #include "parse.h"
 #include "code.h"
 
@@ -46,12 +47,7 @@ static int newConstant(struct Parser* p, naRef c)
     naVec_append(p->cg->consts, c);
     i = naVec_size(p->cg->consts) - 1;
     if(i > 0xffff) naParseError(p, "too many constants in code block", 0);
-    return i;
-}
-
-static naRef getConstant(struct Parser* p, int idx)
-{
-    return naVec_get(p->cg->consts, idx);
+   return i;
 }
 
 // Interns a scalar (!) constant and returns its index
@@ -173,26 +169,26 @@ static void genArgList(struct Parser* p, struct naCode* c, struct Token* t)
 {
     naRef sym;
     if(t->type == TOK_EMPTY) return;
-    if(!IDENTICAL(c->restArgSym, globals->argRef))
-            naParseError(p, "remainder must be last", t->line);
+    if(!IDENTICAL(p->cg->restArgSym, globals->argRef))
+        naParseError(p, "remainder must be last", t->line);
     if(t->type == TOK_ELLIPSIS) {
         if(LEFT(t)->type != TOK_SYMBOL)
             naParseError(p, "bad function argument expression", t->line);
         sym = naStr_fromdata(naNewString(p->context),
                              LEFT(t)->str, LEFT(t)->strlen);
-        c->restArgSym = naInternSymbol(sym);
+        p->cg->restArgSym = naInternSymbol(sym);
         c->needArgVector = 1;
     } else if(t->type == TOK_ASSIGN) {
         if(LEFT(t)->type != TOK_SYMBOL)
             naParseError(p, "bad function argument expression", t->line);
-        c->optArgSyms[c->nOptArgs] = findConstantIndex(p, LEFT(t));
-        c->optArgVals[c->nOptArgs++] = defArg(p, RIGHT(t));
+        p->cg->optArgSyms[c->nOptArgs] = findConstantIndex(p, LEFT(t));
+        p->cg->optArgVals[c->nOptArgs++] = defArg(p, RIGHT(t));
     } else if(t->type == TOK_SYMBOL) {
         if(c->nOptArgs)
             naParseError(p, "optional arguments must be last", t->line);
         if(c->nArgs >= MAX_FUNARGS)
             naParseError(p, "too many named function arguments", t->line);
-        c->argSyms[c->nArgs++] = findConstantIndex(p, t);
+        p->cg->argSyms[c->nArgs++] = findConstantIndex(p, t);
     } else if(t->type == TOK_COMMA) {
         if(!LEFT(t) || !RIGHT(t))
             naParseError(p, "empty function argument", t->line);
@@ -660,51 +656,42 @@ naRef naCodeGen(struct Parser* p, struct Token* block, struct Token* arglist)
 
     genExprList(p, block);
     emit(p, OP_RETURN);
-
+    
     // Now make a code object
     codeObj = naNewCode(p->context);
     code = PTR(codeObj).code;
-
+    
     // Parse the argument list, if any
-    code->restArgSym = globals->argRef;
+    p->cg->restArgSym = globals->argRef;
     code->nArgs = code->nOptArgs = 0;
-    code->argSyms = code->optArgSyms = code->optArgVals = 0;
+    p->cg->argSyms = p->cg->optArgSyms = p->cg->optArgVals = 0;
     code->needArgVector = 1;
     if(arglist) {
-        code->argSyms    = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
-        code->optArgSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
-        code->optArgVals = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        p->cg->argSyms    = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        p->cg->optArgSyms = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
+        p->cg->optArgVals = naParseAlloc(p, sizeof(int) * MAX_FUNARGS);
         code->needArgVector = 0;
         genArgList(p, code, arglist);
-        if(code->nArgs) {
-            int i, *nsyms;
-            nsyms = naAlloc(sizeof(int) * code->nArgs);
-            for(i=0; i<code->nArgs; i++) nsyms[i] = code->argSyms[i];
-            code->argSyms = nsyms;
-        } else code->argSyms = 0;
-        if(code->nOptArgs) {
-            int i, *nsyms, *nvals;
-            nsyms = naAlloc(sizeof(int) * code->nOptArgs);
-            nvals = naAlloc(sizeof(int) * code->nOptArgs);
-            for(i=0; i<code->nOptArgs; i++) nsyms[i] = code->optArgSyms[i];
-            for(i=0; i<code->nOptArgs; i++) nvals[i] = code->optArgVals[i];
-            code->optArgSyms = nsyms;
-            code->optArgVals = nvals;
-        } else code->optArgSyms = code->optArgVals = 0;
     }
 
-    code->codesz = cg.codesz;
-    code->byteCode = naAlloc(cg.codesz * sizeof(unsigned short));
-    for(i=0; i < cg.codesz; i++)
-        code->byteCode[i] = cg.byteCode[i];
+    code->restArgSym = internConstant(p, p->cg->restArgSym);
+
+    /* Set the size fields and allocate the combined array buffer.
+     * Note cute trick with null pointer to get the array size. */
     code->nConstants = naVec_size(cg.consts);
-    code->constants = naAlloc(code->nConstants * sizeof(naRef));
+    code->codesz = cg.codesz;
+    code->nLines = cg.nextLineIp;
     code->srcFile = p->srcFile;
+    code->constants = 0;
+    code->constants = naAlloc((int)(size_t)(LINEIPS(code)+code->nLines));
     for(i=0; i<code->nConstants; i++)
-        code->constants[i] = getConstant(p, i);
-    code->nLines = p->cg->nextLineIp;
-    code->lineIps = naAlloc(sizeof(unsigned short)*p->cg->nLineIps*2);
-    for(i=0; i<p->cg->nLineIps*2; i++)
-        code->lineIps[i] = p->cg->lineIps[i];
+        code->constants[i] = naVec_get(p->cg->consts, i);
+
+    for(i=0; i<code->nArgs; i++) ARGSYMS(code)[i] = cg.argSyms[i];
+    for(i=0; i<code->nOptArgs; i++) OPTARGSYMS(code)[i] = cg.optArgSyms[i];
+    for(i=0; i<code->nOptArgs; i++) OPTARGVALS(code)[i] = cg.optArgVals[i];
+    for(i=0; i<code->codesz; i++) BYTECODE(code)[i] = cg.byteCode[i];
+    for(i=0; i<code->nLines; i++) LINEIPS(code)[i] = cg.lineIps[i];
+
     return codeObj;
 }
