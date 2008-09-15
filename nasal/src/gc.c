@@ -140,7 +140,7 @@ static void freeelem(struct naPool* p, struct naObj* o)
     switch(p->type) {
     case T_STR:   naStr_gcclean  ((struct naStr*)  o); break;
     case T_VEC:   naVec_gcclean  ((struct naVec*)  o); break;
-    case T_HASH:  naHash_gcclean ((struct naHash*) o); break;
+    case T_HASH:  naiGCHashClean ((struct naHash*) o); break;
     case T_CODE:  naCode_gcclean ((struct naCode*) o); break;
     case T_GHOST: naGhost_gcclean((struct naGhost*)o); break;
     }
@@ -220,21 +220,6 @@ static void markvec(naRef r)
         mark(vr->array[i]);
 }
 
-static void markhash(naRef r)
-{
-    int i;
-    struct HashRec* hr = PTR(r).hash->rec;
-    if(!hr) return;
-    for(i=0; i < (1<<hr->lgalloced); i++) {
-        struct HashNode* hn = hr->table[i];
-        while(hn) {
-            mark(hn->key);
-            mark(hn->val);
-            hn = hn->next;
-        }
-    }
-}
-
 // Sets the reference bit on the object, and recursively on all
 // objects reachable from it.  Uses the processor stack for recursion...
 static void mark(naRef r)
@@ -250,7 +235,7 @@ static void mark(naRef r)
     PTR(r).obj->mark = 1;
     switch(PTR(r).obj->type) {
     case T_VEC: markvec(r); break;
-    case T_HASH: markhash(r); break;
+    case T_HASH: naiGCMarkHash(r); break;
     case T_CODE:
         mark(PTR(r).code->srcFile);
         for(i=0; i<PTR(r).code->nConstants; i++)
@@ -262,6 +247,11 @@ static void mark(naRef r)
         mark(PTR(r).func->next);
         break;
     }
+}
+
+void naiGCMark(naRef r)
+{
+    mark(r);
 }
 
 // Collects all the unreachable objects into a free list, and

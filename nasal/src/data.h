@@ -124,14 +124,6 @@ struct HashNode {
     struct HashNode* next;
 };
 
-struct HashRec {
-    int size;
-    int dels;
-    int lgalloced;
-    struct HashNode* nodes;
-    struct HashNode* table[];
-};
-
 struct naHash {
     GC_HEADER;
     struct HashRec* rec;
@@ -205,17 +197,19 @@ int naStr_parsenum(char* str, int len, double* result);
 int naStr_tonum(naRef str, double* out);
 naRef naStr_buf(naRef str, int len);
 
-int naHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
-int naHash_sym(struct naHash* h, struct naStr* sym, naRef* out);
-void naHash_newsym(struct naHash* h, naRef* sym, naRef* val);
+int naiHash_tryset(naRef hash, naRef key, naRef val); // sets if exists
+int naiHash_sym(struct naHash* h, struct naStr* sym, naRef* out);
+void naiHash_newsym(struct naHash* h, naRef* sym, naRef* val);
 
 void naGC_init(struct naPool* p, int type);
 struct naObj** naGC_get(struct naPool* p, int n, int* nout);
 void naGC_swapfree(void** target, void* val);
 void naGC_freedead();
+void naiGCMark(naRef r);
+void naiGCMarkHash(naRef h);
 
 void naStr_gcclean(struct naStr* s);
 void naVec_gcclean(struct naVec* s);
-void naHash_gcclean(struct naHash* s);
+void naiGCHashClean(struct naHash* h);
 
 #endif // _DATA_H

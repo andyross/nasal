@@ -259,7 +259,7 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
         naRuntimeError(ctx, "too few function args (have %d need %d)",
             nargs, c->nArgs);
     for(i=0; i<c->nArgs; i++)
-        naHash_newsym(PTR(f->locals).hash,
+        naiHash_newsym(PTR(f->locals).hash,
                       &c->constants[ARGSYMS(c)[i]], &args[i]);
     args += c->nArgs;
     nargs -= c->nArgs;
@@ -267,7 +267,7 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
         naRef val = nargs > 0 ? args[i] : c->constants[OPTARGVALS(c)[i]];
         if(IS_CODE(val))
             val = bindFunction(ctx, &ctx->fStack[ctx->fTop-2], val);
-        naHash_newsym(PTR(f->locals).hash, &c->constants[OPTARGSYMS(c)[i]], 
+        naiHash_newsym(PTR(f->locals).hash, &c->constants[OPTARGSYMS(c)[i]], 
                       &val);
     }
     args += c->nOptArgs;
@@ -276,7 +276,7 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
         naVec_setsize(argv, nargs > 0 ? nargs : 0);
         for(i=0; i<nargs; i++)
             PTR(argv).vec->rec->array[i] = *args++;
-        naHash_newsym(PTR(f->locals).hash, &c->constants[c->restArgSym], &argv);
+        naiHash_newsym(PTR(f->locals).hash, &c->constants[c->restArgSym], &argv);
     }
 }
 
@@ -380,11 +380,11 @@ static void getLocal(struct Context* ctx, struct Frame* f,
 {
     struct naFunc* func;
     struct naStr* str = PTR(*sym).str;
-    if(naHash_sym(PTR(f->locals).hash, str, out))
+    if(naiHash_sym(PTR(f->locals).hash, str, out))
         return;
     func = PTR(f->func).func;
     while(func && PTR(func->namespace).hash) {
-        if(naHash_sym(PTR(func->namespace).hash, str, out))
+        if(naiHash_sym(PTR(func->namespace).hash, str, out))
             return;
         func = PTR(func->next).func;
     }
@@ -399,7 +399,7 @@ static int setClosure(naRef func, naRef sym, naRef val)
 {
     struct naFunc* c = PTR(func).func;
     if(c == 0) { return 0; }
-    else if(naHash_tryset(c->namespace, sym, val)) { return 1; }
+    else if(naiHash_tryset(c->namespace, sym, val)) { return 1; }
     else { return setClosure(c->next, sym, val); }
 }
 
@@ -407,7 +407,7 @@ static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
 {
     // Try the locals first, if not already there try the closures in
     // order.  Finally put it in the locals if nothing matched.
-    if(!naHash_tryset(f->locals, sym, val))
+    if(!naiHash_tryset(f->locals, sym, val))
         if(!setClosure(f->func, sym, val))
             naHash_set(f->locals, sym, val);
     return val;
