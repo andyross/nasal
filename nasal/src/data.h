@@ -76,8 +76,7 @@ enum { T_STR, T_VEC, T_HASH, T_CODE, T_FUNC, T_CCODE, T_GHOST,
 #define IS_GHOST(r) (IS_OBJ(r) && PTR(r).obj->type == T_GHOST)
 #define IS_CONTAINER(r) (IS_VEC(r)||IS_HASH(r))
 #define IS_SCALAR(r) (IS_NUM(r) || IS_STR(r))
-#define IDENTICAL(a, b) (IS_REF(a) && IS_REF(b) \
-                         && PTR(a).obj == PTR(b).obj)
+#define IDENTICAL(a, b) (IS_REF(a) && IS_REF(b) && PTR(a).obj == PTR(b).obj)
 
 #define MUTABLE(r) (IS_STR(r) && PTR(r).str->hashcode == 0)
 

@@ -221,12 +221,12 @@ static void genLambda(struct Parser* p, struct Token* t)
 
 static int genList(struct Parser* p, struct Token* t, int doAppend)
 {
-    if(t->type == TOK_COMMA) {
+    if(!t || t->type == TOK_EMPTY) {
+        return 0;
+    } else if(t->type == TOK_COMMA) {
         genExpr(p, LEFT(t));
         if(doAppend) emit(p, OP_VAPPEND);
         return 1 + genList(p, RIGHT(t), doAppend);
-    } else if(t->type == TOK_EMPTY) {
-        return 0;
     } else {
         genExpr(p, t);
         if(doAppend) emit(p, OP_VAPPEND);
@@ -257,20 +257,34 @@ static void genHash(struct Parser* p, struct Token* t)
     }
 }
 
+static int isHashcall(struct Parser* p, struct Token* t)
+{
+    if(t) {
+        int sep = LEFT(t) && t->type == TOK_COMMA ? t->children->type : t->type;
+        return sep == TOK_COLON;
+    }
+    return 0;
+}
+
 static void genFuncall(struct Parser* p, struct Token* t)
 {
-    int op = OP_FCALL;
-    int nargs = 0;
+    int method = 0;
     if(LEFT(t)->type == TOK_DOT) {
+        method = 1;
         genExpr(p, LEFT(LEFT(t)));
         emit(p, OP_DUP);
         emitImmediate(p, OP_MEMBER, findConstantIndex(p, RIGHT(LEFT(t))));
-        op = OP_MCALL;
     } else {
         genExpr(p, LEFT(t));
     }
-    if(RIGHT(t)) nargs = genList(p, RIGHT(t), 0);
-    emitImmediate(p, op, nargs);
+    if(isHashcall(p, RIGHT(t))) {
+        emit(p, OP_NEWHASH);
+        genHash(p, RIGHT(t));
+        emit(p, method ? OP_MCALLH : OP_FCALLH);
+    } else {
+        int nargs = genList(p, RIGHT(t), 0);
+        emitImmediate(p, method ? OP_MCALL : OP_FCALL, nargs);
+    }
 }
 
 static int startLoop(struct Parser* p, struct Token* label)

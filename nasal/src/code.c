@@ -280,24 +280,45 @@ static void setupArgs(naContext ctx, struct Frame* f, naRef* args, int nargs)
     }
 }
 
-static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
+static void checkNamedArgs(struct Context* ctx, struct naCode* c, struct naHash* h)
 {
-    naRef *frame;
+    int i;
+    naRef sym, rest, dummy;
+    for(i=0; i<c->nArgs; i++) {
+        sym = c->constants[ARGSYMS(c)[i]];
+        if(!naiHash_sym(h, PTR(sym).str, &dummy))
+            naRuntimeError(ctx, "Missing arg: %s", naStr_data(sym));
+    }
+    for(i=0; i<c->nOptArgs; i++) {
+        sym = c->constants[OPTARGSYMS(c)[i]];
+        if(!naiHash_sym(h, PTR(sym).str, &dummy))
+            naiHash_newsym(h, &sym, &c->constants[OPTARGVALS(c)[i]]);
+    }
+    if(c->needArgVector) {
+        sym = c->constants[c->restArgSym];
+        if(!naiHash_sym(h, PTR(sym).str, &dummy)) {
+            rest = naNewVector(ctx);
+            naiHash_newsym(h, &sym, &rest);
+        }
+    }
+}
+
+static struct Frame* setupFuncall(struct Context* ctx, int nargs,
+                                  int mcall, int named)
+{
+    naRef *args, func, code, obj = naNil();
     struct Frame* f;
-    
-    DBG(printf("setupFuncall(nargs:%d, mcall:%d)\n", nargs, mcall);)
+    int opf = ctx->opTop - nargs;
 
-    frame = &ctx->opStack[ctx->opTop - nargs - 1];
-    if(!IS_FUNC(frame[0]))
-        ERR(ctx, "function/method call invoked on uncallable object");
+    args = &ctx->opStack[opf];
+    func = ctx->opStack[--opf];
+    if(!IS_FUNC(func)) ERR(ctx, "function/method call on uncallable object");
+    code = PTR(func).func->code;
+    if(mcall) obj = ctx->opStack[--opf];
+    ctx->opFrame = opf;
 
-    ctx->opFrame = ctx->opTop - (nargs + 1 + mcall);
-
-    // Just do native calls right here
-    if(PTR(PTR(frame[0]).func->code).obj->type == T_CCODE) {
-        naRef obj = mcall ? frame[-1] : naNil();
-        naCFunction fp = PTR(PTR(frame[0]).func->code).ccode->fptr;
-        naRef result = (*fp)(ctx, obj, nargs, frame + 1);
+    if(IS_CCODE(code)) {
+        naRef result = (*PTR(code).ccode->fptr)(ctx, obj, nargs, args);
         ctx->opTop = ctx->opFrame;
         PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);
@@ -305,23 +326,19 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs, int mcall)
     
     if(ctx->fTop >= MAX_RECURSION) ERR(ctx, "call stack overflow");
     
-    // Note: assign nil first, otherwise the naNew() can cause a GC,
-    // which will now (after fTop++) see the *old* reference as a
-    // markable value!
-    f = &(ctx->fStack[ctx->fTop++]);
-    f->locals = f->func = naNil();
-    f->locals = naNewHash(ctx);
-    f->func = frame[0];
+    f = &(ctx->fStack[ctx->fTop]);
+    f->locals = named ? args[0] : naNewHash(ctx);
+    f->func = func;
     f->ip = 0;
     f->bp = ctx->opFrame;
 
-    if(mcall)
-        naHash_set(f->locals, globals->meRef, frame[-1]);
+    if(mcall) naHash_set(f->locals, globals->meRef, obj);
 
-    setupArgs(ctx, f, frame+1, nargs);
+    if(named) checkNamedArgs(ctx, PTR(code).code, PTR(f->locals).hash);
+    else      setupArgs(ctx, f, args, nargs);
 
-    ctx->opTop = f->bp; // Pop the stack last, to avoid GC lossage
-    DBG(printf("Entering frame %d with %d args\n", ctx->fTop-1, nargs);)
+    ctx->fTop++;
+    ctx->opTop = f->bp; /* Pop the stack last, to avoid GC lossage */
     return f;
 }
 
@@ -469,8 +486,8 @@ static void evalEach(struct Context* ctx, int useIndex)
 #define CONSTARG() cd->constants[ARG()]
 #define POP() ctx->opStack[--ctx->opTop]
 #define STK(n) (ctx->opStack[ctx->opTop-(n)])
-#define FIXFRAME() f = &(ctx->fStack[ctx->fTop-1]); \
-    cd = PTR(PTR(f->func).func->code).code;
+#define SETFRAME(F) f = (F); cd = PTR(PTR(f->func).func->code).code;
+#define FIXFRAME() SETFRAME(&(ctx->fStack[ctx->fTop-1]))
 static naRef run(struct Context* ctx)
 {
     struct Frame* f;
@@ -625,14 +642,10 @@ static naRef run(struct Context* ctx)
                 DBG(printf("   [Jump to: %d]\n", f->ip);)
             }
             break;
-        case OP_FCALL:
-            f = setupFuncall(ctx, ARG(), 0);
-            cd = PTR(PTR(f->func).func->code).code;
-            break;
-        case OP_MCALL:
-            f = setupFuncall(ctx, ARG(), 1);
-            cd = PTR(PTR(f->func).func->code).code;
-            break;
+        case OP_FCALL:  SETFRAME(setupFuncall(ctx, ARG(), 0, 0)); break;
+        case OP_MCALL:  SETFRAME(setupFuncall(ctx, ARG(), 1, 0)); break;
+        case OP_FCALLH: SETFRAME(setupFuncall(ctx,     1, 0, 1)); break;
+        case OP_MCALLH: SETFRAME(setupFuncall(ctx,     1, 1, 1)); break;
         case OP_RETURN:
             a = STK(1);
             ctx->dieArg = naNil();

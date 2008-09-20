@@ -56,6 +56,8 @@ char* opStringDEBUG(int op)
     case OP_JMPLOOP: return "JMPLOOP";
     case OP_JIFTRUE: return "JIFTRUE";
     case OP_JIFNOT: return "JIFNOT";
+    case OP_FCALLH: return "FCALLH";
+    case OP_MCALLH: return "MCALLH";
     }
     sprintf(buf, "<bad opcode: %d>\n", op);
     return buf;
