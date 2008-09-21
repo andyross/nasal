@@ -29,7 +29,6 @@ struct Token {
     int strlen;
     int rule;
     double num;
-    struct Token* parent;
     struct Token* next;
     struct Token* prev;
     struct Token* children;

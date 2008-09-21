@@ -7,7 +7,7 @@
 // These are more sensical predicate names in most contexts in this file
 #define LEFT(tok)   ((tok)->children)
 #define RIGHT(tok)  ((tok)->lastChild)
-#define BINARY(tok) (LEFT(tok) && RIGHT(tok) && LEFT(tok) != RIGHT(tok))
+#define BINARY(tok) (LEFT(tok) && RIGHT(tok) && LEFT(tok)->next == RIGHT(tok))
 
 // Forward references for recursion
 static void genExpr(struct Parser* p, struct Token* t);
@@ -93,19 +93,11 @@ static int findConstantIndex(struct Parser* p, struct Token* t)
 
 static int genScalarConstant(struct Parser* p, struct Token* t)
 {
-    // These opcodes are for special-case use in other constructs, but
-    // we might as well use them here to save a few bytes in the
-    // instruction stream.
-    if(t->str == 0 && t->num == 1) {
-        emit(p, OP_PUSHONE);
-    } else if(t->str == 0 && t->num == 0) {
-        emit(p, OP_PUSHZERO);
-    } else {
-        int idx = findConstantIndex(p, t);
-        emitImmediate(p, OP_PUSHCONST, idx);
-        return idx;
-    }
-    return 0;
+    int idx;
+    if(t->str == 0 && t->num == 1) { emit(p, OP_PUSHONE); return 0; }
+    if(t->str == 0 && t->num == 0) { emit(p, OP_PUSHZERO); return 0; }
+    emitImmediate(p, OP_PUSHCONST, idx = findConstantIndex(p, t));
+    return idx;
 }
 
 static int genLValue(struct Parser* p, struct Token* t, int* cidx)
@@ -135,7 +127,7 @@ static int genLValue(struct Parser* p, struct Token* t, int* cidx)
 
 static void genEqOp(int op, struct Parser* p, struct Token* t)
 {
-    int cidx, setop = genLValue(p, LEFT(t), &cidx);
+    int cidx, n = 2, setop = genLValue(p, LEFT(t), &cidx);
     if(setop == OP_SETMEMBER) {
         emit(p, OP_DUP2);
         emit(p, OP_POP);
@@ -143,10 +135,13 @@ static void genEqOp(int op, struct Parser* p, struct Token* t)
     } else if(setop == OP_INSERT) {
         emit(p, OP_DUP2);
         emit(p, OP_EXTRACT);
-    } else // OP_SETSYM, OP_SETLOCAL
+    } else {
         emitImmediate(p, OP_LOCAL, cidx);
+        n = 1;
+    }
     genExpr(p, RIGHT(t));
     emit(p, op);
+    emit(p, n == 1 ? OP_XCHG : OP_XCHG2);
     emit(p, setop);
 }
 
@@ -466,7 +461,6 @@ static void genForEach(struct Parser* p, struct Token* t)
     emit(p, t->type == TOK_FOREACH ? OP_EACH : OP_INDEX);
     jumpEnd = emitJump(p, OP_JIFEND);
     assignOp = genLValue(p, elem, &dummy);
-    emit(p, OP_XCHG);
     emit(p, assignOp);
     emit(p, OP_POP);
     genLoop(p, body, 0, label, loopTop, jumpEnd);
@@ -571,9 +565,8 @@ static void genExpr(struct Parser* p, struct Token* t)
         genHash(p, LEFT(t));
         break;
     case TOK_ASSIGN:
-        i = genLValue(p, LEFT(t), &dummy);
         genExpr(p, RIGHT(t));
-        emit(p, i); // use the op appropriate to the lvalue
+        emit(p, genLValue(p, LEFT(t), &dummy));
         break;
     case TOK_RETURN:
         if(RIGHT(t)) genExpr(p, RIGHT(t));

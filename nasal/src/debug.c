@@ -38,6 +38,7 @@ char* opStringDEBUG(int op)
     case OP_POP: return "POP";
     case OP_DUP: return "DUP";
     case OP_XCHG: return "XCHG";
+    case OP_XCHG2: return "XCHG2";
     case OP_INSERT: return "INSERT";
     case OP_EXTRACT: return "EXTRACT";
     case OP_MEMBER: return "MEMBER";
@@ -210,7 +211,6 @@ void dumpTokenList(struct Token* t, int prefix)
             struct Token* x;
             for(x = t->children; x; x=x->next) {
                 if(x->type != TOK_EMPTY) {
-                    if(x->parent != t) *(int*)0=0;
                     if(!x->next && x != t->lastChild) *(int*)0=0;
                 }
             }

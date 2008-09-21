@@ -421,14 +421,13 @@ static int setClosure(naRef func, naRef sym, naRef val)
     return setClosure(c->next, sym, val);
 }
 
-static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
+static void setSymbol(struct Frame* f, naRef sym, naRef val)
 {
     // Try the locals first, if not already there try the closures in
     // order.  Finally put it in the locals if nothing matched.
     if(!naiHash_tryset(f->locals, sym, val))
         if(!setClosure(f->func, sym, val))
             naHash_set(f->locals, sym, val);
-    return val;
 }
 
 // Funky API: returns null to indicate no member, an empty string to
@@ -509,7 +508,8 @@ static naRef run(struct Context* ctx)
         case OP_POP:  ctx->opTop--; break;
         case OP_DUP:  PUSH(STK(1)); break;
         case OP_DUP2: PUSH(STK(2)); PUSH(STK(2)); break;
-        case OP_XCHG: a = STK(1); STK(1) = STK(2); STK(2) = a; break;
+        case OP_XCHG:  a=STK(1); STK(1)=STK(2); STK(2)=a; break;
+        case OP_XCHG2: a=STK(1); STK(1)=STK(2); STK(2)=STK(3); STK(3)=a; break;
 
 #define BINOP(expr) do { \
     double l = IS_NUM(STK(2)) ? STK(2).num : numify(ctx, STK(2)); \
@@ -578,26 +578,23 @@ static naRef run(struct Context* ctx)
             PUSH(b);
             break;
         case OP_SETSYM:
-            STK(2) = setSymbol(f, STK(2), STK(1));
+            setSymbol(f, STK(1), STK(2));
             ctx->opTop--;
             break;
         case OP_SETLOCAL:
-            naHash_set(f->locals, STK(2), STK(1));
-            STK(2) = STK(1); // FIXME: reverse order of arguments instead!
+            naHash_set(f->locals, STK(1), STK(2));
             ctx->opTop--;
             break;
         case OP_MEMBER:
             getMember(ctx, STK(1), CONSTARG(), &STK(1), 64);
             break;
         case OP_SETMEMBER:
-            if(!IS_HASH(STK(3))) ERR(ctx, "non-objects have no members");
-            naHash_set(STK(3), STK(2), STK(1));
-            STK(3) = STK(1); // FIXME: fix arg order instead
+            if(!IS_HASH(STK(2))) ERR(ctx, "non-objects have no members");
+            naHash_set(STK(2), STK(1), STK(3));
             ctx->opTop -= 2;
             break;
         case OP_INSERT:
-            containerSet(ctx, STK(3), STK(2), STK(1));
-            STK(3) = STK(1); // FIXME: codegen order again...
+            containerSet(ctx, STK(2), STK(1), STK(3));
             ctx->opTop -= 2;
             break;
         case OP_EXTRACT:

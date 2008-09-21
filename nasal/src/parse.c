@@ -99,7 +99,6 @@ static void addChild(struct Token *par, struct Token *ch)
     } else
         par->children = ch;
     par->lastChild = ch;
-    ch->parent = par;
 }
 
 static int endBrace(int tok)
@@ -388,14 +387,12 @@ static struct Token* parsePrecedence(struct Parser* p,
     if(left) {
         left->next = right;
         left->prev = 0;
-        left->parent = top;
     }
     top->children = left;
 
     if(right) {
         right->next = 0;
         right->prev = left;
-        right->parent = top;
     }
     top->lastChild = right;
 
