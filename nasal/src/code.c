@@ -319,6 +319,7 @@ static struct Frame* setupFuncall(struct Context* ctx, int nargs,
 
     if(IS_CCODE(code)) {
         naRef result = (*PTR(code).ccode->fptr)(ctx, obj, nargs, args);
+        if(named) ERR(ctx, "native functions have no named arguments");
         ctx->opTop = ctx->opFrame;
         PUSH(result);
         return &(ctx->fStack[ctx->fTop-1]);
@@ -415,9 +416,9 @@ static void getLocal(struct Context* ctx, struct Frame* f,
 static int setClosure(naRef func, naRef sym, naRef val)
 {
     struct naFunc* c = PTR(func).func;
-    if(c == 0) { return 0; }
-    else if(naiHash_tryset(c->namespace, sym, val)) { return 1; }
-    else { return setClosure(c->next, sym, val); }
+    if(c == 0) return 0;
+    if(naiHash_tryset(c->namespace, sym, val)) return 1;
+    return setClosure(c->next, sym, val);
 }
 
 static naRef setSymbol(struct Frame* f, naRef sym, naRef val)
