@@ -357,10 +357,11 @@ static void genQuestion(struct Parser* p, struct Token* t)
     fixJumpTarget(p, jumpEnd);
 }
 
-static int countSemis(struct Token* t)
+static int countList(struct Token* t, int type)
 {
-    if(!t || t->type != TOK_SEMI) return 0;
-    return 1 + countSemis(RIGHT(t));
+    int n;
+    for(n = 1; t && t->type == type; t = RIGHT(t)) n++;
+    return n;
 }
 
 static void genLoop(struct Parser* p, struct Token* body,
@@ -402,14 +403,13 @@ static void genForWhile(struct Parser* p, struct Token* init,
 static void genWhile(struct Parser* p, struct Token* t)
 {
     struct Token *test=LEFT(t)->children, *body, *label=0;
-    int semis = countSemis(test);
-    if(semis == 1) {
+    int len = countList(test, TOK_SEMI);
+    if(len == 2) {
         label = LEFT(test);
         if(!label || label->type != TOK_SYMBOL)
             naParseError(p, "bad loop label", t->line);
         test = RIGHT(test);
-    }
-    else if(semis != 0)
+    } else if(len != 1)
         naParseError(p, "too many semicolons in while test", t->line);
     body = LEFT(RIGHT(t));
     genForWhile(p, 0, test, 0, body, label);
@@ -419,17 +419,14 @@ static void genFor(struct Parser* p, struct Token* t)
 {
     struct Token *init, *test, *body, *update, *label=0;
     struct Token *h = LEFT(t)->children;
-    int semis = countSemis(h);
-    if(semis == 3) {
+    int len = countList(h, TOK_SEMI);
+    if(len == 4) {
         if(!LEFT(h) || LEFT(h)->type != TOK_SYMBOL)
             naParseError(p, "bad loop label", h->line);
         label = LEFT(h);
         h=RIGHT(h);
-    } else if(semis != 2) {
+    } else if(len != 3)
         naParseError(p, "wrong number of terms in for header", t->line);
-    }
-
-    // Parse tree hell :)
     init = LEFT(h);
     test = LEFT(RIGHT(h));
     update = RIGHT(RIGHT(h));
@@ -442,13 +439,13 @@ static void genForEach(struct Parser* p, struct Token* t)
     int loopTop, jumpEnd, assignOp, dummy;
     struct Token *elem, *body, *vec, *label=0;
     struct Token *h = LEFT(LEFT(t));
-    int semis = countSemis(h);
-    if(semis == 2) {
+    int len = countList(h, TOK_SEMI);
+    if(len == 3) {
         if(!LEFT(h) || LEFT(h)->type != TOK_SYMBOL)
             naParseError(p, "bad loop label", h->line);
         label = LEFT(h);
         h = RIGHT(h);
-    } else if (semis != 1) {
+    } else if (len != 2) {
         naParseError(p, "wrong number of terms in foreach header", t->line);
     }
     elem = LEFT(h);
