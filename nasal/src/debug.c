@@ -59,6 +59,7 @@ char* opStringDEBUG(int op)
     case OP_JIFNOT: return "JIFNOT";
     case OP_FCALLH: return "FCALLH";
     case OP_MCALLH: return "MCALLH";
+    case OP_UNPACK: return "UNPACK";
     }
     sprintf(buf, "<bad opcode: %d>\n", op);
     return buf;
@@ -78,6 +79,8 @@ void printRefDEBUG(naRef r)
         printf("%f\n", r.num);
     } else if(IS_NIL(r)) {
         printf("<nil>\n");
+    } else if(PTR(r).obj == (void*)1) {
+        printf("<end>\n");
     } else if(IS_STR(r)) {
         printf("\"");
         for(i=0; i<naStr_len(r); i++)

@@ -511,39 +511,75 @@ static void newLineEntry(struct Parser* p, int line)
     p->cg->lineIps[p->cg->nextLineIp++] = (unsigned short) line;
 }
 
+static int parListLen(struct Token* t)
+{
+    if(t->type != TOK_LPAR || !LEFT(t) || LEFT(t)->type != TOK_COMMA) return 0;
+    return countList(LEFT(t), TOK_COMMA);
+}
+
+static void genCommaList(struct Parser* p, struct Token* t)
+{
+    if(t->type != TOK_COMMA) { genExpr(p, t); return; }
+    genCommaList(p, RIGHT(t));
+    genExpr(p, LEFT(t));
+}
+
+static void genMultiLV(struct Parser* p, struct Token* t, int var)
+{
+    if(!var) { emit(p, genLValue(p, t, &var)); return; }
+    if(t->type != TOK_SYMBOL) naParseError(p, "bad lvalue", t->line);
+    genScalarConstant(p, t);
+    emit(p, OP_SETLOCAL);
+}
+
+static void genAssign(struct Parser* p, struct Token* t)
+{
+    struct Token *lv = LEFT(t), *rv = RIGHT(t);
+    int len, dummy, var=0;
+    if(parListLen(lv) || (lv->type == TOK_VAR && parListLen(RIGHT(lv)))) {
+        if(lv->type == TOK_VAR) { lv = RIGHT(lv); var = 1; }
+        len = parListLen(lv);
+        if(rv->type == TOK_LPAR) {
+            if(len != parListLen(rv))
+                naParseError(p, "bad assignment count", rv->line);
+            genCommaList(p, LEFT(rv));
+        } else {
+            genExpr(p, rv);
+            emitImmediate(p, OP_UNPACK, len);
+        }
+        for(t = LEFT(lv); t && t->type == TOK_COMMA; t = RIGHT(t)) {
+            genMultiLV(p, LEFT(t), var);
+            emit(p, OP_POP);
+        }
+        genMultiLV(p, t, var);
+    } else {
+        genExpr(p, rv);
+        emit(p, genLValue(p, lv, &dummy));
+    }
+}
+        
 static void genExpr(struct Parser* p, struct Token* t)
 {
-    int i, dummy;
+    int i;
     if(!t) naParseError(p, "parse error", -1); // throw line -1...
     p->errLine = t->line;                      // ...to use this one instead
     if(t->line != p->cg->lastLine)
         newLineEntry(p, t->line);
     p->cg->lastLine = t->line;
     switch(t->type) {
-    case TOK_IF:
-        genIfElse(p, t);
-        break;
-    case TOK_QUESTION:
-        genQuestion(p, t);
-        break;
-    case TOK_WHILE:
-        genWhile(p, t);
-        break;
-    case TOK_FOR:
-        genFor(p, t);
-        break;
-    case TOK_FOREACH:
-    case TOK_FORINDEX:
+    case TOK_TOP:      genExprList(p, LEFT(t)); break;
+    case TOK_IF:       genIfElse(p, t);   break;
+    case TOK_QUESTION: genQuestion(p, t); break;
+    case TOK_WHILE:    genWhile(p, t);    break;
+    case TOK_FOR:      genFor(p, t);      break;
+    case TOK_FUNC:     genLambda(p, t);   break;
+    case TOK_ASSIGN:   genAssign(p, t);   break;
+    case TOK_LITERAL:  genScalarConstant(p, t); break;
+    case TOK_FOREACH: case TOK_FORINDEX:
         genForEach(p, t);
         break;
     case TOK_BREAK: case TOK_CONTINUE:
         genBreakContinue(p, t);
-        break;
-    case TOK_TOP:
-        genExprList(p, LEFT(t));
-        break;
-    case TOK_FUNC:
-        genLambda(p, t);
         break;
     case TOK_LPAR:
         if(BINARY(t) || !RIGHT(t)) genFuncall(p, t); // function invocation
@@ -561,10 +597,6 @@ static void genExpr(struct Parser* p, struct Token* t)
         emit(p, OP_NEWHASH);
         genHash(p, LEFT(t));
         break;
-    case TOK_ASSIGN:
-        genExpr(p, RIGHT(t));
-        emit(p, genLValue(p, LEFT(t), &dummy));
-        break;
     case TOK_RETURN:
         if(RIGHT(t)) genExpr(p, RIGHT(t));
         else emit(p, OP_PUSHNIL);
@@ -577,9 +609,6 @@ static void genExpr(struct Parser* p, struct Token* t)
         break;
     case TOK_SYMBOL:
         emitImmediate(p, OP_LOCAL, findConstantIndex(p, t));
-        break;
-    case TOK_LITERAL:
-        genScalarConstant(p, t);
         break;
     case TOK_MINUS:
         if(BINARY(t)) {
@@ -603,7 +632,8 @@ static void genExpr(struct Parser* p, struct Token* t)
         emitImmediate(p, OP_MEMBER, findConstantIndex(p, RIGHT(t)));
         break;
     case TOK_EMPTY: case TOK_NIL:
-        emit(p, OP_PUSHNIL); break; // *NOT* a noop!
+        emit(p, OP_PUSHNIL);
+        break;
     case TOK_AND: case TOK_OR:
         genShortCircuit(p, t);
         break;

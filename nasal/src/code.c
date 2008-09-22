@@ -482,6 +482,14 @@ static void evalEach(struct Context* ctx, int useIndex)
     PUSH(useIndex ? naNum(idx) : naVec_get(vec, idx));
 }
 
+static void evalUnpack(struct Context* ctx, int count)
+{
+    naRef vec = ctx->opStack[--ctx->opTop];
+    if(!IS_VEC(vec) || naVec_size(vec) < count)
+        ERR(ctx, "short or invalid multi-assignment vector");
+    while(count--) PUSH(naVec_get(vec, count));
+}
+
 #define ARG() BYTECODE(cd)[f->ip++]
 #define CONSTARG() cd->constants[ARG()]
 #define POP() ctx->opStack[--ctx->opTop]
@@ -672,6 +680,9 @@ static naRef run(struct Context* ctx)
             break;
         case OP_BREAK2: // same, but also pop the mark stack
             ctx->opTop = ctx->markStack[--ctx->markTop];
+            break;
+        case OP_UNPACK:
+            evalUnpack(ctx, ARG());
             break;
         default:
             ERR(ctx, "BUG: bad opcode");

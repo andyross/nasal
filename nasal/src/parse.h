@@ -7,7 +7,7 @@
 #include "data.h"
 #include "code.h"
 
-enum {
+enum tok {
     TOK_TOP=1, TOK_AND, TOK_OR, TOK_NOT, TOK_LPAR, TOK_RPAR, TOK_LBRA,
     TOK_RBRA, TOK_LCURL, TOK_RCURL, TOK_MUL, TOK_PLUS, TOK_MINUS, TOK_NEG,
     TOK_DIV, TOK_CAT, TOK_COLON, TOK_DOT, TOK_COMMA, TOK_SEMI,
@@ -23,7 +23,7 @@ enum {
 enum { PREC_BINARY=1, PREC_REVERSE, PREC_PREFIX, PREC_SUFFIX };
 
 struct Token {
-    int type;
+    enum tok type;
     int line;
     char* str;
     int strlen;
