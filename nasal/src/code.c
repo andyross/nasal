@@ -490,6 +490,30 @@ static void evalUnpack(struct Context* ctx, int count)
     while(count--) PUSH(naVec_get(vec, count));
 }
 
+static int vbound(struct Context* ctx, naRef v, naRef ir, int end)
+{
+    int i = IS_NIL(ir) ? (end ? -1 : 0) : numify(ctx, ir);
+    if(i < 0) i += naVec_size(v);
+    if(i < 0 || i >= naVec_size(v)) ERR(ctx, "slice index out of range");
+    return i;
+}
+
+static void evalSlice(struct Context* ctx, naRef src, naRef dst, naRef idx)
+{
+    if(!IS_VEC(src)) ERR(ctx, "cannot slice non-vector");
+    naVec_append(dst, naVec_get(src, vbound(ctx, src, idx, 0)));
+}
+ 
+static void evalSlice2(struct Context* ctx, naRef src, naRef dst,
+                       naRef start, naRef endr)
+{
+    int i, end;
+    if(!IS_VEC(src)) ERR(ctx, "cannot slice non-vector");
+    end = vbound(ctx, src, endr, 1);
+    for(i = vbound(ctx, src, start, 0); i<=end; i++)
+        naVec_append(dst, naVec_get(src, i));
+}
+
 #define ARG() BYTECODE(cd)[f->ip++]
 #define CONSTARG() cd->constants[ARG()]
 #define POP() ctx->opStack[--ctx->opTop]
@@ -608,6 +632,14 @@ static naRef run(struct Context* ctx)
         case OP_EXTRACT:
             STK(2) = containerGet(ctx, STK(2), STK(1));
             ctx->opTop--;
+            break;
+        case OP_SLICE:
+            evalSlice(ctx, STK(3), STK(2), STK(1));
+            ctx->opTop--;
+            break;
+        case OP_SLICE2:
+            evalSlice2(ctx, STK(4), STK(3), STK(2), STK(1));
+            ctx->opTop -= 2;
             break;
         case OP_JMPLOOP:
             // Identical to JMP, except for locking

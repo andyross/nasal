@@ -557,7 +557,33 @@ static void genAssign(struct Parser* p, struct Token* t)
         emit(p, genLValue(p, lv, &dummy));
     }
 }
-        
+
+static void genSlice(struct Parser* p, struct Token* t)
+{
+    if(t->type == TOK_COLON) {
+        genExpr(p, LEFT(t));
+        genExpr(p, RIGHT(t));
+        emit(p, OP_SLICE2);
+    } else {
+        genExpr(p, t);
+        emit(p, OP_SLICE);
+    }
+}
+
+static void genExtract(struct Parser* p, struct Token* t)
+{
+    genExpr(p, LEFT(t));
+    if(countList(RIGHT(t), TOK_COMMA) == 1 && RIGHT(t)->type != TOK_COLON) {
+        genExpr(p, RIGHT(t));
+        emit(p, OP_EXTRACT);
+    } else {
+        emit(p, OP_NEWVEC);
+        for(t = RIGHT(t); t->type == TOK_COMMA; t = RIGHT(t))
+            genSlice(p, LEFT(t));
+        genSlice(p, t);
+    }
+}
+
 static void genExpr(struct Parser* p, struct Token* t)
 {
     int i;
@@ -582,12 +608,12 @@ static void genExpr(struct Parser* p, struct Token* t)
         genBreakContinue(p, t);
         break;
     case TOK_LPAR:
-        if(BINARY(t) || !RIGHT(t)) genFuncall(p, t); // function invocation
-        else          genExpr(p, LEFT(t)); // simple parenthesis
+        if(BINARY(t) || !RIGHT(t)) genFuncall(p, t);
+        else genExpr(p, LEFT(t));
         break;
     case TOK_LBRA:
         if(BINARY(t)) {
-            genBinOp(OP_EXTRACT, p, t); // a[i]
+            genExtract(p, t);
         } else {
             emit(p, OP_NEWVEC);
             genList(p, LEFT(t), 1);

@@ -260,6 +260,10 @@ static void precBlock(struct Parser* p, struct Token* block)
     }
 }
 
+/* Binary tokens that get empties synthesized if one side is missing */
+static int oneSidedBinary(int t)
+{ return t == TOK_SEMI || t ==  TOK_COMMA || t == TOK_COLON; }
+
 static struct Token* parsePrecedence(struct Parser* p,
                                      struct Token* start, struct Token* end,
                                      int level)
@@ -293,17 +297,13 @@ static struct Token* parsePrecedence(struct Parser* p,
         return start;
     }
 
-    // A context-sensitivity: we want to parse ';' and ',' as binary
-    // operators, but want them to be legal at the beginning and end
-    // of a list (unlike, say, '+' where we want a parse error).
-    // Generate empties as necessary.
-    if(start->type == TOK_SEMI || start->type == TOK_COMMA) {
+    if(oneSidedBinary(start->type)) {
         t = newToken(p, TOK_EMPTY);
         start->prev = t;
         t->next = start;
         start = t;
     }
-    if(end->type == TOK_SEMI || end->type == TOK_COMMA) {
+    if(oneSidedBinary(end->type)) {
         t = newToken(p, TOK_EMPTY);
         end->next = t;
         t->prev = end;
