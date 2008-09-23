@@ -581,6 +581,8 @@ static void genExtract(struct Parser* p, struct Token* t)
         for(t = RIGHT(t); t->type == TOK_COMMA; t = RIGHT(t))
             genSlice(p, LEFT(t));
         genSlice(p, t);
+        emit(p, OP_XCHG);
+        emit(p, OP_POP);
     }
 }
 
