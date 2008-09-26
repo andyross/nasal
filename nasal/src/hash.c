@@ -56,9 +56,9 @@ static unsigned int refhash(naRef key)
         if(s->hashcode) return s->hashcode;
         return s->hashcode = hash32((void*)naStr_data(key), naStr_len(key));
     } else { /* must be a number */
-        union { double d; char c[8]; } n;
-        n.d = key.num == -0.0 ? 0.0 : key.num; /* remember negative zero! */
-        return hash32((void*)&n.c, 8);
+        union { double d; unsigned int u[2]; } n;
+        n.d = key.num == -0.0 ? 0.0 : key.num; /* remember negative zero! */ 
+        return mix32(mix32(n.u[0]) ^ n.u[1]);
     }
 }
 
