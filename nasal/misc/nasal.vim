@@ -1,9 +1,8 @@
 " Vim syntax file
-" Language:	Nasal (FlightGear)
+" Language:	Nasal
 " Maintainer:	Melchior FRANZ <mfranz # aon : at>
 " URL:		http://members.aon.at/mfranz/nasal.vim
-" Last Change:	2005 Apr 25
-" $Id: nasal.vim,v 1.5 2007-04-06 16:51:52 andy Exp $
+" Last Change:	2008 Sep 29
 
 " ________________________________CUSTOMIZATION______________________________
 "
@@ -26,8 +25,8 @@ endif
 
 syn keyword nasalCommentTodo		TODO FIXME XXX contained
 syn match   nasalComment		"#.*$" contains=nasalCommentTodo
-syn region  nasalStringS		start=+'+  skip=+\\'+  end=+'+  contains=nasalSpecialS
-syn region  nasalStringD		start=+"+  skip=+\\"+  end=+"+  contains=nasalSpecialD,nasalSpecial
+syn region  nasalStringS		start=+'+ skip=+\\'+ end=+'+ contains=nasalSpecialS
+syn region  nasalStringD		start=+"+ skip=+\\"+ end=+"+ contains=nasalSpecialD,nasalSpecial
 syn match   nasalSpecialS		contained "\\'"
 syn match   nasalSpecialD		contained "\\[\\rnt\"]"
 syn match   nasalSpecial		contained "\\x[[:xdigit:]][[:xdigit:]]"
@@ -39,10 +38,11 @@ syn match   nasalCharConstant		"`[^`\\]`"
 syn match   nasalCharConstant		"`\\[`\\rnt]`"
 syn match   nasalCharConstant		"`\\x[[:xdigit:]][[:xdigit:]]`"
 
+syn match   nasalNumber			"-\=\<0x\x\+\>"
 syn match   nasalNumber			"-\=\<\d\+\>"
-syn match   nasalNumber			"\.\d\+\([eE][+-]\=\d\+\)\=\>"
-syn match   nasalNumber			"\<\d\+\.\([eE][+-]\=\d\+\)\=\>"
-syn match   nasalNumber			"\<\d\+\.\d\+\([eE][+-]\=\d\+\)\=\>"
+syn match   nasalNumber			"-\=\.\d\+\([eE][+-]\=\d\+\)\=\>"
+syn match   nasalNumber			"-\=\<\d\+\.\=\([eE][+-]\=\d\+\)\=\>"
+syn match   nasalNumber			"-\=\<\d\+\.\d\+\([eE][+-]\=\d\+\)\=\>"
 
 syn keyword nasalStatement		func return var
 syn keyword nasalConditional		if elsif else
@@ -56,7 +56,7 @@ syn match   nasalFoo			"\~"
 syn match   nasalFunction		display "\<contains\>"
 syn keyword nasalFunction		size keys append pop setsize subvec delete int num streq substr
 syn keyword nasalFunction		chr typeof compile call die sprintf caller closure find cmp
-syn keyword nasalFunction		split rand bind sort
+syn keyword nasalFunction		split rand bind sort ghosttype id
 
 " math lib
 syn match   nasalFunction		"\<math\.\(sin\|cos\|exp\|ln\|sqrt\|atan2\)\>"
@@ -70,32 +70,16 @@ syn match   nasalVar			"\<io\.\(SEEK_SET\|SEEK_CUR\|SEEK_END\|stdin\|stdout\|std
 syn match   nasalFunction		"\<bits\.\(sfld\|fld\|setfld\|buf\)\>"
 
 
-" FlightGear specific commands
-if !exists("nasal_no_fgfs")
-	syn keyword nasalFGFSFunction		getprop setprop print _fgcommand settimer _setlistener _cmdarg
-	syn keyword nasalFGFSFunction		_interpolate rand srand directory removelistener
-
-	syn keyword nasalGlobalsFunction	isa fgcommand cmdarg abs interpolate setlistener defined printlog
-
-	syn keyword nasalPropsFunction		getType getName getIndex getValue setValue setIntValue
-	syn keyword nasalPropsFunction		setBoolValue setDoubleValue getParent getChild getChildren
-	syn keyword nasalPropsFunction		getAttribute setAttribute
-	syn keyword nasalPropsFunction		removeChild removeChildren getNode
-	syn keyword nasalPropsFunction		getPath getBoolValue setValues
-	syn match   nasalPropsFunction		"\<props\.\(globals\|Node\)\>\.\="
-endif
-
-
 syn sync fromstart
 syn sync maxlines=100
 
-syn match   nasalParenError	")"
-syn match   nasalBrackError	"]"
-syn match   nasalBraceError	"}"
+syn match   nasalParenError	"[()]"
+syn match   nasalBrackError	"[[]]"
+syn match   nasalBraceError	"[{}]"
 
-syn region  nasalEncl transparent matchgroup=nasalParenEncl start="(" matchgroup=nasalParenEncl end=")" contains=ALLBUT,nasalParenError
-syn region  nasalEncl transparent matchgroup=nasalBrackEncl start="\[" matchgroup=nasalBrackEncl end="\]" contains=ALLBUT,nasalBrackError
-syn region  nasalEncl transparent matchgroup=nasalBraceEncl start="{" matchgroup=nasalBraceEncl end="}" contains=ALLBUT,nasalBraceError
+syn region  nasalEncl transparent matchgroup=nasalParenEncl start="(" end=")" contains=ALLBUT,nasalParenError
+syn region  nasalEncl transparent matchgroup=nasalBrackEncl start="\[" end="\]" contains=ALLBUT,nasalBrackError
+syn region  nasalEncl transparent matchgroup=nasalBraceEncl start="{" end="}" contains=ALLBUT,nasalBraceError
 
 
 if version >= 508 || !exists("did_nasal_syn_inits")
@@ -120,6 +104,7 @@ if version >= 508 || !exists("did_nasal_syn_inits")
 	HiLink nasalConstant		Constant
 	HiLink nasalCharConstant	Type
 	HiLink nasalFoo			NonText
+	HiLink nasalCDATA		Type
 
 	HiLink nasalRepeat		Repeat
 	HiLink nasalBranch		Conditional
